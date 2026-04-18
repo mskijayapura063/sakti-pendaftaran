@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <style>
 :root{
   --blue:       #0D47A1;
@@ -572,6 +572,24 @@ function saveEdit(){
   if(!nama){showToast('Nama wajib diisi',true);return;}
   if(!nipnrp){showToast('NIP/NRP wajib diisi',true);return;}
   if(!peranList.length){showToast('Pilih minimal satu peran',true);return;}
+  // Cek duplikat NIP/NRP dengan user lain dalam formulir ini
+  const dupNIP=users.find(u=>u.id!==editingId&&u.nipnrp&&u.nipnrp===nipnrp);
+  if(dupNIP){showToast(`❌ NIP/NRP sudah digunakan oleh: ${dupNIP.nama}`,true);return;}
+  // Cek duplikat NIK dengan user lain dalam formulir ini
+  if(nik){
+    const dupNIK=users.find(u=>u.id!==editingId&&u.nik&&u.nik===nik);
+    if(dupNIK){showToast(`❌ NIK sudah digunakan oleh: ${dupNIK.nama}`,true);return;}
+  }
+  // Cek duplikat Email dengan user lain dalam formulir ini
+  if(email){
+    const dupEmail=users.find(u=>u.id!==editingId&&u.email&&u.email.toLowerCase()===email.toLowerCase());
+    if(dupEmail){showToast(`❌ Email sudah digunakan oleh: ${dupEmail.nama}`,true);return;}
+  }
+  // Cek duplikat No HP dengan user lain dalam formulir ini
+  if(hp){
+    const dupHP=users.find(u=>u.id!==editingId&&u.hp&&u.hp===hp);
+    if(dupHP){showToast(`❌ No. HP sudah digunakan oleh: ${dupHP.nama}`,true);return;}
+  }
   const u=getUserById(editingId);if(!u)return;
   u.nama=nama;u.nipnrp=nipnrp;u.nik=nik;u.email=email;u.hp=hp;u.sk=sk;u.tglsk=tglsk;u.peranList=peranList;
   renderUserSummary(editingId);closeModal('modalEdit');showToast('✅ Data user berhasil diperbarui');
@@ -593,8 +611,8 @@ function trySubmit(){
     else{el.classList.remove('err');fg?.classList.remove('has-err');}
   });
   if(!users.length)errors.push('Tambahkan minimal satu user');
-  // Cek duplikat NIK dan NIP/NRP antar user dalam formulir yang sama
-  const seenNIK=new Map(), seenNIP=new Map();
+  // Cek duplikat NIK, NIP/NRP, Email, No HP antar user dalam formulir yang sama
+  const seenNIK=new Map(), seenNIP=new Map(), seenEmail=new Map(), seenHP=new Map();
   users.forEach((u,i)=>{
     const n=i+1;
     if(!u.nama)errors.push(`User ${n}: Nama wajib diisi`);
@@ -604,15 +622,26 @@ function trySubmit(){
     if(!u.peranList.length)errors.push(`User ${n}: Pilih minimal satu peran`);
     if(u.email&&!u.email.toLowerCase().endsWith('.go.id'))errors.push(`User ${n}: Email harus berakhiran .go.id`);
     u.peranList.forEach((kode,idx)=>{const r=checkPeranConflict(kode,u.peranList.slice(0,idx));if(r.conflict&&r.block)errors.push(`User ${n} (${u.nama}): ${r.warn}`);});
-    // Cek duplikat NIK dalam formulir ini
+    // Cek duplikat NIK
     if(u.nik){
       if(seenNIK.has(u.nik)) errors.push(`User ${n} (${u.nama}): NIK sama dengan User ${seenNIK.get(u.nik)+1} — tidak boleh duplikat`);
       else seenNIK.set(u.nik,i);
     }
-    // Cek duplikat NIP/NRP dalam formulir ini
+    // Cek duplikat NIP/NRP
     if(u.nipnrp){
       if(seenNIP.has(u.nipnrp)) errors.push(`User ${n} (${u.nama}): NIP/NRP sama dengan User ${seenNIP.get(u.nipnrp)+1} — tidak boleh duplikat`);
       else seenNIP.set(u.nipnrp,i);
+    }
+    // Cek duplikat Email
+    if(u.email){
+      const emailKey=u.email.toLowerCase();
+      if(seenEmail.has(emailKey)) errors.push(`User ${n} (${u.nama}): Email sama dengan User ${seenEmail.get(emailKey)+1} — tidak boleh duplikat`);
+      else seenEmail.set(emailKey,i);
+    }
+    // Cek duplikat No HP
+    if(u.hp){
+      if(seenHP.has(u.hp)) errors.push(`User ${n} (${u.nama}): No. HP sama dengan User ${seenHP.get(u.hp)+1} — tidak boleh duplikat`);
+      else seenHP.set(u.hp,i);
     }
   });
   const allPeran=users.flatMap(u=>u.peranList);
@@ -683,141 +712,188 @@ async function doGenerateExcel(){
     return rows;
   }
 
-  const wb=XLSX.utils.book_new();
-  const wsData=[];
+  // ─── ExcelJS — generate workbook dengan styling penuh ────
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'SAKTI KPPN Jayapura';
+  wb.created = new Date();
 
-  // Baris 1: Judul (merge A1:J1)
-  wsData.push([s('Formulir Pendaftaran Pengguna Aplikasi SAKTI'),'','','','','','','','','','']);
+  // ── Helper styling ────────────────────────────────────────
+  const BLUE_FILL   = { type:'pattern', pattern:'solid', fgColor:{argb:'FF1A56DB'} };
+  const YELLOW_FILL = { type:'pattern', pattern:'solid', fgColor:{argb:'FFFFE598'} };
+  const WHITE_FILL  = { type:'pattern', pattern:'solid', fgColor:{argb:'FFFFFFFF'} };
+  const THIN_BORDER = {top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};
+  const textFmt = '@';  // Text format — tampil sebagai teks, bukan angka
+
+  function applyBorder(cell){ cell.border = THIN_BORDER; }
+  function setTextFmt(cell){ cell.numFmt = textFmt; }
+  function applyDataCell(cell, isBLU=false){
+    cell.numFmt = textFmt;
+    cell.border = THIN_BORDER;
+    cell.alignment = { wrapText:true, vertical:'middle' };
+    if(isBLU) cell.fill = YELLOW_FILL;
+  }
+
+  // ── Sheet 1: Form Pendaftaran ─────────────────────────────
+  const ws1 = wb.addWorksheet('Form Pendaftaran');
+  ws1.columns = [
+    { width:14 }, // A — Kode Satker
+    { width:60 }, // B — Peran
+    { width:28 }, // C — Nama
+    { width:22 }, // D — NIP
+    { width:20 }, // E — NPWP
+    { width:20 }, // F — NIK
+    { width:32 }, // G — Email
+    { width:16 }, // H — No HP
+    { width:22 }, // I — Nomor SK
+    { width:14 }, // J — Tanggal SK
+    { width:22 }, // K — Ket BLU
+  ];
+
+  // Baris 1: Judul (merge A1:K1)
+  ws1.addRow(['Formulir Pendaftaran Pengguna Aplikasi SAKTI']);
+  ws1.mergeCells('A1:K1');
+  const titleCell = ws1.getCell('A1');
+  titleCell.font   = { bold:true, size:18, color:{argb:'FF000000'} };
+  titleCell.alignment = { horizontal:'center', vertical:'middle', wrapText:false };
+
   // Baris 2: kosong
-  wsData.push(['','','','','','','','','','','']);
-  // Baris 3-5: Info satker
-  wsData.push([s('Kode Satker'),s(kodeSatker),'','','','','','','','','']);
-  wsData.push([s('Nama Satker'),s(namaSatker),'','','','','','','','','']);
-  wsData.push([s('Level Satker'),s(levelSatker),'','','','','','','','','']);
-  // Baris 6: Header tabel (warna biru)
-  wsData.push([s('Kode Satker'),s('Peran'),s('Nama'),s('NIP'),s('NPWP'),s('NIK'),s('E-mail'),s('No. HP'),s('Nomor SK'),s('Tanggal SK'),s('')]);
+  ws1.addRow([]);
+
+  // Baris 3-5: Info satker (label bold)
+  function addInfoRow(label, val){
+    const row = ws1.addRow([label, val]);
+    row.getCell(1).font = {bold:true};
+    row.getCell(1).numFmt = textFmt;
+    row.getCell(2).numFmt = textFmt;
+  }
+  addInfoRow('Kode Satker', kodeSatker);
+  addInfoRow('Nama Satker', namaSatker);
+  addInfoRow('Level Satker', levelSatker);
+
+  // Baris 6: Header tabel — biru, putih, bold
+  const headerCols = ['Kode Satker','Peran','Nama','NIP','NPWP','NIK','E-mail','No. HP','Nomor SK','Tanggal SK','Keterangan'];
+  const headerRow6 = ws1.addRow(headerCols);
+  headerRow6.height = 22;
+  headerCols.forEach((_, ci)=>{
+    const cell = headerRow6.getCell(ci+1);
+    cell.font      = { bold:true, color:{argb:'FFFFFFFF'}, size:11 };
+    cell.fill      = BLUE_FILL;
+    cell.border    = THIN_BORDER;
+    cell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+    cell.numFmt    = textFmt;
+  });
 
   // Baris data user — satu baris per peran/grup peran
   users.forEach(u=>{
     const excelRows = buildExcelRows(u, kodeSatker);
     excelRows.forEach(r=>{
-      wsData.push([
-        s(kodeSatker),
-        s(r.peran),
-        s(u.nama),
-        s(u.nipnrp),
-        s(u.nik),   // NPWP = NIK (sesuai aturan)
-        s(u.nik),
-        s(u.email),
-        s(u.hp),
-        s(u.sk),
-        s(formatTgl(u.tglsk)),
-        r.blu ? s('KHUSUS SATKER BLU') : s(''),
-      ]);
+      const rowData = [
+        String(kodeSatker),
+        String(r.peran),
+        String(u.nama||''),
+        String(u.nipnrp||''),
+        String(u.nik||''),   // NPWP = NIK
+        String(u.nik||''),
+        String(u.email||''),
+        String(u.hp||''),
+        String(u.sk||''),
+        String(formatTgl(u.tglsk)||''),
+        r.blu ? 'KHUSUS SATKER BLU' : '',
+      ];
+      const dataRow = ws1.addRow(rowData);
+      dataRow.height = 20;
+      rowData.forEach((_,ci)=>{
+        applyDataCell(dataRow.getCell(ci+1), r.blu);
+      });
+      // Kolom Peran (B) — biru jika tidak BLU, jika BLU sudah kuning
+      if(!r.blu){
+        dataRow.getCell(2).fill = WHITE_FILL;
+      }
     });
   });
 
   // Baris kosong sebelum TTD
-  wsData.push(['','','','','','','','','','','']);
-  wsData.push(['','','','','','','','','','','']);
-  wsData.push(['','','','','','',s(`${kota}, ${tglStr}`),'','','','']);
-  wsData.push(['','','','','','',s('Kuasa Pengguna Anggaran'),'','','','']);
-  wsData.push(['','','','','','','','','','','']);
-  wsData.push(['','','','','','','','','','','']);
-  wsData.push(['','','','','','',s(namaKPA),'','','','']);
-  wsData.push(['','','','','','',s(`NIP ${nipKPA}`),'','','','']);
-  wsData.push(['','','','','','','','','','','']);
-  wsData.push([s('Keterangan'),'','','','','','','','','','']);
-  wsData.push([s('*NPWP diisi angka tanpa pemisah simbol'),'','','','','','','','','','']);
-  wsData.push([s('*E-mail diisi dengan e-mail resmi Kedinasan'),'','','','','','','','','','']);
-  wsData.push([s('*Tanggal SK diisi dengan format dd-mm-yyyy'),'','','','','','','','','','']);
-  wsData.push([s('*Untuk contoh pengisian peran lengkap, silakan kunjungi'),'',s('bit.ly/rolesakti'),'','','','','','','','']);
-  wsData.push(['','','','','','','','','','','']);
-  wsData.push([s('Dikirimkan ke HAI-DJPb berupa :'),'','','','','','','','','','']);
-  wsData.push([s('* File PDF bertandatangan KPA'),'','','','','','','','','','']);
-  wsData.push([s('* File Excel sebagai lampiran'),'','','','','','','','','','']);
-  wsData.push([s('* File SK Penetapan Pengguna SAKTI oleh KPA sebagai lampiran'),'','','','','','','','','','']);
+  ws1.addRow([]);
+  ws1.addRow([]);
+  const ttdRow1 = ws1.addRow(['','','','','','',`${kota}, ${tglStr}`]);
+  ttdRow1.getCell(7).numFmt = textFmt;
+  const ttdRow2 = ws1.addRow(['','','','','','','Kuasa Pengguna Anggaran']);
+  ttdRow2.getCell(7).numFmt = textFmt;
+  ws1.addRow([]);
+  ws1.addRow([]);
+  const ttdRow5 = ws1.addRow(['','','','','','',namaKPA]);
+  ttdRow5.getCell(7).font = {bold:true};
+  ttdRow5.getCell(7).numFmt = textFmt;
+  const ttdRow6 = ws1.addRow(['','','','','','',`NIP ${nipKPA}`]);
+  ttdRow6.getCell(7).numFmt = textFmt;
+  ws1.addRow([]);
 
-  const ws1=XLSX.utils.aoa_to_sheet(wsData);
-
-  // Lebar kolom
-  ws1['!cols']=[{wch:14},{wch:60},{wch:28},{wch:22},{wch:20},{wch:20},{wch:32},{wch:16},{wch:22},{wch:14},{wch:22}];
-
-  // Merge baris judul A1:J1
-  ws1['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:9} }];
-
-  // Style judul (baris 0) — bold, center, font besar
-  const titleCell = ws1['A1'];
-  if(titleCell){
-    titleCell.s = {
-      font:{ bold:true, sz:18 },
-      alignment:{ horizontal:'center', vertical:'center' },
-    };
-  }
-
-  // Style header tabel (baris 5, index ke-5 = row 6)
-  const headerRow = 5; // 0-indexed
-  ['A','B','C','D','E','F','G','H','I','J'].forEach(col=>{
-    const cellRef = `${col}${headerRow+1}`;
-    if(ws1[cellRef]){
-      ws1[cellRef].s = {
-        font:{ bold:true, color:{rgb:'FFFFFF'} },
-        fill:{ fgColor:{rgb:'1A56DB'} },
-        alignment:{ horizontal:'center', vertical:'center', wrapText:true },
-      };
-    }
-  });
-
-  // Style baris BLU (kuning muda) + wrap kolom Peran
-  let dataRowStart = 6; // baris data mulai index 6
-  let currentDataIdx = 0;
-  users.forEach(u=>{
-    const excelRows = buildExcelRows(u, kodeSatker);
-    excelRows.forEach(r=>{
-      const rowNum = dataRowStart + currentDataIdx + 1; // 1-indexed excel row
-      if(r.blu){
-        ['A','B','C','D','E','F','G','H','I','J','K'].forEach(col=>{
-          const ref=`${col}${rowNum}`;
-          if(ws1[ref]) ws1[ref].s={ fill:{fgColor:{rgb:'FFE598'}}, alignment:{wrapText:true} };
-        });
-      }
-      // Wrap teks kolom Peran (kolom B)
-      const bRef = `B${rowNum}`;
-      if(ws1[bRef]) ws1[bRef].s = { ...(ws1[bRef].s||{}), alignment:{wrapText:true} };
-      currentDataIdx++;
-    });
-  });
-
-  XLSX.utils.book_append_sheet(wb,ws1,'Form Pendaftaran');
-
-  // Sheet Referensi KODE PERAN — sesuai format contoh (2 kolom saja)
-  const refData = [
-    [s('KODE PERAN PADA EXCEL'), s('DESKRIPSI')],
-    ...PERAN_DATA.map(p=>[s(p.kode), s(p.label + (BLU_PERAN.has(p.kode)?' (KHUSUS SATKER BLU)':''))])
+  // Keterangan
+  const ketRows = [
+    'Keterangan',
+    '*NPWP diisi angka tanpa pemisah simbol',
+    '*E-mail diisi dengan e-mail resmi Kedinasan',
+    '*Tanggal SK diisi dengan format dd-mm-yyyy',
+    '*Untuk contoh pengisian peran lengkap, silakan kunjungi >> bit.ly/rolesakti',
+    '',
+    'Dikirimkan ke HAI-DJPb berupa :',
+    '* File PDF bertandatangan KPA',
+    '* File Excel sebagai lampiran',
+    '* File SK Penetapan Pengguna SAKTI oleh KPA sebagai lampiran',
   ];
-  const ws2=XLSX.utils.aoa_to_sheet(refData);
-  ws2['!cols']=[{wch:45},{wch:70}];
-  // Header bold
-  ['A1','B1'].forEach(r=>{ if(ws2[r]) ws2[r].s={font:{bold:true}}; });
-  XLSX.utils.book_append_sheet(wb,ws2,'Referensi KODE PERAN');
+  ketRows.forEach((txt, i)=>{
+    const r = ws1.addRow([txt]);
+    r.getCell(1).numFmt = textFmt;
+    if(i===0) r.getCell(1).font = {bold:true};
+  });
 
-  const tglBuat=formatTglIndo(new Date().toISOString().split('T')[0]);
-  const ws3=XLSX.utils.aoa_to_sheet([
-    [s('=== INFO REFERENSI — JANGAN DIEDIT ==='),s('')],
-    [s('Nomor Referensi'),s(refKode)],
-    [s('Tanggal Dibuat'),s(tglBuat)],
-    [s('Kode Satker'),s(kodeSatker)],
-    [s('Nama Satker'),s(namaSatker)],
-    [s('Nama KPA'),s(namaKPA)],
-    [s('Status'),s('Tahap 1 Selesai — Menunggu Dokumen')],
-    [s(''),s('')],
-    [s('Langkah Selanjutnya'),s('Setelah Excel ditandatangani KPA, buka halaman Upload Dokumen dan masukkan Nomor Referensi di atas.')],
-  ]);
-  ws3['!cols']=[{wch:24},{wch:70}];
-  XLSX.utils.book_append_sheet(wb,ws3,'Info Referensi');
+  // ── Sheet 2: Referensi KODE PERAN ─────────────────────────
+  const ws2 = wb.addWorksheet('Referensi KODE PERAN');
+  ws2.columns = [{ width:45 }, { width:70 }];
 
-  const fname=`Form-SAKTI-${kodeSatker}-${refKode}.xlsx`;
-  XLSX.writeFile(wb,fname);
+  const refHeaderRow = ws2.addRow(['KODE PERAN PADA EXCEL', 'DESKRIPSI']);
+  [1,2].forEach(ci=>{
+    const cell = refHeaderRow.getCell(ci);
+    cell.font   = { bold:true, color:{argb:'FFFFFFFF'} };
+    cell.fill   = BLUE_FILL;
+    cell.border = THIN_BORDER;
+    cell.numFmt = textFmt;
+    cell.alignment = { horizontal:'center', vertical:'middle' };
+  });
+  PERAN_DATA.forEach(p=>{
+    const r = ws2.addRow([p.kode, p.label + (BLU_PERAN.has(p.kode)?' (KHUSUS SATKER BLU)':'')]);
+    [1,2].forEach(ci=>{ r.getCell(ci).numFmt = textFmt; r.getCell(ci).border = THIN_BORDER; });
+  });
+
+  // ── Sheet 3: Info Referensi ───────────────────────────────
+  const ws3 = wb.addWorksheet('Info Referensi');
+  ws3.columns = [{ width:24 }, { width:70 }];
+  const tglBuat = formatTglIndo(new Date().toISOString().split('T')[0]);
+  const infoData = [
+    ['=== INFO REFERENSI — JANGAN DIEDIT ===',''],
+    ['Nomor Referensi', refKode],
+    ['Tanggal Dibuat', tglBuat],
+    ['Kode Satker', kodeSatker],
+    ['Nama Satker', namaSatker],
+    ['Nama KPA', namaKPA],
+    ['Status', 'Tahap 1 Selesai — Menunggu Dokumen'],
+    ['',''],
+    ['Langkah Selanjutnya', 'Setelah Excel ditandatangani KPA, buka halaman Upload Dokumen dan masukkan Nomor Referensi di atas.'],
+  ];
+  infoData.forEach((row,i)=>{
+    const r = ws3.addRow(row);
+    [1,2].forEach(ci=>{ r.getCell(ci).numFmt = textFmt; });
+    if(i===0) r.getCell(1).font = {bold:true};
+  });
+
+  // ── Download ──────────────────────────────────────────────
+  const fname = `Form-SAKTI-${kodeSatker}-${refKode}.xlsx`;
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = fname; a.click();
+  URL.revokeObjectURL(url);
 
   // Simpan ke Sheets via Apps Script
   try{
