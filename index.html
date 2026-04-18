@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Pendaftaran Pengguna SAKTI — KPPN Jayapura</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --blue:       #0D47A1;
+  --blue-mid:   #1565C0;
+  --blue-light: #1976D2;
+  --blue-pale:  #E3F2FD;
+  --blue-pale2: #BBDEFB;
+  --gold:       #F9A825;
+  --gold-light: #FFF8E1;
+  --green:      #2E7D32;
+  --green-pale: #E8F5E9;
+  --red:        #C62828;
+  --red-pale:   #FFEBEE;
+  --gray-50:    #FAFAFA;
+  --gray-100:   #F5F5F5;
+  --gray-200:   #EEEEEE;
+  --gray-300:   #E0E0E0;
+  --gray-400:   #BDBDBD;
+  --gray-500:   #9E9E9E;
+  --gray-600:   #757575;
+  --gray-700:   #616161;
+  --gray-800:   #424242;
+  --gray-900:   #212121;
+  --radius:     8px;
+  --shadow:     0 1px 4px rgba(0,0,0,.10),0 2px 12px rgba(0,0,0,.06);
+  --shadow-lg:  0 4px 24px rgba(0,0,0,.13);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--gray-100);color:var(--gray-900);min-height:100vh;font-size:14px;line-height:1.5}
+a{color:var(--blue-light);text-decoration:none}
+a:hover{text-decoration:underline}
+code{font-family:monospace;font-size:13px}
+
+/* HEADER */
+header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.header-top{display:flex;align-items:center;gap:16px;padding:14px 32px;border-bottom:3px solid var(--gold)}
+.header-logo{width:56px;height:56px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.header-logo img{width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+.header-titles{flex:1}
+.header-inst{font-size:11px;font-weight:500;opacity:.75;text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px}
+.header-main{font-size:18px;font-weight:800;line-height:1.25}
+.header-sub{font-size:11px;opacity:.7;margin-top:2px}
+.header-nav{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0}
+.btn-nav{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:var(--radius);padding:7px 14px;font-size:12px;font-weight:500;cursor:pointer;text-decoration:none;transition:background .15s;white-space:nowrap;font-family:'Inter',sans-serif}
+.btn-nav:hover{background:rgba(255,255,255,.22);text-decoration:none}
+
+/* PROGRESS */
+.progress-wrap{background:#fff;border-bottom:1px solid var(--gray-200);padding:14px 32px}
+.progress-steps{display:flex;align-items:center;max-width:560px;margin:0 auto}
+.ps{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:600;white-space:nowrap}
+.ps-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;border:2px solid transparent}
+.ps.active  .ps-num{background:var(--blue);color:#fff;border-color:var(--blue)}
+.ps.done    .ps-num{background:var(--green);color:#fff;border-color:var(--green)}
+.ps.inactive .ps-num{background:#fff;color:var(--gray-400);border-color:var(--gray-300)}
+.ps.active   .ps-label{color:var(--blue);font-weight:700}
+.ps.done     .ps-label{color:var(--green)}
+.ps.inactive .ps-label{color:var(--gray-400)}
+.ps-line{flex:1;height:2px;background:var(--gray-300);margin:0 10px;min-width:30px}
+.ps-line.done{background:var(--green)}
+
+/* LAYOUT */
+.container{max-width:960px;margin:28px auto;padding:0 20px 72px}
+
+/* CARD */
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 28px;margin-bottom:20px;border:1px solid var(--gray-200)}
+.card-title{font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.6px;padding-bottom:12px;margin-bottom:18px;border-bottom:2px solid var(--blue-pale);display:flex;align-items:center;gap:8px}
+
+/* FORM */
+.form-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.form-group{display:flex;flex-direction:column;flex:1;min-width:180px}
+.form-group label{font-size:11px;font-weight:600;color:var(--gray-700);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group select{border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 12px;font-size:13px;color:var(--gray-900);background:#fff;font-family:'Inter',sans-serif;transition:border-color .15s,box-shadow .15s}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(25,118,210,.12)}
+.form-group input.err{border-color:var(--red)!important}
+.err-msg{font-size:11px;color:var(--red);margin-top:4px;display:none}
+.has-err .err-msg{display:block}
+.hint{font-size:11px;color:var(--gray-500);margin-top:4px}
+
+/* BOXES */
+.info-box{background:var(--blue-pale);border:1px solid var(--blue-pale2);border-radius:var(--radius);padding:12px 16px;font-size:12.5px;color:var(--blue);margin-bottom:18px;line-height:1.7}
+.info-box ul{padding-left:18px;margin-top:6px}
+.info-box li{margin-bottom:3px}
+.warn-box{background:var(--gold-light);border:1px solid #FFE082;border-radius:var(--radius);padding:10px 14px;font-size:12px;color:#5D4037;margin-top:8px;line-height:1.7;display:none}
+.warn-box.on{display:block}
+.warn-box div+div{margin-top:5px;padding-top:5px;border-top:1px dashed #FFE082}
+
+/* BUTTONS */
+.btn{cursor:pointer;border:none;border-radius:var(--radius);padding:9px 18px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:7px;transition:background .15s,box-shadow .15s,transform .1s;font-family:'Inter',sans-serif;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--blue-light);color:#fff}
+.btn-primary:hover{background:var(--blue-mid)}
+.btn-success{background:var(--green);color:#fff;font-size:14px;padding:11px 24px}
+.btn-success:hover{background:#1B5E20}
+.btn-danger{background:#fff;color:var(--red);border:1.5px solid var(--red);padding:7px 13px;font-size:12px}
+.btn-danger:hover{background:var(--red-pale)}
+.btn-secondary{background:var(--gray-600);color:#fff}
+.btn-secondary:hover{background:var(--gray-800)}
+.btn-outline{background:#fff;color:var(--blue-light);border:1.5px solid var(--blue-light);padding:7px 14px;font-size:12px}
+.btn-outline:hover{background:var(--blue-pale)}
+.btn-add-user{background:var(--blue-pale);color:var(--blue);border:2px dashed var(--blue-pale2);font-size:13px;padding:11px 20px;width:100%;border-radius:var(--radius);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:background .15s}
+.btn-add-user:hover{background:var(--blue-pale2)}
+
+/* USER CARD */
+.user-card{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px 20px;margin-bottom:12px}
+.user-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.user-card-num{font-size:13px;font-weight:700;color:var(--blue)}
+.user-card-actions{display:flex;gap:8px}
+
+/* PERAN */
+.peran-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px;margin-top:8px}
+.peran-item{display:flex;align-items:flex-start;gap:9px;padding:8px 11px;border-radius:var(--radius);border:1.5px solid var(--gray-300);background:#fff;cursor:pointer;transition:border-color .12s,background .12s}
+.peran-item:hover:not(.disabled){border-color:var(--blue-light);background:var(--blue-pale)}
+.peran-item.checked{border-color:var(--blue);background:var(--blue-pale)}
+.peran-item.disabled{opacity:.38;cursor:not-allowed;background:var(--gray-100)}
+.peran-item input[type=checkbox]{margin-top:2px;accent-color:var(--blue);width:15px;height:15px;flex-shrink:0}
+.peran-item-label{font-size:12px;line-height:1.4}
+.peran-item-label .kode{font-size:10px;color:var(--gray-500);font-family:monospace}
+.peran-group-title{font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.6px;margin:12px 0 6px;border-bottom:1px solid var(--gray-200);padding-bottom:5px}
+
+/* BADGES */
+.kb{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:inline-block;white-space:nowrap;margin:1px}
+.kb-A{background:#FFEBEE;color:#B71C1C}
+.kb-V{background:#E8F5E9;color:#1B5E20}
+.kb-O{background:#E3F2FD;color:#0D47A1}
+.kb-Ad{background:var(--gray-800);color:#fff}
+.kb-M{background:#FFF3E0;color:#E65100}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9000;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.on{opacity:1;pointer-events:all}
+.modal-box{background:#fff;border-radius:12px;padding:28px 28px 24px;max-width:520px;width:92%;box-shadow:var(--shadow-lg);transform:translateY(18px);transition:transform .2s;max-height:92vh;overflow-y:auto}
+.modal-overlay.on .modal-box{transform:translateY(0)}
+.modal-box.wide{max-width:780px}
+.modal-title{font-size:16px;font-weight:700;color:var(--blue);margin-bottom:14px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:20px}
+
+/* REF BOX */
+.ref-box{background:var(--blue);border-radius:10px;padding:22px;text-align:center;margin:16px 0}
+.ref-box .ref-label{color:rgba(255,255,255,.75);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.ref-box .ref-kode{color:#fff;font-size:22px;font-weight:800;letter-spacing:2px;font-family:monospace}
+.ref-box .ref-copy{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer;margin-top:10px;display:inline-block;font-family:'Inter',sans-serif;transition:background .15s}
+.ref-box .ref-copy:hover{background:rgba(255,255,255,.25)}
+
+/* ERROR PANEL */
+.error-panel{background:var(--red-pale);border:1px solid #EF9A9A;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:12px;color:#7f1d1d;display:none}
+.error-panel ul{padding-left:16px;margin-top:6px}
+.error-panel li{margin-bottom:3px}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;right:24px;background:var(--green);color:#fff;padding:11px 20px;border-radius:var(--radius);font-size:13px;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(14px);transition:opacity .3s,transform .3s;z-index:9999;max-width:320px;font-family:'Inter',sans-serif}
+#toast.on{opacity:1;transform:translateY(0)}
+#toast.err{background:var(--red)}
+
+@media(max-width:640px){
+  .card{padding:16px}
+  .header-top{padding:12px 16px;flex-wrap:wrap}
+  .peran-grid{grid-template-columns:1fr}
+  .progress-wrap{padding:12px 16px}
+  .container{padding:0 12px 60px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
+      <div class="header-logo"><img src="logo-kppn.png" alt="Logo KPPN Jayapura"/></div>
+      <div class="header-titles">
+        <div class="header-inst">Kantor Pelayanan Perbendaharaan Negara</div>
+        <div class="header-main">KPPN Jayapura</div>
+        <div class="header-sub">Direktorat Jenderal Perbendaharaan — Pendaftaran Pengguna SAKTI</div>
+      </div>
+    </div>
+    <div class="header-nav">
+      <a href="upload.html" class="btn-nav">📎 Upload Dokumen</a>
+      <a href="admin.html" class="btn-nav">🔐 Admin</a>
+    </div>
+  </div>
+</header>
+
+<div class="progress-wrap">
+  <div class="progress-steps">
+    <div class="ps active">
+      <div class="ps-num">1</div>
+      <span class="ps-label">Isi Data &amp; Unduh Excel</span>
+    </div>
+    <div class="ps-line"></div>
+    <div class="ps inactive">
+      <div class="ps-num">2</div>
+      <span class="ps-label">Upload Dokumen</span>
+    </div>
+    <div class="ps-line"></div>
+    <div class="ps inactive">
+      <div class="ps-num">3</div>
+      <span class="ps-label">Selesai</span>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="info-box">
+    <strong>📋 Tahap 1 dari 2 — Isi Data &amp; Unduh Excel</strong>
+    <ul>
+      <li>Isi data satker, data KPA, dan daftar user yang akan didaftarkan ke SAKTI.</li>
+      <li>Centang peran setiap user. Peran yang bertentangan dinonaktifkan otomatis.</li>
+      <li>Klik <strong>"Unduh Excel &amp; Dapatkan Kode Referensi"</strong> → file Excel terunduh + kode referensi unik muncul.</li>
+      <li>Setelah Excel ditandatangani KPA, buka <a href="upload.html"><strong>halaman Upload Dokumen</strong></a> dan masukkan kode referensi tersebut.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 Data Satker</div>
+    <div class="form-row">
+      <div class="form-group" id="fg-kodeSatker">
+        <label>Kode Satker <span style="color:var(--red)">*</span></label>
+        <input type="text" id="kodeSatker" placeholder="Contoh: 123456" maxlength="10"/>
+        <span class="err-msg">Kode satker wajib diisi</span>
+      </div>
+      <div class="form-group" id="fg-namaSatker">
+        <label>Nama Satker <span style="color:var(--red)">*</span></label>
+        <input type="text" id="namaSatker" placeholder="Nama lengkap satker"/>
+        <span class="err-msg">Nama satker wajib diisi</span>
+      </div>
+      <div class="form-group">
+        <label>Level Satker</label>
+        <input type="text" id="levelSatker" value="Satker" placeholder="Satker"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏛️ Data KPA (Penandatangan)</div>
+    <div class="form-row">
+      <div class="form-group" id="fg-namaKPA">
+        <label>Nama KPA <span style="color:var(--red)">*</span></label>
+        <input type="text" id="namaKPA" placeholder="Nama lengkap KPA"/>
+        <span class="err-msg">Nama KPA wajib diisi</span>
+      </div>
+      <div class="form-group" id="fg-nipKPA">
+        <label>NIP KPA <span style="color:var(--red)">*</span></label>
+        <input type="text" id="nipKPA" placeholder="Contoh: 199001012020011001" maxlength="18"/>
+        <span class="err-msg">NIP KPA wajib diisi</span>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Kota / Tempat</label>
+        <input type="text" id="kotaTTD" placeholder="Contoh: Jayapura"/>
+      </div>
+      <div class="form-group">
+        <label>Tanggal Surat</label>
+        <input type="date" id="tanggalSurat"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">👥 Daftar User yang Didaftarkan</div>
+    <div id="userList"></div>
+    <button class="btn-add-user" onclick="addUser()">+ Tambah User Baru</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📥 Unduh Excel</div>
+    <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">
+      Setelah semua data terisi, klik tombol di bawah. File Excel akan terunduh dan Anda akan mendapat
+      <strong>kode referensi unik</strong> untuk melanjutkan upload dokumen di Tahap 2.
+    </p>
+    <div class="error-panel" id="errPanel"><strong>⚠️ Harap perbaiki:</strong><ul id="errList"></ul></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-success" onclick="trySubmit()">⬇️ Unduh Excel &amp; Dapatkan Kode Referensi</button>
+      <button class="btn btn-secondary" onclick="resetForm()">↺ Reset Form</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL PERNYATAAN -->
+<div class="modal-overlay" id="modalPernyataan">
+  <div class="modal-box">
+    <div class="modal-title">📜 Pernyataan Kebenaran Data</div>
+    <p style="font-size:13px;color:var(--gray-600);line-height:1.7;margin-bottom:12px">Dengan mengklik <strong>Setuju</strong>, saya menyatakan bahwa:</p>
+    <div style="background:var(--blue-pale);border-left:4px solid var(--blue);padding:12px 14px;border-radius:0 6px 6px 0;font-size:13px;font-style:italic;color:var(--blue);line-height:1.7;margin-bottom:12px">
+      "Saya menyatakan bahwa semua data yang diisi dalam formulir ini adalah benar dan dapat dipertanggungjawabkan.
+      Saya tunduk pada ketentuan perundang-undangan yang berlaku terkait penggunaan Aplikasi SAKTI."
+    </div>
+    <p style="font-size:12px;color:var(--gray-600)">Data palsu dapat mengakibatkan penolakan pendaftaran dan/atau tindakan administratif.</p>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="closeModal('modalPernyataan')">Tidak Setuju</button>
+      <button class="btn btn-success" onclick="doGenerateExcel()">✅ Setuju &amp; Unduh Excel</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SUKSES -->
+<div class="modal-overlay" id="modalSukses">
+  <div class="modal-box">
+    <div class="modal-title">🎉 Excel Berhasil Diunduh!</div>
+    <p style="font-size:13px;color:var(--gray-600);line-height:1.7">File Excel berhasil diunduh. Selanjutnya:</p>
+    <ol style="font-size:13px;color:var(--gray-700);padding-left:20px;margin:10px 0;line-height:2.1">
+      <li>Cetak file Excel, minta tanda tangan KPA</li>
+      <li>Scan kembali ke PDF</li>
+      <li>Kumpulkan semua dokumen pendukung</li>
+      <li>Buka halaman <strong>Upload Dokumen</strong> dan masukkan kode referensi di bawah</li>
+    </ol>
+    <p style="font-size:12px;color:var(--red);font-weight:600;margin-bottom:6px">⚠️ Simpan kode ini! Diperlukan untuk melanjutkan ke Tahap 2.</p>
+    <div class="ref-box">
+      <div class="ref-label">Kode Referensi Anda</div>
+      <div class="ref-kode" id="refKodeDisplay">00000000-000000-00</div>
+      <div class="ref-copy" onclick="copyRefKode()">📋 Salin Kode</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalSukses')">Tutup</button>
+      <a href="upload.html" class="btn btn-primary" id="btnKeUpload">📎 Lanjut ke Upload Dokumen →</a>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDIT USER -->
+<div class="modal-overlay" id="modalEdit">
+  <div class="modal-box wide">
+    <div class="modal-title">✏️ Edit Data User</div>
+    <div id="editModalBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalEdit')">Batal</button>
+      <button class="btn btn-primary" onclick="saveEdit()">💾 Simpan Perubahan</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── DATA PERAN ───────────────────────────────────────────
+const PERAN_DATA = [
+  {kode:'SATKER_KPA',                           label:'KPA',                                 kelompok:'APPROVER',  modul:['ANGGARAN','PEMBAYARAN']},
+  {kode:'SATKER_PPSPM',                         label:'PPSPM',                               kelompok:'APPROVER',  modul:['PEMBAYARAN']},
+  {kode:'SATKER_APPROVER_PERSEDIAAN',           label:'Approver Persediaan',                 kelompok:'APPROVER',  modul:['PERSEDIAAN']},
+  {kode:'SATKER_APPROVER_PERSEDIAAN_PEMBANTU',  label:'Approver Persediaan Pembantu',        kelompok:'APPROVER',  modul:['PERSEDIAAN']},
+  {kode:'SATKER_APPROVER_ASET',                 label:'Approver Aset',                       kelompok:'APPROVER',  modul:['ASET']},
+  {kode:'SATKER_APPROVER_ASET_PEMBANTU',        label:'Approver Aset Pembantu (UAPKPB)',     kelompok:'APPROVER',  modul:['ASET']},
+  {kode:'SATKER_PPK',                           label:'PPK',                                 kelompok:'VALIDATOR', modul:['KOMITMEN','PEMBAYARAN']},
+  {kode:'SATKER_PPK_DFDD',                      label:'PPK Penyalur DAK Fisik & Dana Desa',  kelompok:'VALIDATOR', modul:['KOMITMEN_DFDD','PEMBAYARAN']},
+  {kode:'SATKER_VALIDATOR_ANGGARAN',            label:'Validator Anggaran (Khusus BLU)',      kelompok:'VALIDATOR', modul:['ANGGARAN']},
+  {kode:'SATKER_VALIDATOR_ASET',                label:'Validator Aset',                      kelompok:'VALIDATOR', modul:['ASET']},
+  {kode:'SATKER_VALIDATOR_ASET_PEMBANTU',       label:'Validator Aset Pembantu (UAPKPB)',    kelompok:'VALIDATOR', modul:['ASET']},
+  {kode:'SATKER_OPERATOR_ANGGARAN',             label:'Operator Anggaran',                   kelompok:'OPERATOR',  modul:['ANGGARAN']},
+  {kode:'SATKER_OPERATOR_PEMBAYARAN',           label:'Operator Pembayaran (SPP + SPM)',      kelompok:'OPERATOR',  modul:['PEMBAYARAN']},
+  {kode:'SATKER_OPERATOR_PEMBAYARAN_SPM',       label:'Operator Pembayaran SPM saja',         kelompok:'OPERATOR',  modul:['PEMBAYARAN']},
+  {kode:'SATKER_OPERATOR_PEMBAYARAN_SPP',       label:'Operator Pembayaran SPP saja',         kelompok:'OPERATOR',  modul:['PEMBAYARAN']},
+  {kode:'SATKER_OPERATOR_KOMITMEN',             label:'Operator Komitmen',                   kelompok:'OPERATOR',  modul:['KOMITMEN']},
+  {kode:'SATKER_BENDAHARA_PENGELUARAN',         label:'Bendahara Pengeluaran',               kelompok:'OPERATOR',  modul:['BENDAHARA']},
+  {kode:'SATKER_BENDAHARA_PENGELUARAN_PEMBANTU',label:'Bendahara Pengeluaran Pembantu',      kelompok:'OPERATOR',  modul:['BENDAHARA']},
+  {kode:'SATKER_BENDAHARA_PENERIMAAN',          label:'Bendahara Penerimaan',                kelompok:'OPERATOR',  modul:['BENDAHARA']},
+  {kode:'SATKER_OPERATOR_PNBP',                 label:'Operator PNBP',                       kelompok:'OPERATOR',  modul:['BENDAHARA']},
+  {kode:'SATKER_OPERATOR_PELAPORAN',            label:'Operator Pelaporan / GL',             kelompok:'OPERATOR',  modul:['GLP']},
+  {kode:'SATKER_OPERATOR_PERSEDIAAN',           label:'Operator Persediaan',                 kelompok:'OPERATOR',  modul:['PERSEDIAAN']},
+  {kode:'SATKER_OPERATOR_PERSEDIAAN_PEMBANTU',  label:'Operator Persediaan Pembantu',        kelompok:'OPERATOR',  modul:['PERSEDIAAN']},
+  {kode:'SATKER_OPERATOR_ASET',                 label:'Operator Aset',                       kelompok:'OPERATOR',  modul:['ASET']},
+  {kode:'SATKER_OPERATOR_ASET_PEMBANTU',        label:'Operator Aset Pembantu (UAPKPB)',     kelompok:'OPERATOR',  modul:['ASET']},
+  {kode:'SATKER_OPERATOR_PIUTANG',              label:'Operator Piutang',                    kelompok:'OPERATOR',  modul:['PIUTANG']},
+  {kode:'SATKER_OPERATOR_SPI',                  label:'Operator SPI (Khusus BLU)',           kelompok:'OPERATOR',  modul:['PELAPORAN']},
+  {kode:'SATKER_ADMIN',                         label:'Admin Satker',                        kelompok:'ADMIN',     modul:['ADMIN']},
+];
+function getKelompok(k){return (PERAN_DATA.find(p=>p.kode===k)||{}).kelompok||null;}
+function getLabel(k){return (PERAN_DATA.find(p=>p.kode===k)||{}).label||k;}
+function getModul(k){return (PERAN_DATA.find(p=>p.kode===k)||{}).modul||[];}
+
+// ─── KONFLIK PERAN ────────────────────────────────────────
+function checkPeranConflict(newKode,currentList){
+  const isKPA=k=>k==='SATKER_KPA';
+  const isPPK=k=>k==='SATKER_PPK'||k==='SATKER_PPK_DFDD';
+  const isPPSPM=k=>k==='SATKER_PPSPM';
+  const isBend=k=>k.includes('BENDAHARA')||k==='SATKER_OPERATOR_PNBP';
+  const hasKPA=currentList.some(isKPA);
+  const hasPPK=currentList.some(isPPK);
+  const hasPPSPM=currentList.some(isPPSPM);
+  const hasBend=currentList.some(isBend);
+  if(isKPA(newKode)&&hasPPK&&hasPPSPM) return{conflict:true,block:true,warn:'KPA tidak dapat merangkap PPK dan PPSPM sekaligus.'};
+  if(isPPK(newKode)&&hasKPA&&hasPPSPM) return{conflict:true,block:true,warn:'Tidak dapat menambahkan PPK karena KPA sudah merangkap PPSPM.'};
+  if(isPPSPM(newKode)&&hasKPA&&hasPPK) return{conflict:true,block:true,warn:'Tidak dapat menambahkan PPSPM karena KPA sudah merangkap PPK.'};
+  if(isBend(newKode)&&(hasKPA||hasPPK||hasPPSPM)) return{conflict:true,block:true,warn:'Bendahara tidak diperkenankan merangkap KPA, PPK, atau PPSPM.'};
+  if((isKPA(newKode)||isPPK(newKode)||isPPSPM(newKode))&&hasBend) return{conflict:true,block:true,warn:'KPA/PPK/PPSPM tidak diperkenankan merangkap jabatan Bendahara.'};
+  const KPA_EXC=['SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+  const isKPAExc=(hasKPA&&KPA_EXC.includes(newKode))||(isKPA(newKode)&&currentList.some(k=>KPA_EXC.includes(k)));
+  if(!isKPAExc){
+    const newM=getModul(newKode);
+    const exM=currentList.flatMap(k=>getModul(k));
+    const mc=newM.find(m=>exM.includes(m));
+    if(mc){const cp=currentList.find(k=>getModul(k).includes(mc));return{conflict:true,block:true,warn:`Modul "${mc}" sudah dipakai oleh "${getLabel(cp)}".`};}
+  }
+  if((isKPA(newKode)&&hasPPK)||(isPPK(newKode)&&hasKPA))
+    return{conflict:false,block:false,warn:'Plt. KPA tidak diperkenankan merangkap PPK. Pastikan yang bersangkutan adalah KPA Definitif.'};
+  return{conflict:false,block:false,warn:null};
+}
+function getDisabledPeran(currentList){
+  const d=new Set();
+  PERAN_DATA.forEach(p=>{if(currentList.includes(p.kode))return;if(checkPeranConflict(p.kode,currentList).block)d.add(p.kode);});
+  return d;
+}
+
+// ─── KODE REFERENSI: ddmmyyyy-KODE-nn ────────────────────
+function genRefKode(kodeSatker){
+  const now=new Date();
+  const dd=String(now.getDate()).padStart(2,'0');
+  const mm=String(now.getMonth()+1).padStart(2,'0');
+  const yyyy=now.getFullYear();
+  const tgl=`${dd}${mm}${yyyy}`;
+  const kode=(kodeSatker||'000000').toString().slice(0,6).padStart(6,'0');
+  const idx=JSON.parse(localStorage.getItem('sakti_drafts_index')||'[]');
+  const prefix=`${tgl}-${kode}`;
+  const count=idx.filter(r=>r.startsWith(prefix)).length;
+  return `${prefix}-${String(count).padStart(2,'0')}`;
+}
+
+// ─── USER STATE ───────────────────────────────────────────
+let userIdSeq=0;
+const users=[];
+function addUser(data={}){
+  const id=++userIdSeq;
+  users.push({id,nama:data.nama||'',nipnrp:data.nipnrp||'',nik:data.nik||'',email:data.email||'',hp:data.hp||'',sk:data.sk||'',tglsk:data.tglsk||'',peranList:data.peranList||[]});
+  renderUserCard(id);reindexUsers();
+}
+function removeUser(id){
+  const idx=users.findIndex(u=>u.id===id);
+  if(idx!==-1)users.splice(idx,1);
+  document.getElementById(`uc-${id}`)?.remove();reindexUsers();
+}
+function reindexUsers(){
+  users.forEach((u,i)=>{const el=document.getElementById(`ucnum-${u.id}`);if(el)el.textContent=`User ${i+1}`;});
+}
+function getUserById(id){return users.find(u=>u.id===id);}
+
+// ─── RENDER USER CARD ─────────────────────────────────────
+function renderUserCard(id){
+  const u=getUserById(id);
+  const wrap=document.getElementById('userList');
+  document.getElementById(`uc-${id}`)?.remove();
+  const div=document.createElement('div');
+  div.className='user-card';div.id=`uc-${id}`;
+  div.innerHTML=`
+    <div class="user-card-header">
+      <span class="user-card-num" id="ucnum-${id}">User</span>
+      <div class="user-card-actions">
+        <button class="btn btn-outline" onclick="openEditModal(${id})">✏️ Edit</button>
+        <button class="btn btn-danger" onclick="removeUser(${id})">✕ Hapus</button>
+      </div>
+    </div>
+    <div id="ucSummary-${id}"></div>`;
+  wrap.appendChild(div);renderUserSummary(id);
+}
+function renderUserSummary(id){
+  const u=getUserById(id);
+  const el=document.getElementById(`ucSummary-${id}`);
+  if(!el)return;
+  const kelompoks=[...new Set(u.peranList.map(k=>getKelompok(k)).filter(Boolean))];
+  const kbCls=kelompoks.length>1?'kb-M':kelompoks[0]?`kb-${kelompoks[0][0]}`:'';
+  el.innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--gray-700)">
+    <span><strong>Nama:</strong> ${u.nama||'<em style="color:var(--gray-400)">belum diisi</em>'}</span>
+    <span style="color:var(--gray-300)">|</span>
+    <span><strong>NIP/NRP:</strong> ${u.nipnrp||'—'}</span>
+    <span style="color:var(--gray-300)">|</span>
+    <span><strong>Email:</strong> ${u.email||'—'}</span>
+    <span style="color:var(--gray-300)">|</span>
+    <span><strong>Peran:</strong> ${u.peranList.length?u.peranList.map(k=>`<span class="kb ${kbCls}">${getLabel(k)}</span>`).join(''):'<em style="color:var(--red)">belum dipilih</em>'}</span>
+  </div>`;
+}
+
+// ─── EDIT MODAL ───────────────────────────────────────────
+let editingId=null;
+function openEditModal(id){
+  editingId=id;
+  const u=getUserById(id);
+  const groups={};
+  PERAN_DATA.forEach(p=>{if(!groups[p.kelompok])groups[p.kelompok]=[];groups[p.kelompok].push(p);});
+  let ph='';
+  ['APPROVER','VALIDATOR','OPERATOR','ADMIN'].forEach(k=>{
+    ph+=`<div class="peran-group-title">${k}</div><div class="peran-grid">`;
+    (groups[k]||[]).forEach(p=>{
+      const ck=u.peranList.includes(p.kode);
+      ph+=`<label class="peran-item${ck?' checked':''}" id="epi-${p.kode}">
+        <input type="checkbox" value="${p.kode}" ${ck?'checked':''} onchange="onEditPeranChange(this)"/>
+        <span class="peran-item-label">${p.label}<br/><span class="kode">${p.kode}</span></span>
+      </label>`;
+    });
+    ph+='</div>';
+  });
+  document.getElementById('editModalBody').innerHTML=`
+    <div class="form-row">
+      <div class="form-group"><label>Nama <span style="color:var(--red)">*</span></label><input type="text" id="e-nama" value="${esc(u.nama)}" placeholder="Nama lengkap"/></div>
+      <div class="form-group"><label>NIP / NRP <span style="color:var(--red)">*</span></label><input type="text" id="e-nipnrp" value="${esc(u.nipnrp)}" placeholder="NIP atau NRP"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>NIK (KTP) <span style="color:var(--red)">*</span></label><input type="text" id="e-nik" value="${esc(u.nik)}" placeholder="16 digit" maxlength="16"/><span class="hint">NPWP diambil dari NIK secara sistem</span></div>
+      <div class="form-group"><label>Email Kedinasan <span style="color:var(--red)">*</span></label><input type="email" id="e-email" value="${esc(u.email)}" placeholder="xxx@instansi.go.id"/><span class="hint">Harus berakhiran .go.id</span><span class="err-msg" id="e-email-err" style="display:none">Email harus berakhiran .go.id</span></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>No. HP</label><input type="text" id="e-hp" value="${esc(u.hp)}" placeholder="08xxx"/></div>
+      <div class="form-group"><label>Nomor SK <span style="color:var(--red)">*</span></label><input type="text" id="e-sk" value="${esc(u.sk)}" placeholder="KEP-xx/xx/2024"/></div>
+      <div class="form-group"><label>Tanggal SK <span style="color:var(--red)">*</span></label><input type="date" id="e-tglsk" value="${esc(u.tglsk)}"/></div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;margin:14px 0 4px">Peran</div>
+    <div class="info-box" style="margin-bottom:10px;font-size:11px">Centang peran. Peran yang bertentangan akan dinonaktifkan otomatis.</div>
+    ${ph}
+    <div class="warn-box" id="editWarnBox"></div>`;
+  refreshEditCheckboxStates();
+  openModal('modalEdit');
+}
+function onEditPeranChange(cb){
+  document.getElementById(`epi-${cb.value}`)?.classList.toggle('checked',cb.checked);
+  refreshEditCheckboxStates();
+}
+function getCheckedPeran(){
+  return Array.from(document.querySelectorAll('#editModalBody input[type=checkbox]:checked')).map(cb=>cb.value);
+}
+function refreshEditCheckboxStates(){
+  const checked=getCheckedPeran();
+  const warnBox=document.getElementById('editWarnBox');
+  const disabledSet=getDisabledPeran(checked);
+  const warnings=new Set();
+  checked.forEach(kode=>{const r=checkPeranConflict(kode,checked.filter(k=>k!==kode));if(r.warn&&!r.block)warnings.add(r.warn);});
+  PERAN_DATA.forEach(p=>{
+    const cb=document.querySelector(`#editModalBody input[value="${p.kode}"]`);
+    const el=document.getElementById(`epi-${p.kode}`);
+    if(!cb||!el)return;
+    const isD=!cb.checked&&disabledSet.has(p.kode);
+    cb.disabled=isD;el.classList.toggle('disabled',isD);el.classList.toggle('checked',cb.checked);
+    el.title=isD?(checkPeranConflict(p.kode,checked).warn||''):'';
+  });
+  if(warnings.size>0){warnBox.innerHTML=[...warnings].map(w=>`<div>⚠️ ${w}</div>`).join('');warnBox.classList.add('on');}
+  else{warnBox.innerHTML='';warnBox.classList.remove('on');}
+}
+function saveEdit(){
+  const nama=(document.getElementById('e-nama')?.value||'').trim();
+  const nipnrp=(document.getElementById('e-nipnrp')?.value||'').trim();
+  const nik=(document.getElementById('e-nik')?.value||'').trim();
+  const email=(document.getElementById('e-email')?.value||'').trim();
+  const hp=(document.getElementById('e-hp')?.value||'').trim();
+  const sk=(document.getElementById('e-sk')?.value||'').trim();
+  const tglsk=(document.getElementById('e-tglsk')?.value||'').trim();
+  const peranList=getCheckedPeran();
+  const emailErr=document.getElementById('e-email-err');
+  if(email&&!email.toLowerCase().endsWith('.go.id')){emailErr.style.display='block';document.getElementById('e-email').classList.add('err');showToast('Email harus berakhiran .go.id',true);return;}
+  emailErr.style.display='none';document.getElementById('e-email').classList.remove('err');
+  if(!nama){showToast('Nama wajib diisi',true);return;}
+  if(!nipnrp){showToast('NIP/NRP wajib diisi',true);return;}
+  if(!peranList.length){showToast('Pilih minimal satu peran',true);return;}
+  const u=getUserById(editingId);if(!u)return;
+  u.nama=nama;u.nipnrp=nipnrp;u.nik=nik;u.email=email;u.hp=hp;u.sk=sk;u.tglsk=tglsk;u.peranList=peranList;
+  renderUserSummary(editingId);closeModal('modalEdit');showToast('✅ Data user berhasil diperbarui');
+}
+
+// ─── MODAL ────────────────────────────────────────────────
+function openModal(id){document.getElementById(id)?.classList.add('on');}
+function closeModal(id){document.getElementById(id)?.classList.remove('on');}
+document.addEventListener('click',e=>{
+  ['modalPernyataan','modalEdit','modalSukses'].forEach(mid=>{const m=document.getElementById(mid);if(m&&e.target===m)closeModal(mid);});
+});
+
+// ─── VALIDASI ─────────────────────────────────────────────
+function trySubmit(){
+  const errors=[];
+  [['kodeSatker','Kode Satker'],['namaSatker','Nama Satker'],['namaKPA','Nama KPA'],['nipKPA','NIP KPA']].forEach(([id,label])=>{
+    const el=document.getElementById(id);const fg=document.getElementById(`fg-${id}`);
+    if(!el?.value.trim()){errors.push(`${label} wajib diisi`);el?.classList.add('err');fg?.classList.add('has-err');}
+    else{el.classList.remove('err');fg?.classList.remove('has-err');}
+  });
+  if(!users.length)errors.push('Tambahkan minimal satu user');
+  users.forEach((u,i)=>{
+    const n=i+1;
+    if(!u.nama)errors.push(`User ${n}: Nama wajib diisi`);
+    if(!u.nipnrp)errors.push(`User ${n}: NIP/NRP wajib diisi`);
+    if(!u.sk)errors.push(`User ${n}: Nomor SK wajib diisi`);
+    if(!u.tglsk)errors.push(`User ${n}: Tanggal SK wajib diisi`);
+    if(!u.peranList.length)errors.push(`User ${n}: Pilih minimal satu peran`);
+    if(u.email&&!u.email.toLowerCase().endsWith('.go.id'))errors.push(`User ${n}: Email harus berakhiran .go.id`);
+    u.peranList.forEach((kode,idx)=>{const r=checkPeranConflict(kode,u.peranList.slice(0,idx));if(r.conflict&&r.block)errors.push(`User ${n} (${u.nama}): ${r.warn}`);});
+  });
+  const allPeran=users.flatMap(u=>u.peranList);
+  if(allPeran.filter(k=>k==='SATKER_KPA').length>1)errors.push('Hanya boleh ada 1 KPA dalam satu formulir.');
+  if(allPeran.filter(k=>k==='SATKER_PPSPM').length>1)errors.push('Hanya boleh ada 1 PPSPM dalam satu formulir.');
+  if(allPeran.filter(k=>k==='SATKER_BENDAHARA_PENGELUARAN').length>1)errors.push('Hanya boleh ada 1 Bendahara Pengeluaran dalam satu formulir.');
+  if(allPeran.filter(k=>k==='SATKER_BENDAHARA_PENERIMAAN').length>1)errors.push('Hanya boleh ada 1 Bendahara Penerimaan dalam satu formulir.');
+  const panel=document.getElementById('errPanel');const list=document.getElementById('errList');
+  if(errors.length){panel.style.display='block';list.innerHTML=errors.map(e=>`<li>${e}</li>`).join('');panel.scrollIntoView({behavior:'smooth',block:'center'});return;}
+  panel.style.display='none';openModal('modalPernyataan');
+}
+
+// ─── GENERATE EXCEL ───────────────────────────────────────
+let lastRefKode='';
+function doGenerateExcel(){
+  closeModal('modalPernyataan');
+  const kodeSatker=document.getElementById('kodeSatker').value.trim();
+  const namaSatker=document.getElementById('namaSatker').value.trim();
+  const levelSatker=document.getElementById('levelSatker').value.trim()||'Satker';
+  const namaKPA=document.getElementById('namaKPA').value.trim();
+  const nipKPA=document.getElementById('nipKPA').value.trim();
+  const kota=document.getElementById('kotaTTD').value.trim()||'Jayapura';
+  const tglSurat=document.getElementById('tanggalSurat').value;
+  const tglStr=tglSurat?formatTglIndo(tglSurat):'______';
+  const refKode=genRefKode(kodeSatker);
+  lastRefKode=refKode;
+
+  const wb=XLSX.utils.book_new();
+  const wsData=[];
+  wsData.push([s('Formulir Pendaftaran Pengguna Aplikasi SAKTI'),'','','','','','','','','','']);
+  wsData.push([s('Kode Satker'),s(kodeSatker),'','','','','','','','','']);
+  wsData.push([s('Nama Satker'),s(namaSatker),'','','','','','','','','']);
+  wsData.push([s('Level Satker'),s(levelSatker),'','','','','','','','','']);
+  wsData.push(['','','','','','','','','','','']);
+  wsData.push([s('Kode Satker'),s('Peran'),s('Nama'),s('NIP'),s('NPWP'),s('NIK'),s('E-mail'),s('No. HP'),s('Nomor SK'),s('Tanggal SK'),s('')]);
+  users.forEach(u=>{
+    const isBLU=u.peranList.includes('SATKER_VALIDATOR_ANGGARAN')||u.peranList.includes('SATKER_OPERATOR_SPI');
+    wsData.push([s(kodeSatker),s(u.peranList.join(', ')),s(u.nama),s(u.nipnrp),s(u.nik),s(u.nik),s(u.email),s(u.hp),s(u.sk),s(formatTgl(u.tglsk)),isBLU?s('KHUSUS SATKER BLU'):s('')]);
+  });
+  wsData.push(['','','','','','','','','','','']);
+  wsData.push(['','','','','','',s(`${kota}, ${tglStr}`),'','','','']);
+  wsData.push(['','','','','','',s('Kuasa Pengguna Anggaran'),'','','','']);
+  wsData.push(['','','','','','','','','','','']);
+  wsData.push(['','','','','','','','','','','']);
+  wsData.push(['','','','','','',s(namaKPA),'','','','']);
+  wsData.push(['','','','','','',s(`NIP ${nipKPA}`),'','','','']);
+  wsData.push(['','','','','','','','','','','']);
+  wsData.push([s('Keterangan'),'','','','','','','','','','']);
+  wsData.push([s('*NPWP diisi angka tanpa pemisah simbol'),'','','','','','','','','','']);
+  wsData.push([s('*E-mail diisi dengan e-mail resmi Kedinasan'),'','','','','','','','','','']);
+  wsData.push([s('*Tanggal SK diisi dengan format dd-mm-yyyy'),'','','','','','','','','','']);
+  wsData.push([s('*Untuk contoh pengisian peran lengkap, silakan kunjungi'),'',s('bit.ly/rolesakti'),'','','','','','','','']);
+  const ws1=XLSX.utils.aoa_to_sheet(wsData);
+  ws1['!cols']=[{wch:22},{wch:60},{wch:24},{wch:22},{wch:20},{wch:20},{wch:32},{wch:16},{wch:22},{wch:14},{wch:22}];
+  XLSX.utils.book_append_sheet(wb,ws1,'Form Pendaftaran');
+
+  const ws2=XLSX.utils.aoa_to_sheet([[s('KODE PERAN'),s('DESKRIPSI'),s('KELOMPOK')],...PERAN_DATA.map(p=>[s(p.kode),s(p.label),s(p.kelompok)])]);
+  ws2['!cols']=[{wch:45},{wch:55},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Referensi KODE PERAN');
+
+  const tglBuat=formatTglIndo(new Date().toISOString().split('T')[0]);
+  const ws3=XLSX.utils.aoa_to_sheet([
+    [s('=== INFO REFERENSI — JANGAN DIEDIT ==='),s('')],
+    [s('Nomor Referensi'),s(refKode)],
+    [s('Tanggal Dibuat'),s(tglBuat)],
+    [s('Kode Satker'),s(kodeSatker)],
+    [s('Nama Satker'),s(namaSatker)],
+    [s('Nama KPA'),s(namaKPA)],
+    [s('Status'),s('Tahap 1 Selesai — Menunggu Dokumen')],
+    [s(''),s('')],
+    [s('Langkah Selanjutnya'),s('Setelah Excel ditandatangani KPA, buka halaman Upload Dokumen dan masukkan Nomor Referensi di atas.')],
+  ]);
+  ws3['!cols']=[{wch:24},{wch:70}];
+  XLSX.utils.book_append_sheet(wb,ws3,'Info Referensi');
+
+  const fname=`Form-SAKTI-${kodeSatker}-${refKode}.xlsx`;
+  XLSX.writeFile(wb,fname);
+  saveDraft(refKode,kodeSatker,namaSatker,namaKPA,nipKPA,levelSatker,kota,tglSurat,fname);
+  document.getElementById('refKodeDisplay').textContent=refKode;
+  document.getElementById('btnKeUpload').href=`upload.html?ref=${encodeURIComponent(refKode)}`;
+  openModal('modalSukses');
+}
+
+function saveDraft(refKode,kodeSatker,namaSatker,namaKPA,nipKPA,levelSatker,kota,tglSurat,fname){
+  try{
+    const draft={refKode,kodeSatker,namaSatker,namaKPA,nipKPA,levelSatker,kota,tglSurat,fname,
+      timestamp:new Date().toISOString(),status:'draft',userCount:users.length,
+      users:users.map(u=>({nama:u.nama,nipnrp:u.nipnrp,nik:u.nik,email:u.email,hp:u.hp,sk:u.sk,tglsk:u.tglsk,peranList:u.peranList})),
+      hasOTP:users.some(u=>u.peranList.some(k=>['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'].includes(k)))};
+    localStorage.setItem(`sakti_draft_${refKode}`,JSON.stringify(draft));
+    const idx=JSON.parse(localStorage.getItem('sakti_drafts_index')||'[]');
+    if(!idx.includes(refKode)){idx.push(refKode);localStorage.setItem('sakti_drafts_index',JSON.stringify(idx));}
+  }catch(e){}
+}
+
+function copyRefKode(){
+  const kode=document.getElementById('refKodeDisplay').textContent;
+  navigator.clipboard?.writeText(kode).then(()=>showToast('✅ Kode berhasil disalin!')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=kode;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();showToast('✅ Kode berhasil disalin!');
+  });
+}
+
+// ─── UTILS ────────────────────────────────────────────────
+function s(v){return{v:String(v==null?'':v),t:'s'};}
+function esc(str){return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function formatTgl(d){
+  if(!d)return'';
+  const dt=new Date(d);
+  return`${String(dt.getDate()).padStart(2,'0')}-${String(dt.getMonth()+1).padStart(2,'0')}-${dt.getFullYear()}`;
+}
+function formatTglIndo(d){
+  if(!d)return'';
+  const B=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const dt=new Date(d);return`${dt.getDate()} ${B[dt.getMonth()]} ${dt.getFullYear()}`;
+}
+let toastT;
+function showToast(msg,isErr=false){
+  const t=document.getElementById('toast');t.textContent=msg;t.className='on'+(isErr?' err':'');
+  clearTimeout(toastT);toastT=setTimeout(()=>{t.className='';},3500);
+}
+function resetForm(){
+  if(!confirm('Reset semua data? Data yang belum diunduh akan hilang.'))return;
+  ['kodeSatker','namaSatker','levelSatker','namaKPA','nipKPA','kotaTTD'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('tanggalSurat').value=new Date().toISOString().split('T')[0];
+  users.length=0;document.getElementById('userList').innerHTML='';
+  document.getElementById('errPanel').style.display='none';
+  addUser();showToast('Form telah direset');
+}
+window.onload=()=>{
+  document.getElementById('tanggalSurat').value=new Date().toISOString().split('T')[0];
+  addUser();
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Upload Dokumen SAKTI — KPPN Jayapura</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --blue:       #0D47A1;
+  --blue-mid:   #1565C0;
+  --blue-light: #1976D2;
+  --blue-pale:  #E3F2FD;
+  --blue-pale2: #BBDEFB;
+  --gold:       #F9A825;
+  --gold-light: #FFF8E1;
+  --green:      #2E7D32;
+  --green-pale: #E8F5E9;
+  --red:        #C62828;
+  --red-pale:   #FFEBEE;
+  --gray-50:    #FAFAFA;
+  --gray-100:   #F5F5F5;
+  --gray-200:   #EEEEEE;
+  --gray-300:   #E0E0E0;
+  --gray-400:   #BDBDBD;
+  --gray-500:   #9E9E9E;
+  --gray-600:   #757575;
+  --gray-700:   #616161;
+  --gray-800:   #424242;
+  --gray-900:   #212121;
+  --radius:     8px;
+  --shadow:     0 1px 4px rgba(0,0,0,.10),0 2px 12px rgba(0,0,0,.06);
+  --shadow-lg:  0 4px 24px rgba(0,0,0,.13);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--gray-100);color:var(--gray-900);min-height:100vh;font-size:14px;line-height:1.5}
+a{color:var(--blue-light);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* HEADER */
+header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.header-top{display:flex;align-items:center;gap:16px;padding:14px 32px;border-bottom:3px solid var(--gold)}
+.header-logo{width:56px;height:56px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.header-logo img{width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+.header-titles{flex:1}
+.header-inst{font-size:11px;font-weight:500;opacity:.75;text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px}
+.header-main{font-size:18px;font-weight:800;line-height:1.25}
+.header-sub{font-size:11px;opacity:.7;margin-top:2px}
+.header-nav{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0}
+.btn-nav{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:var(--radius);padding:7px 14px;font-size:12px;font-weight:500;cursor:pointer;text-decoration:none;transition:background .15s;white-space:nowrap;font-family:'Inter',sans-serif}
+.btn-nav:hover{background:rgba(255,255,255,.22);text-decoration:none}
+
+/* PROGRESS */
+.progress-wrap{background:#fff;border-bottom:1px solid var(--gray-200);padding:14px 32px}
+.progress-steps{display:flex;align-items:center;max-width:560px;margin:0 auto}
+.ps{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:600;white-space:nowrap}
+.ps-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;border:2px solid transparent}
+.ps.active .ps-num{background:var(--blue);color:#fff;border-color:var(--blue)}
+.ps.done .ps-num{background:var(--green);color:#fff;border-color:var(--green)}
+.ps.inactive .ps-num{background:#fff;color:var(--gray-400);border-color:var(--gray-300)}
+.ps.active .ps-label{color:var(--blue);font-weight:700}
+.ps.done .ps-label{color:var(--green)}
+.ps.inactive .ps-label{color:var(--gray-400)}
+.ps-line{flex:1;height:2px;background:var(--gray-300);margin:0 10px;min-width:30px}
+.ps-line.done{background:var(--green)}
+
+/* LAYOUT */
+.container{max-width:960px;margin:28px auto;padding:0 20px 72px}
+
+/* CARD */
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 28px;margin-bottom:20px;border:1px solid var(--gray-200)}
+.card-title{font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.6px;padding-bottom:12px;margin-bottom:18px;border-bottom:2px solid var(--blue-pale);display:flex;align-items:center;gap:8px}
+
+/* FORM */
+.form-group{display:flex;flex-direction:column;flex:1;min-width:180px}
+.form-group label{font-size:11px;font-weight:600;color:var(--gray-700);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.form-group input{border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 12px;font-size:13px;color:var(--gray-900);background:#fff;font-family:'Inter',sans-serif;transition:border-color .15s,box-shadow .15s}
+.form-group input:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(25,118,210,.12)}
+.hint{font-size:11px;color:var(--gray-500);margin-top:4px}
+
+/* BOXES */
+.info-box{background:var(--blue-pale);border:1px solid var(--blue-pale2);border-radius:var(--radius);padding:12px 16px;font-size:12.5px;color:var(--blue);margin-bottom:18px;line-height:1.7}
+.info-box ul{padding-left:18px;margin-top:6px}
+.info-box li{margin-bottom:3px}
+.warn-box{background:var(--gold-light);border:1px solid #FFE082;border-radius:var(--radius);padding:10px 14px;font-size:12px;color:#5D4037;line-height:1.7}
+.success-box{background:var(--green-pale);border:1px solid #A5D6A7;border-radius:var(--radius);padding:12px 16px;font-size:12.5px;color:var(--green);line-height:1.65}
+.error-box{background:var(--red-pale);border:1px solid #EF9A9A;border-radius:var(--radius);padding:12px 16px;font-size:12px;color:#7f1d1d;line-height:1.65}
+
+/* REF INPUT */
+.ref-input-wrap{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.ref-input-wrap .form-group{flex:1;min-width:220px;max-width:400px}
+#refKodeInput{font-family:monospace;font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
+
+/* BUTTONS */
+.btn{cursor:pointer;border:none;border-radius:var(--radius);padding:9px 18px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:7px;transition:background .15s,transform .1s;font-family:'Inter',sans-serif;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--blue-light);color:#fff}
+.btn-primary:hover{background:var(--blue-mid)}
+.btn-success{background:var(--green);color:#fff;font-size:14px;padding:11px 24px}
+.btn-success:hover{background:#1B5E20}
+.btn-danger{background:#fff;color:var(--red);border:1.5px solid var(--red);padding:7px 13px;font-size:12px}
+.btn-danger:hover{background:var(--red-pale)}
+.btn-secondary{background:var(--gray-600);color:#fff}
+.btn-secondary:hover{background:var(--gray-800)}
+.btn-outline{background:#fff;color:var(--blue-light);border:1.5px solid var(--blue-light);padding:7px 14px;font-size:12px}
+.btn-outline:hover{background:var(--blue-pale)}
+
+/* SATKER SUMMARY */
+.satker-summary{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px 20px}
+.satker-summary .srow{display:flex;gap:8px;font-size:13px;margin-bottom:7px;align-items:baseline;flex-wrap:wrap}
+.satker-summary .slbl{font-size:11px;font-weight:600;color:var(--gray-600);text-transform:uppercase;min-width:110px;flex-shrink:0;letter-spacing:.4px}
+.satker-summary .sval{color:var(--gray-900);font-weight:600}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;white-space:nowrap}
+.badge-draft{background:#FFF3E0;color:#E65100}
+.badge-done{background:var(--green-pale);color:var(--green)}
+
+/* KTP GRID */
+.ktp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+.ktp-item{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px 16px}
+.ktp-item-name{font-size:13px;font-weight:700;color:var(--blue);margin-bottom:2px}
+.ktp-item-role{font-size:11px;color:var(--gray-500);margin-bottom:8px}
+
+/* UPLOAD */
+.upload-item{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px}
+.upload-item-header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.upload-item-name{font-size:13px;font-weight:700;color:var(--gray-900)}
+.upload-item-desc{font-size:11px;color:var(--gray-500);margin-top:2px}
+.upload-item-note{font-size:11px;color:var(--blue);margin-top:3px}
+.badge-required{font-size:10px;font-weight:700;color:var(--red);background:var(--red-pale);padding:2px 9px;border-radius:10px;flex-shrink:0}
+.badge-optional{font-size:10px;font-weight:700;color:var(--gray-600);background:var(--gray-200);padding:2px 9px;border-radius:10px;flex-shrink:0}
+.dropzone{border:2px dashed var(--blue-pale2);border-radius:var(--radius);padding:14px 16px;background:var(--blue-pale);cursor:pointer;transition:border-color .15s,background .15s;text-align:center}
+.dropzone:hover,.dropzone.dragover{border-color:var(--blue);background:#DCEEFF}
+.dropzone input[type=file]{display:none}
+.dropzone-label{font-size:12px;color:var(--gray-600);cursor:pointer}
+.dropzone-label .dz-icon{font-size:22px;display:block;margin-bottom:4px}
+.file-chip{display:flex;align-items:center;gap:8px;background:var(--blue-pale);border:1px solid var(--blue-pale2);border-radius:6px;padding:7px 11px;margin-top:8px;font-size:12px}
+.file-chip .fname{flex:1;color:var(--blue);font-weight:600;word-break:break-all}
+.file-chip .fsize{color:var(--gray-500);font-size:11px;white-space:nowrap}
+.file-chip .fremove{color:var(--red);cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;font-weight:700}
+.file-chip .fremove:hover{color:#7f1d1d}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9000;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.on{opacity:1;pointer-events:all}
+.modal-box{background:#fff;border-radius:12px;padding:28px 28px 24px;max-width:520px;width:92%;box-shadow:var(--shadow-lg);transform:translateY(18px);transition:transform .2s;max-height:92vh;overflow-y:auto}
+.modal-overlay.on .modal-box{transform:translateY(0)}
+.modal-title{font-size:16px;font-weight:700;color:var(--blue);margin-bottom:14px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:20px}
+
+/* DONE BOX */
+.done-box{background:var(--green);border-radius:10px;padding:22px;text-align:center;margin:16px 0}
+.done-box .dlabel{color:rgba(255,255,255,.8);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.done-box .dkode{color:#fff;font-size:20px;font-weight:800;letter-spacing:2px;font-family:monospace}
+.done-box .dsub{color:rgba(255,255,255,.8);font-size:12px;margin-top:6px}
+
+/* ERROR PANEL */
+.error-panel{background:var(--red-pale);border:1px solid #EF9A9A;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:12px;color:#7f1d1d;display:none}
+.error-panel ul{padding-left:16px;margin-top:6px}
+.error-panel li{margin-bottom:3px}
+
+.hidden{display:none}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;right:24px;background:var(--green);color:#fff;padding:11px 20px;border-radius:var(--radius);font-size:13px;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(14px);transition:opacity .3s,transform .3s;z-index:9999;max-width:320px;font-family:'Inter',sans-serif}
+#toast.on{opacity:1;transform:translateY(0)}
+#toast.err{background:var(--red)}
+
+@media(max-width:640px){
+  .card{padding:16px}
+  .header-top{padding:12px 16px;flex-wrap:wrap}
+  .ktp-grid{grid-template-columns:1fr}
+  .progress-wrap{padding:12px 16px}
+  .container{padding:0 12px 60px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
+      <div class="header-logo"><img src="logo-kppn.png" alt="Logo KPPN Jayapura"/></div>
+      <div class="header-titles">
+        <div class="header-inst">Kantor Pelayanan Perbendaharaan Negara</div>
+        <div class="header-main">KPPN Jayapura</div>
+        <div class="header-sub">Direktorat Jenderal Perbendaharaan — Upload Dokumen SAKTI</div>
+      </div>
+    </div>
+    <div class="header-nav">
+      <a href="index.html" class="btn-nav">📋 Isi Data (Tahap 1)</a>
+      <a href="admin.html" class="btn-nav">🔐 Admin</a>
+    </div>
+  </div>
+</header>
+
+<div class="progress-wrap">
+  <div class="progress-steps">
+    <div class="ps done">
+      <div class="ps-num">✓</div>
+      <span class="ps-label">Isi Data &amp; Unduh Excel</span>
+    </div>
+    <div class="ps-line done"></div>
+    <div class="ps active">
+      <div class="ps-num">2</div>
+      <span class="ps-label">Upload Dokumen</span>
+    </div>
+    <div class="ps-line"></div>
+    <div class="ps inactive">
+      <div class="ps-num">3</div>
+      <span class="ps-label">Selesai</span>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- KODE REFERENSI -->
+  <div class="card" id="cardRefInput">
+    <div class="card-title">🔍 Masukkan Kode Referensi</div>
+    <div class="info-box">
+      <strong>📎 Tahap 2 dari 2 — Upload Dokumen Pendukung</strong>
+      <ul>
+        <li>Pastikan Excel sudah dicetak, ditandatangani KPA, dan discan ke PDF.</li>
+        <li>Masukkan <strong>kode referensi</strong> yang Anda terima setelah Tahap 1.</li>
+        <li>Format kode: <code>ddmmyyyy-KODE-nn</code> (contoh: <code>18042026-123456-00</code>)</li>
+        <li>Kode ada di modal sukses saat unduh Excel dan di sheet <em>"Info Referensi"</em> pada file Excel.</li>
+      </ul>
+    </div>
+    <div class="ref-input-wrap">
+      <div class="form-group">
+        <label>Kode Referensi <span style="color:var(--red)">*</span></label>
+        <input type="text" id="refKodeInput" placeholder="18042026-123456-00" maxlength="20"
+          oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')cariData()"/>
+        <span class="hint">Gunakan browser &amp; perangkat yang sama seperti saat Tahap 1</span>
+      </div>
+      <button class="btn btn-primary" onclick="cariData()" style="height:40px;align-self:flex-end;margin-bottom:0">🔎 Cari Data</button>
+    </div>
+    <div id="refNotFound" class="error-box" style="display:none;margin-top:14px">
+      <strong>❌ Kode referensi tidak ditemukan.</strong><br/>
+      Pastikan Anda menggunakan <strong>browser dan perangkat yang sama</strong> dengan saat mengisi data di Tahap 1.
+      Data disimpan di browser lokal (localStorage) dan tidak dapat diakses dari perangkat/browser lain.<br/><br/>
+      <a href="index.html">← Kembali ke Tahap 1 untuk mengisi ulang data</a>
+    </div>
+    <div id="refAlreadyDone" class="warn-box" style="display:none;margin-top:14px">
+      <strong>⚠️ Kode ini sudah pernah disubmit.</strong>
+      Jika perlu mengubah dokumen, hubungi petugas KPPN Jayapura secara langsung.
+    </div>
+  </div>
+
+  <!-- SUMMARY SATKER -->
+  <div class="card hidden" id="cardSatkerInfo">
+    <div class="card-title">📋 Data Pendaftaran Ditemukan</div>
+    <div class="satker-summary" id="satkerSummary"></div>
+  </div>
+
+  <!-- KTP PER USER -->
+  <div class="card hidden" id="cardKTP">
+    <div class="card-title">🪪 Scan / Foto KTP Masing-Masing User</div>
+    <div class="info-box" style="margin-bottom:16px">
+      Upload scan atau foto KTP untuk setiap user yang didaftarkan.
+      Format yang diterima: JPG, PNG, atau PDF. Maksimal 5 MB per file.
+    </div>
+    <div class="ktp-grid" id="ktpGrid"></div>
+  </div>
+
+  <!-- DOKUMEN GLOBAL -->
+  <div class="card hidden" id="cardDokGlobal">
+    <div class="card-title">📁 Dokumen Pendukung (Seluruh Pendaftaran)</div>
+    <div class="info-box" style="margin-bottom:16px">
+      Upload dokumen-dokumen berikut yang berlaku untuk seluruh pendaftaran.
+      Format: PDF kecuali dinyatakan lain. Maksimal 10 MB per file.
+    </div>
+    <div id="dokGlobalContainer"></div>
+  </div>
+
+  <!-- SUBMIT -->
+  <div class="card hidden" id="cardSubmit">
+    <div class="card-title">✅ Kirim ke KPPN</div>
+    <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">
+      Pastikan semua dokumen <strong>wajib</strong> sudah diupload sebelum mengirim.
+      Setelah dikirim, petugas KPPN Jayapura akan memproses pendaftaran Anda.
+    </p>
+    <div class="error-panel" id="errPanel"><strong>⚠️ Harap perbaiki:</strong><ul id="errList"></ul></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-success" onclick="trySubmit()">📤 Kirim ke KPPN Jayapura</button>
+      <button class="btn btn-outline" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑ Kembali ke Atas</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL PERNYATAAN -->
+<div class="modal-overlay" id="modalPernyataan">
+  <div class="modal-box">
+    <div class="modal-title">📜 Pernyataan Kelengkapan Dokumen</div>
+    <p style="font-size:13px;color:var(--gray-600);line-height:1.7;margin-bottom:12px">Dengan mengklik <strong>Setuju &amp; Kirim</strong>, saya menyatakan bahwa:</p>
+    <div style="background:var(--blue-pale);border-left:4px solid var(--blue);padding:12px 14px;border-radius:0 6px 6px 0;font-size:13px;font-style:italic;color:var(--blue);line-height:1.7;margin-bottom:12px">
+      "Saya menyatakan bahwa seluruh dokumen yang diupload adalah asli, sah, dan dapat dipertanggungjawabkan.
+      Saya memahami bahwa dokumen palsu dapat mengakibatkan pembatalan pendaftaran dan tindakan hukum."
+    </div>
+    <p style="font-size:12px;color:var(--gray-600)">Setelah dikirim, data masuk ke antrian verifikasi petugas KPPN Jayapura.</p>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="closeModal('modalPernyataan')">Batal</button>
+      <button class="btn btn-success" onclick="doSubmit()">✅ Setuju &amp; Kirim</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SUKSES SUBMIT -->
+<div class="modal-overlay" id="modalSukses">
+  <div class="modal-box">
+    <div class="modal-title">🎉 Berhasil Dikirim ke KPPN!</div>
+    <p style="font-size:13px;color:var(--gray-600);line-height:1.7">
+      Pendaftaran pengguna SAKTI Anda telah berhasil dikirim dan akan segera diproses oleh petugas KPPN Jayapura.
+    </p>
+    <br/>
+    <p style="font-size:13px;color:var(--gray-700);font-weight:600">Langkah selanjutnya:</p>
+    <ol style="font-size:13px;color:var(--gray-700);padding-left:20px;margin:8px 0;line-height:2.1">
+      <li>Tunggu konfirmasi dari petugas KPPN Jayapura</li>
+      <li>Jika ada user KPA / PPK / PPSPM, siapkan proses aktivasi OTP (datang langsung atau online)</li>
+      <li>Setelah diverifikasi, user dapat login ke SAKTI</li>
+    </ol>
+    <div class="done-box">
+      <div class="dlabel">Nomor Referensi Anda</div>
+      <div class="dkode" id="sukses-refkode"></div>
+      <div class="dsub">✅ Dokumen Terkirim — Menunggu Verifikasi KPPN</div>
+    </div>
+    <div class="modal-actions">
+      <a href="index.html" class="btn btn-outline">← Daftarkan Satker Lain</a>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── PERAN DATA ───────────────────────────────────────────
+const PERAN_DATA=[
+  {kode:'SATKER_KPA',label:'KPA',kelompok:'APPROVER'},
+  {kode:'SATKER_PPSPM',label:'PPSPM',kelompok:'APPROVER'},
+  {kode:'SATKER_APPROVER_PERSEDIAAN',label:'Approver Persediaan',kelompok:'APPROVER'},
+  {kode:'SATKER_APPROVER_PERSEDIAAN_PEMBANTU',label:'Approver Persediaan Pembantu',kelompok:'APPROVER'},
+  {kode:'SATKER_APPROVER_ASET',label:'Approver Aset',kelompok:'APPROVER'},
+  {kode:'SATKER_APPROVER_ASET_PEMBANTU',label:'Approver Aset Pembantu (UAPKPB)',kelompok:'APPROVER'},
+  {kode:'SATKER_PPK',label:'PPK',kelompok:'VALIDATOR'},
+  {kode:'SATKER_PPK_DFDD',label:'PPK Penyalur DAK Fisik & Dana Desa',kelompok:'VALIDATOR'},
+  {kode:'SATKER_VALIDATOR_ANGGARAN',label:'Validator Anggaran (Khusus BLU)',kelompok:'VALIDATOR'},
+  {kode:'SATKER_VALIDATOR_ASET',label:'Validator Aset',kelompok:'VALIDATOR'},
+  {kode:'SATKER_VALIDATOR_ASET_PEMBANTU',label:'Validator Aset Pembantu (UAPKPB)',kelompok:'VALIDATOR'},
+  {kode:'SATKER_OPERATOR_ANGGARAN',label:'Operator Anggaran',kelompok:'OPERATOR'},
+  {kode:'SATKER_OPERATOR_PEMBAYARAN',label:'Operator Pembayaran (SPP + SPM)',kelompok:'OPERATOR'},
+  {kode:'SATKER_OPERATOR_PEMBAYARAN_SPM',label:'Operator Pembayaran SPM saja',kelompok:'OPERATOR'},
+  {kode:'SATKER_OPERATOR_PEMBAYARAN_SPP',label:'Operator Pembayaran SPP saja',kelompok:'OPERATOR'},
+  {kode:'SATKER_OPERATOR_KOMITMEN',label:'Operator Komitmen',kelompok:'OPERATOR'},
+  {kode:'SATKER_BENDAHARA_PENGELUARAN',label:'Bendahara Pengeluaran',kelompok:'OPERATOR'},
+  {kode:'SATKER_BENDAHARA_PENGELUARAN_PEMBANTU',label:'Bendahara Pengeluaran Pembantu',kelompok:'OPERATOR'},
+  {kode:'SATKER_BENDAHARA_PENERIMAAN',label:'Bendahara Penerimaan',kelompok:'OPERATOR'},
+  {kode:'SATKER_OPERATOR_PNBP',label:'Operator PNBP',kelompok:'OPERATOR'},
+  {kode:'SATKER_OPERATOR_PELAPORAN',label:'Operator Pelaporan / GL',kelompok:'OPERATOR'},
+  {kode:'SATKER_OPERATOR_PERSEDIAAN',label:'Operator Persediaan',kelompok:'OPERATOR'},
+  {kode:'SATKER_OPERATOR_PERSEDIAAN_PEMBANTU',label:'Operator Persediaan Pembantu',kelompok:'OPERATOR'},
+  {kode:'SATKER_OPERATOR_ASET',label:'Operator Aset',kelompok:'OPERATOR'},
+  {kode:'SATKER_OPERATOR_ASET_PEMBANTU',label:'Operator Aset Pembantu (UAPKPB)',kelompok:'OPERATOR'},
+  {kode:'SATKER_OPERATOR_PIUTANG',label:'Operator Piutang',kelompok:'OPERATOR'},
+  {kode:'SATKER_OPERATOR_SPI',label:'Operator SPI (Khusus BLU)',kelompok:'OPERATOR'},
+  {kode:'SATKER_ADMIN',label:'Admin Satker',kelompok:'ADMIN'},
+];
+function getLabel(k){return(PERAN_DATA.find(p=>p.kode===k)||{}).label||k;}
+
+// ─── STATE ────────────────────────────────────────────────
+let currentDraft=null,currentRefKode='';
+const uploadedFiles={};
+
+// ─── CARI DATA ────────────────────────────────────────────
+function cariData(){
+  const raw=document.getElementById('refKodeInput').value.trim().toUpperCase();
+  document.getElementById('refNotFound').style.display='none';
+  document.getElementById('refAlreadyDone').style.display='none';
+  if(!raw){showToast('Masukkan kode referensi terlebih dahulu',true);return;}
+  let draft=null;
+  try{draft=JSON.parse(localStorage.getItem(`sakti_draft_${raw}`)||'null');}catch(e){}
+  if(!draft){document.getElementById('refNotFound').style.display='block';return;}
+  if(draft.status==='submitted') document.getElementById('refAlreadyDone').style.display='block';
+  currentDraft=draft;currentRefKode=raw;
+  renderDraftInfo(draft);renderKTPSection(draft);renderDokGlobalSection(draft);
+  ['cardSatkerInfo','cardKTP','cardDokGlobal','cardSubmit'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
+  setTimeout(()=>document.getElementById('cardSatkerInfo').scrollIntoView({behavior:'smooth',block:'start'}),100);
+}
+
+// ─── RENDER DRAFT INFO ────────────────────────────────────
+function renderDraftInfo(draft){
+  const tgl=new Date(draft.timestamp);
+  const tglStr=`${String(tgl.getDate()).padStart(2,'0')}-${String(tgl.getMonth()+1).padStart(2,'0')}-${tgl.getFullYear()} ${String(tgl.getHours()).padStart(2,'0')}:${String(tgl.getMinutes()).padStart(2,'0')}`;
+  const statusBadge=draft.status==='submitted'
+    ?'<span class="badge badge-done">✅ Sudah Disubmit</span>'
+    :'<span class="badge badge-draft">⏳ Menunggu Dokumen</span>';
+  document.getElementById('satkerSummary').innerHTML=`
+    <div class="srow"><span class="slbl">Kode Referensi</span><span class="sval" style="font-family:monospace;font-size:14px">${esc(draft.refKode)}</span></div>
+    <div class="srow"><span class="slbl">Status</span><span class="sval">${statusBadge}</span></div>
+    <div class="srow"><span class="slbl">Kode Satker</span><span class="sval">${esc(draft.kodeSatker)}</span></div>
+    <div class="srow"><span class="slbl">Nama Satker</span><span class="sval">${esc(draft.namaSatker)}</span></div>
+    <div class="srow"><span class="slbl">Nama KPA</span><span class="sval">${esc(draft.namaKPA)}</span></div>
+    <div class="srow"><span class="slbl">NIP KPA</span><span class="sval">${esc(draft.nipKPA)}</span></div>
+    <div class="srow"><span class="slbl">Jumlah User</span><span class="sval">${draft.users.length} orang</span></div>
+    <div class="srow"><span class="slbl">Dibuat Pada</span><span class="sval">${tglStr}</span></div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--gray-200)">
+      <div style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Daftar User</div>
+      ${draft.users.map((u,i)=>`<div style="font-size:12px;margin-bottom:5px;color:var(--gray-700)">
+        <span style="color:var(--gray-400);min-width:20px;display:inline-block">${i+1}.</span>
+        <strong>${esc(u.nama)}</strong> <span style="color:var(--gray-500)">(${esc(u.nipnrp)})</span>
+        — <em>${u.peranList.map(k=>esc(getLabel(k))).join(', ')}</em>
+      </div>`).join('')}
+    </div>`;
+}
+
+// ─── KTP SECTION ─────────────────────────────────────────
+function renderKTPSection(draft){
+  document.getElementById('ktpGrid').innerHTML=draft.users.map((u,i)=>{
+    const key=`ktp_${i}`;
+    return`<div class="ktp-item">
+      <div class="ktp-item-name">${esc(u.nama)}</div>
+      <div class="ktp-item-role">${esc(u.nipnrp)} — ${u.peranList.map(k=>esc(getLabel(k))).join(', ')}</div>
+      <div class="dropzone" id="dz-${key}" onclick="triggerFile('${key}')"
+        ondragover="dzOver(event,'${key}')" ondragleave="dzLeave('${key}')" ondrop="dzDrop(event,'${key}')">
+        <input type="file" id="fi-${key}" accept=".jpg,.jpeg,.png,.pdf" onchange="onFile('${key}',this)"/>
+        <label class="dropzone-label" for="fi-${key}" onclick="event.stopPropagation()">
+          <span class="dz-icon">🪪</span>Klik atau drop KTP di sini
+        </label>
+      </div>
+      <div class="file-chip" id="fc-${key}" style="display:none">
+        <span>📄</span>
+        <span class="fname" id="fn-${key}"></span>
+        <span class="fsize" id="fsz-${key}"></span>
+        <span class="fremove" onclick="removeFile('${key}')">×</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── DOK GLOBAL ───────────────────────────────────────────
+function getDokList(draft){
+  const allPeran=draft.users.flatMap(u=>u.peranList);
+  const hasPejabat=allPeran.some(k=>['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM','SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENERIMAAN'].includes(k));
+  const hasOTP=allPeran.some(k=>['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'].includes(k));
+  return [
+    {key:'sk_pengguna',name:'SK Penetapan Pengguna SAKTI',desc:'SK Penetapan Pengguna SAKTI yang ditandatangani KPA',accept:'.pdf',req:true,icon:'📄'},
+    {key:'form_ttd_kpa',name:'Formulir Pendaftaran Bertandatangan KPA (PDF)',desc:'File Excel yang sudah dicetak, ditandatangani KPA, dan discan ke PDF',accept:'.pdf',req:true,icon:'📝'},
+    {key:'sk_pejabat',name:'SK Pejabat Perbendaharaan',desc:'SK pengangkatan KPA, PPK, PPSPM, dan/atau Bendahara',accept:'.pdf',req:hasPejabat,show:hasPejabat,icon:'📜',note:hasPejabat?'Wajib — ada pejabat perbendaharaan dalam daftar':null},
+    {key:'specimen_ttd',name:'Specimen Tanda Tangan Pejabat',desc:'Lembar specimen tanda tangan pejabat perbendaharaan yang dilegalisir',accept:'.pdf,.jpg,.jpeg,.png',req:hasPejabat,show:hasPejabat,icon:'✍️',note:hasPejabat?'Wajib — ada pejabat perbendaharaan dalam daftar':null},
+    {key:'sertifikat_bnt',name:'Sertifikat BNT / PNT / SNT (opsional)',desc:'Sertifikat Bimbingan/Pelatihan Nasional Teknis jika ada',accept:'.pdf,.jpg,.jpeg,.png',req:false,icon:'🎓'},
+    {key:'formulir_otp',name:'Formulir Permohonan Aktivasi OTP',desc:'Formulir permohonan aktivasi token OTP untuk KPA/PPK/PPSPM',accept:'.pdf',req:hasOTP,show:hasOTP,icon:'🔐',note:hasOTP?'Wajib — ada user KPA/PPK/PPSPM yang memerlukan OTP':null},
+  ].filter(d=>d.show!==false);
+}
+
+function renderDokGlobalSection(draft){
+  const docs=getDokList(draft);
+  document.getElementById('dokGlobalContainer').innerHTML=docs.map(d=>`
+    <div class="upload-item">
+      <div class="upload-item-header">
+        <div>
+          <div class="upload-item-name">${d.icon} ${esc(d.name)}</div>
+          <div class="upload-item-desc">${esc(d.desc)}</div>
+          ${d.note?`<div class="upload-item-note">ℹ️ ${esc(d.note)}</div>`:''}
+        </div>
+        <span class="${d.req?'badge-required':'badge-optional'}">${d.req?'WAJIB':'OPSIONAL'}</span>
+      </div>
+      <div class="dropzone" id="dz-${d.key}" onclick="triggerFile('${d.key}')"
+        ondragover="dzOver(event,'${d.key}')" ondragleave="dzLeave('${d.key}')" ondrop="dzDrop(event,'${d.key}')">
+        <input type="file" id="fi-${d.key}" accept="${d.accept}" onchange="onFile('${d.key}',this)"/>
+        <label class="dropzone-label" for="fi-${d.key}" onclick="event.stopPropagation()">
+          <span class="dz-icon">${d.icon}</span>
+          Klik atau drop file di sini<br/>
+          <span style="font-size:11px;color:var(--gray-500)">${d.accept.split(',').map(x=>x.replace('.','').toUpperCase()).join(', ')}</span>
+        </label>
+      </div>
+      <div class="file-chip" id="fc-${d.key}" style="display:none">
+        <span>📄</span>
+        <span class="fname" id="fn-${d.key}"></span>
+        <span class="fsize" id="fsz-${d.key}"></span>
+        <span class="fremove" onclick="removeFile('${d.key}')">×</span>
+      </div>
+    </div>`).join('');
+}
+
+// ─── FILE HANDLERS ────────────────────────────────────────
+const MAX_KTP=5*1024*1024, MAX_GLOBAL=10*1024*1024;
+function triggerFile(key){document.getElementById(`fi-${key}`)?.click();}
+function onFile(key,input){
+  const file=input.files[0];if(!file)return;
+  const max=key.startsWith('ktp_')?MAX_KTP:MAX_GLOBAL;
+  if(file.size>max){showToast(`File terlalu besar. Maks ${key.startsWith('ktp_')?'5':'10'} MB.`,true);input.value='';return;}
+  uploadedFiles[key]=file;
+  document.getElementById(`fn-${key}`).textContent=file.name;
+  document.getElementById(`fsz-${key}`).textContent=fmtSize(file.size);
+  document.getElementById(`fc-${key}`).style.display='flex';
+  document.getElementById(`dz-${key}`).style.display='none';
+}
+function removeFile(key){
+  delete uploadedFiles[key];
+  const fi=document.getElementById(`fi-${key}`);if(fi)fi.value='';
+  document.getElementById(`fc-${key}`).style.display='none';
+  document.getElementById(`dz-${key}`).style.display='block';
+}
+function dzOver(e,key){e.preventDefault();document.getElementById(`dz-${key}`)?.classList.add('dragover');}
+function dzLeave(key){document.getElementById(`dz-${key}`)?.classList.remove('dragover');}
+function dzDrop(e,key){
+  e.preventDefault();dzLeave(key);
+  const file=e.dataTransfer.files[0];if(!file)return;
+  const fi=document.getElementById(`fi-${key}`);
+  const dt=new DataTransfer();dt.items.add(file);fi.files=dt.files;onFile(key,fi);
+}
+function fmtSize(b){if(b<1024)return`${b} B`;if(b<1048576)return`${(b/1024).toFixed(1)} KB`;return`${(b/1048576).toFixed(1)} MB`;}
+
+// ─── SUBMIT ───────────────────────────────────────────────
+function trySubmit(){
+  if(!currentDraft){showToast('Cari data terlebih dahulu',true);return;}
+  const errors=[];
+  currentDraft.users.forEach((u,i)=>{const key=`ktp_${i}`;if(!uploadedFiles[key])errors.push(`KTP ${esc(u.nama)} belum diupload`);});
+  getDokList(currentDraft).forEach(d=>{if(d.req&&!uploadedFiles[d.key])errors.push(`Dokumen wajib belum diupload: ${d.name}`);});
+  const panel=document.getElementById('errPanel');const list=document.getElementById('errList');
+  if(errors.length){panel.style.display='block';list.innerHTML=errors.map(e=>`<li>${e}</li>`).join('');panel.scrollIntoView({behavior:'smooth',block:'center'});return;}
+  panel.style.display='none';openModal('modalPernyataan');
+}
+
+function doSubmit(){
+  closeModal('modalPernyataan');if(!currentDraft)return;
+  const submission={
+    refKode:currentRefKode,kodeSatker:currentDraft.kodeSatker,namaSatker:currentDraft.namaSatker,
+    namaKPA:currentDraft.namaKPA,nipKPA:currentDraft.nipKPA,userCount:currentDraft.users.length,
+    users:currentDraft.users,hasOTP:currentDraft.hasOTP,
+    submittedAt:new Date().toISOString(),status:'submitted',
+    filesUploaded:Object.keys(uploadedFiles).map(k=>({key:k,name:uploadedFiles[k].name,size:uploadedFiles[k].size,type:uploadedFiles[k].type})),
+  };
+  try{
+    localStorage.setItem(`sakti_draft_${currentRefKode}`,JSON.stringify({...currentDraft,status:'submitted',submittedAt:submission.submittedAt}));
+    const subs=JSON.parse(localStorage.getItem('sakti_submissions')||'[]');
+    const ei=subs.findIndex(s=>s.refKode===currentRefKode);
+    if(ei>=0)subs[ei]=submission;else subs.push(submission);
+    localStorage.setItem('sakti_submissions',JSON.stringify(subs));
+  }catch(e){showToast('Gagal menyimpan, coba lagi',true);return;}
+  document.getElementById('sukses-refkode').textContent=currentRefKode;
+  ['cardKTP','cardDokGlobal','cardSubmit'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  openModal('modalSukses');
+}
+
+// ─── MODAL / UTILS ────────────────────────────────────────
+function openModal(id){document.getElementById(id)?.classList.add('on');}
+function closeModal(id){document.getElementById(id)?.classList.remove('on');}
+document.addEventListener('click',e=>{
+  ['modalPernyataan','modalSukses'].forEach(mid=>{const m=document.getElementById(mid);if(m&&e.target===m)closeModal(mid);});
+});
+function esc(str){return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+let toastT;
+function showToast(msg,isErr=false){
+  const t=document.getElementById('toast');t.textContent=msg;t.className='on'+(isErr?' err':'');
+  clearTimeout(toastT);toastT=setTimeout(()=>{t.className='';},3500);
+}
+
+// ─── AUTO-LOAD dari ?ref= ─────────────────────────────────
+window.onload=()=>{
+  const params=new URLSearchParams(window.location.search);
+  const ref=params.get('ref');
+  if(ref){document.getElementById('refKodeInput').value=ref.toUpperCase();cariData();}
+};
+</script>
+</body>
+</html>

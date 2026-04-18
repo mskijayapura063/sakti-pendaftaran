@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Admin KPPN Jayapura — SAKTI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --blue:       #0D47A1;
+  --blue-mid:   #1565C0;
+  --blue-light: #1976D2;
+  --blue-pale:  #E3F2FD;
+  --blue-pale2: #BBDEFB;
+  --gold:       #F9A825;
+  --gold-light: #FFF8E1;
+  --green:      #2E7D32;
+  --green-pale: #E8F5E9;
+  --red:        #C62828;
+  --red-pale:   #FFEBEE;
+  --orange:     #E65100;
+  --orange-pale:#FFF3E0;
+  --gray-50:    #FAFAFA;
+  --gray-100:   #F5F5F5;
+  --gray-200:   #EEEEEE;
+  --gray-300:   #E0E0E0;
+  --gray-400:   #BDBDBD;
+  --gray-500:   #9E9E9E;
+  --gray-600:   #757575;
+  --gray-700:   #616161;
+  --gray-800:   #424242;
+  --gray-900:   #212121;
+  --radius:     8px;
+  --shadow:     0 1px 4px rgba(0,0,0,.10),0 2px 12px rgba(0,0,0,.06);
+  --shadow-lg:  0 4px 24px rgba(0,0,0,.13);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--gray-100);color:var(--gray-900);min-height:100vh;font-size:14px;line-height:1.5}
+a{color:var(--blue-light);text-decoration:none}
+
+/* HEADER */
+header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.header-top{display:flex;align-items:center;gap:16px;padding:14px 32px;border-bottom:3px solid var(--gold)}
+.header-logo{width:56px;height:56px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.header-logo img{width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+.header-titles{flex:1}
+.header-inst{font-size:11px;font-weight:500;opacity:.75;text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px}
+.header-main{font-size:18px;font-weight:800;line-height:1.25}
+.header-sub{font-size:11px;opacity:.7;margin-top:2px}
+.header-nav{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0}
+.btn-nav{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:var(--radius);padding:7px 14px;font-size:12px;font-weight:500;cursor:pointer;text-decoration:none;transition:background .15s;white-space:nowrap;font-family:'Inter',sans-serif}
+.btn-nav:hover{background:rgba(255,255,255,.22);text-decoration:none}
+.header-user{font-size:12px;opacity:.8;display:flex;align-items:center;gap:6px}
+
+/* LAYOUT */
+.app-body{display:flex;min-height:calc(100vh - 80px)}
+.sidebar{width:220px;background:#fff;border-right:1px solid var(--gray-200);padding:20px 0;flex-shrink:0}
+.sidebar-nav{list-style:none}
+.sidebar-nav li a,.sidebar-nav li button{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;font-weight:500;color:var(--gray-700);text-decoration:none;border:none;background:none;width:100%;cursor:pointer;font-family:'Inter',sans-serif;transition:background .12s,color .12s;border-left:3px solid transparent}
+.sidebar-nav li a:hover,.sidebar-nav li button:hover{background:var(--blue-pale);color:var(--blue)}
+.sidebar-nav li.active a,.sidebar-nav li.active button{background:var(--blue-pale);color:var(--blue);font-weight:700;border-left-color:var(--blue)}
+.sidebar-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gray-400);padding:16px 20px 6px;margin-top:8px}
+.main-content{flex:1;padding:28px 32px 60px;overflow-x:auto}
+
+/* PANEL */
+.panel{display:none}
+.panel.active{display:block}
+
+/* CARD */
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:22px 26px;margin-bottom:20px;border:1px solid var(--gray-200)}
+.card-title{font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.6px;padding-bottom:12px;margin-bottom:18px;border-bottom:2px solid var(--blue-pale)}
+.page-title{font-size:20px;font-weight:800;color:var(--gray-900);margin-bottom:4px}
+.page-sub{font-size:13px;color:var(--gray-500);margin-bottom:24px}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px 20px;box-shadow:var(--shadow)}
+.stat-num{font-size:28px;font-weight:800;line-height:1}
+.stat-label{font-size:11px;color:var(--gray-500);font-weight:500;margin-top:4px;text-transform:uppercase;letter-spacing:.4px}
+.stat-card.c-blue .stat-num{color:var(--blue)}
+.stat-card.c-green .stat-num{color:var(--green)}
+.stat-card.c-orange .stat-num{color:var(--orange)}
+.stat-card.c-red .stat-num{color:var(--red)}
+
+/* TABLE */
+.table-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.table-search{flex:1;min-width:180px;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:8px 12px;font-size:13px;font-family:'Inter',sans-serif}
+.table-search:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(25,118,210,.1)}
+.table-filter select{border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:13px;font-family:'Inter',sans-serif;background:#fff;cursor:pointer}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{text-align:left;padding:10px 12px;background:var(--gray-50);border-bottom:2px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+thead th.th-check{width:36px}
+tbody tr{border-bottom:1px solid var(--gray-100);transition:background .1s}
+tbody tr:hover{background:var(--gray-50)}
+tbody td{padding:10px 12px;vertical-align:middle}
+tbody td.td-check{text-align:center}
+.empty-row td{text-align:center;color:var(--gray-400);padding:28px;font-style:italic}
+
+/* BADGES */
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;white-space:nowrap}
+.badge-submitted{background:var(--blue-pale);color:var(--blue)}
+.badge-draft{background:var(--orange-pale);color:var(--orange)}
+.badge-done{background:var(--green-pale);color:var(--green)}
+.badge-otp{background:#F3E5F5;color:#6A1B9A}
+
+/* BUTTONS */
+.btn{cursor:pointer;border:none;border-radius:var(--radius);padding:8px 16px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:background .15s,transform .1s;font-family:'Inter',sans-serif;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--blue-light);color:#fff}
+.btn-primary:hover{background:var(--blue-mid)}
+.btn-success{background:var(--green);color:#fff}
+.btn-success:hover{background:#1B5E20}
+.btn-danger{background:var(--red);color:#fff}
+.btn-danger:hover{background:#7f1d1d}
+.btn-danger-outline{background:#fff;color:var(--red);border:1.5px solid var(--red)}
+.btn-danger-outline:hover{background:var(--red-pale)}
+.btn-secondary{background:var(--gray-600);color:#fff}
+.btn-secondary:hover{background:var(--gray-800)}
+.btn-outline{background:#fff;color:var(--blue-light);border:1.5px solid var(--blue-light)}
+.btn-outline:hover{background:var(--blue-pale)}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-icon{background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:4px;font-size:16px;line-height:1;transition:background .1s;font-family:'Inter',sans-serif}
+.btn-icon:hover{background:var(--gray-200)}
+
+/* BULK DELETE TOOLBAR */
+.bulk-bar{background:var(--blue-pale);border:1px solid var(--blue-pale2);border-radius:var(--radius);padding:10px 16px;display:none;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.bulk-bar.on{display:flex}
+.bulk-count{font-size:13px;font-weight:600;color:var(--blue)}
+
+/* FORM */
+.form-group{display:flex;flex-direction:column;margin-bottom:14px}
+.form-group label{font-size:11px;font-weight:600;color:var(--gray-700);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group select,.form-group textarea{border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 12px;font-size:13px;color:var(--gray-900);background:#fff;font-family:'Inter',sans-serif;transition:border-color .15s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(25,118,210,.12)}
+.form-group input.err{border-color:var(--red)!important}
+.form-row{display:flex;gap:14px;flex-wrap:wrap}
+.form-row .form-group{flex:1;min-width:160px;margin-bottom:0}
+
+/* DETAIL */
+.detail-row{display:flex;gap:8px;font-size:13px;margin-bottom:8px;flex-wrap:wrap}
+.detail-lbl{font-size:11px;font-weight:600;color:var(--gray-500);text-transform:uppercase;min-width:120px;flex-shrink:0;margin-top:2px}
+.detail-val{color:var(--gray-900)}
+.user-list-item{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;padding:10px 14px;margin-bottom:8px}
+.user-list-item .uname{font-size:13px;font-weight:700;color:var(--gray-900)}
+.user-list-item .urole{font-size:11px;color:var(--gray-500);margin-top:2px}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9000;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.on{opacity:1;pointer-events:all}
+.modal-box{background:#fff;border-radius:12px;padding:28px 28px 24px;max-width:520px;width:92%;box-shadow:var(--shadow-lg);transform:translateY(18px);transition:transform .2s;max-height:92vh;overflow-y:auto}
+.modal-overlay.on .modal-box{transform:translateY(0)}
+.modal-box.wide{max-width:720px}
+.modal-title{font-size:16px;font-weight:700;color:var(--blue);margin-bottom:14px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:20px}
+
+/* PASSWORD FIELD */
+.pwd-wrap{position:relative}
+.pwd-wrap input{width:100%;padding-right:44px}
+.pwd-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;padding:2px;line-height:1}
+
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--gray-100);padding:20px}
+.login-box{background:#fff;border-radius:14px;box-shadow:var(--shadow-lg);padding:36px 32px;width:100%;max-width:380px;border:1px solid var(--gray-200)}
+.login-logo{text-align:center;margin-bottom:20px}
+.login-logo .logo-circle{width:72px;height:72px;display:inline-flex;align-items:center;justify-content:center}
+.login-logo .logo-circle img{width:72px;height:72px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35))}
+.login-title{font-size:18px;font-weight:800;color:var(--gray-900);text-align:center;margin-bottom:4px}
+.login-sub{font-size:12px;color:var(--gray-500);text-align:center;margin-bottom:24px}
+.login-err{background:var(--red-pale);border:1px solid #EF9A9A;border-radius:6px;padding:8px 12px;font-size:12px;color:#7f1d1d;margin-bottom:12px;display:none}
+
+/* BOXES */
+.info-box{background:var(--blue-pale);border:1px solid var(--blue-pale2);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--blue);margin-bottom:14px;line-height:1.65}
+.warn-box{background:var(--gold-light);border:1px solid #FFE082;border-radius:var(--radius);padding:10px 14px;font-size:12px;color:#5D4037;margin-bottom:14px;line-height:1.65}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;right:24px;background:var(--green);color:#fff;padding:11px 20px;border-radius:var(--radius);font-size:13px;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(14px);transition:opacity .3s,transform .3s;z-index:9999;max-width:320px;font-family:'Inter',sans-serif}
+#toast.on{opacity:1;transform:translateY(0)}
+#toast.err{background:var(--red)}
+
+/* CHECKBOX STYLE */
+input[type=checkbox]{accent-color:var(--blue);width:15px;height:15px;cursor:pointer}
+
+@media(max-width:768px){
+  .app-body{flex-direction:column}
+  .sidebar{width:100%;border-right:none;border-bottom:1px solid var(--gray-200);padding:10px 0}
+  .sidebar-nav{display:flex;flex-wrap:wrap;gap:2px;padding:0 10px}
+  .sidebar-nav li a,.sidebar-nav li button{padding:6px 12px;border-left:none;border-radius:var(--radius);font-size:12px}
+  .sidebar-nav li.active a,.sidebar-nav li.active button{border-left:none}
+  .sidebar-section{display:none}
+  .main-content{padding:16px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN SCREEN ══════════════ -->
+<div id="loginScreen" class="login-wrap">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="logo-circle"><img src="logo-kppn.png" alt="Logo KPPN Jayapura"/></div>
+    </div>
+    <div class="login-title">KPPN Jayapura</div>
+    <div class="login-sub">Panel Admin — Pendaftaran Pengguna SAKTI</div>
+    <div class="login-err" id="loginErr">Username atau password salah.</div>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="loginUser" placeholder="Username" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <div class="pwd-wrap">
+        <input type="password" id="loginPass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"/>
+        <button class="pwd-toggle" onclick="togglePwd('loginPass',this)" type="button">👁️</button>
+      </div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px" onclick="doLogin()">Masuk →</button>
+    <p style="font-size:11px;color:var(--gray-400);text-align:center;margin-top:14px">
+      Akses terbatas untuk petugas KPPN Jayapura
+    </p>
+  </div>
+</div>
+
+<!-- ══════════════ APP ══════════════ -->
+<div id="appScreen" style="display:none">
+  <header>
+    <div class="header-top">
+      <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
+        <div class="header-logo"><img src="logo-kppn.png" alt="Logo KPPN Jayapura"/></div>
+        <div class="header-titles">
+          <div class="header-inst">Kantor Pelayanan Perbendaharaan Negara</div>
+          <div class="header-main">KPPN Jayapura — Admin Panel</div>
+          <div class="header-sub">Manajemen Pendaftaran Pengguna SAKTI</div>
+        </div>
+      </div>
+      <div class="header-nav">
+        <span class="header-user" id="headerUser">👤</span>
+        <a href="index.html" class="btn-nav" target="_blank">🌐 Halaman Satker</a>
+        <button class="btn-nav" onclick="doLogout()">Keluar →</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <div class="sidebar-section">Menu Utama</div>
+      <ul class="sidebar-nav">
+        <li id="nav-dashboard" class="active"><a href="#" onclick="showPanel('dashboard');return false">📊 Dashboard</a></li>
+        <li id="nav-submissions"><a href="#" onclick="showPanel('submissions');return false">📋 Daftar Pendaftaran</a></li>
+        <li id="nav-otp"><a href="#" onclick="showPanel('otp');return false">🔐 Aktivasi OTP</a></li>
+      </ul>
+      <div class="sidebar-section">Pengaturan</div>
+      <ul class="sidebar-nav">
+        <li id="nav-settings"><a href="#" onclick="showPanel('settings');return false">⚙️ Pengaturan</a></li>
+      </ul>
+    </nav>
+
+    <!-- MAIN -->
+    <main class="main-content">
+
+      <!-- ── DASHBOARD ── -->
+      <div class="panel active" id="panel-dashboard">
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub" id="dashDate"></div>
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="card">
+          <div class="card-title">Pendaftaran Terbaru</div>
+          <div id="recentList"></div>
+        </div>
+      </div>
+
+      <!-- ── DAFTAR PENDAFTARAN ── -->
+      <div class="panel" id="panel-submissions">
+        <div class="page-title">Daftar Pendaftaran</div>
+        <div class="page-sub">Kelola semua pendaftaran pengguna SAKTI yang masuk</div>
+
+        <!-- Bulk delete bar -->
+        <div class="bulk-bar" id="bulkBar">
+          <span class="bulk-count" id="bulkCount">0 dipilih</span>
+          <button class="btn btn-danger-outline btn-sm" onclick="openBulkDelete()">🗑️ Hapus yang Dipilih</button>
+          <button class="btn btn-secondary btn-sm" onclick="clearSelection()">✕ Batal Pilih</button>
+        </div>
+
+        <div class="card" style="padding:16px 20px">
+          <div class="table-toolbar">
+            <input class="table-search" type="text" id="searchInput" placeholder="🔍 Cari nama satker, KPA, kode..." oninput="renderTable()"/>
+            <div class="table-filter">
+              <select id="filterStatus" onchange="renderTable()">
+                <option value="">Semua Status</option>
+                <option value="submitted">Tersubmit</option>
+                <option value="draft">Draft</option>
+                <option value="done">Selesai</option>
+              </select>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="selectAll()">☑ Pilih Semua</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table id="subTable">
+              <thead>
+                <tr>
+                  <th class="th-check"><input type="checkbox" id="cbSelectAll" onchange="toggleSelectAll(this)" title="Pilih semua"/></th>
+                  <th>Kode Referensi</th>
+                  <th>Satker</th>
+                  <th>KPA</th>
+                  <th>User</th>
+                  <th>Status</th>
+                  <th>Tanggal</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="subTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── AKTIVASI OTP ── -->
+      <div class="panel" id="panel-otp">
+        <div class="page-title">Aktivasi OTP</div>
+        <div class="page-sub">Pendaftaran dengan user yang memerlukan aktivasi OTP</div>
+        <div class="card">
+          <div class="card-title">Menunggu Aktivasi OTP</div>
+          <div id="otpList"></div>
+        </div>
+      </div>
+
+      <!-- ── PENGATURAN ── -->
+      <div class="panel" id="panel-settings">
+        <div class="page-title">Pengaturan</div>
+        <div class="page-sub">Konfigurasi akun dan sistem</div>
+        <div class="card" style="max-width:460px">
+          <div class="card-title">Ganti Password</div>
+          <div class="form-group">
+            <label>Password Lama</label>
+            <div class="pwd-wrap">
+              <input type="password" id="s-pwdLama" placeholder="Password saat ini"/>
+              <button class="pwd-toggle" onclick="togglePwd('s-pwdLama',this)" type="button">👁️</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Password Baru</label>
+            <div class="pwd-wrap">
+              <input type="password" id="s-pwdBaru" placeholder="Minimal 6 karakter"/>
+              <button class="pwd-toggle" onclick="togglePwd('s-pwdBaru',this)" type="button">👁️</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Konfirmasi Password Baru</label>
+            <div class="pwd-wrap">
+              <input type="password" id="s-pwdKonfirm" placeholder="Ulangi password baru"/>
+              <button class="pwd-toggle" onclick="togglePwd('s-pwdKonfirm',this)" type="button">👁️</button>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="gantiPassword()">💾 Simpan Password Baru</button>
+        </div>
+        <div class="card" style="max-width:460px">
+          <div class="card-title">Data Aplikasi</div>
+          <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">Data tersimpan di browser lokal (localStorage). Hapus data hanya jika diperlukan.</p>
+          <button class="btn btn-danger-outline" onclick="clearAllData()">🗑️ Hapus Semua Data (Reset)</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ══════════════ MODAL DETAIL ══════════════ -->
+<div class="modal-overlay" id="modalDetail">
+  <div class="modal-box wide">
+    <div class="modal-title">📋 Detail Pendaftaran</div>
+    <div id="detailBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalDetail')">Tutup</button>
+      <button class="btn btn-success" id="btnMarkDone" onclick="markDone()">✅ Tandai Selesai</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ MODAL HAPUS (password) ══════════════ -->
+<div class="modal-overlay" id="modalHapus">
+  <div class="modal-box">
+    <div class="modal-title">🗑️ Konfirmasi Hapus</div>
+    <div class="warn-box" id="hapusWarnMsg"></div>
+    <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">
+      Tindakan ini <strong>tidak dapat dibatalkan</strong>. Masukkan password admin untuk melanjutkan.
+    </p>
+    <div class="form-group">
+      <label>Password Admin</label>
+      <div class="pwd-wrap">
+        <input type="password" id="hapusPwd" placeholder="Masukkan password" onkeydown="if(event.key==='Enter')confirmDelete()"/>
+        <button class="pwd-toggle" onclick="togglePwd('hapusPwd',this)" type="button">👁️</button>
+      </div>
+      <span style="font-size:11px;color:var(--red);margin-top:4px;display:none" id="hapusPwdErr">Password salah</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalHapus');pendingDeleteRefs=[]">Batal</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">🗑️ Hapus Sekarang</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ MODAL OTP ══════════════ -->
+<div class="modal-overlay" id="modalOTP">
+  <div class="modal-box">
+    <div class="modal-title">🔐 Aktivasi OTP</div>
+    <div id="otpModalBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalOTP')">Tutup</button>
+      <button class="btn btn-success" onclick="markOTPDone()">✅ OTP Selesai Diaktifkan</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// KREDENSIAL
+// ═══════════════════════════════════════════════════════════
+const USERS_DEFAULT = [
+  {user:'admin',   pass:'kppn2024', role:'Admin'},
+  {user:'kppn1',   pass:'sakti123', role:'Petugas'},
+];
+function getUsers(){
+  try{return JSON.parse(localStorage.getItem('sakti_admin_users')||JSON.stringify(USERS_DEFAULT));}
+  catch(e){return USERS_DEFAULT;}
+}
+function saveUsers(u){localStorage.setItem('sakti_admin_users',JSON.stringify(u));}
+
+let currentUser=null;
+
+// ─── LOGIN ────────────────────────────────────────────────
+function doLogin(){
+  const u=(document.getElementById('loginUser').value||'').trim();
+  const p=document.getElementById('loginPass').value||'';
+  const users=getUsers();
+  const found=users.find(x=>x.user===u&&x.pass===p);
+  if(!found){document.getElementById('loginErr').style.display='block';return;}
+  document.getElementById('loginErr').style.display='none';
+  currentUser=found;
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appScreen').style.display='block';
+  document.getElementById('headerUser').textContent=`👤 ${found.user} (${found.role})`;
+  initApp();
+}
+function doLogout(){currentUser=null;location.reload();}
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('loginScreen').style.display!=='none')doLogin();});
+
+// ─── TOGGLE PWD ───────────────────────────────────────────
+function togglePwd(id,btn){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const show=el.type==='password';
+  el.type=show?'text':'password';
+  btn.textContent=show?'🙈':'👁️';
+}
+
+// ─── PANEL NAV ────────────────────────────────────────────
+function showPanel(name){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-nav li').forEach(li=>li.classList.remove('active'));
+  document.getElementById(`panel-${name}`)?.classList.add('active');
+  document.getElementById(`nav-${name}`)?.classList.add('active');
+  if(name==='dashboard')renderDashboard();
+  if(name==='submissions')renderTable();
+  if(name==='otp')renderOTPList();
+}
+
+// ─── MODAL ────────────────────────────────────────────────
+function openModal(id){document.getElementById(id)?.classList.add('on');}
+function closeModal(id){document.getElementById(id)?.classList.remove('on');}
+document.addEventListener('click',e=>{
+  ['modalDetail','modalHapus','modalOTP'].forEach(mid=>{
+    const m=document.getElementById(mid);if(m&&e.target===m)closeModal(mid);
+  });
+});
+
+// ─── DATA ─────────────────────────────────────────────────
+function getSubmissions(){
+  try{return JSON.parse(localStorage.getItem('sakti_submissions')||'[]');}catch(e){return [];}
+}
+function saveSubmissions(data){localStorage.setItem('sakti_submissions',JSON.stringify(data));}
+
+// ─── FORMAT TANGGAL dd-mm-yyyy ────────────────────────────
+function fmtTgl(iso){
+  if(!iso)return '—';
+  const d=new Date(iso);
+  return`${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+}
+function fmtTglWaktu(iso){
+  if(!iso)return '—';
+  const d=new Date(iso);
+  return`${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────
+function renderDashboard(){
+  const subs=getSubmissions();
+  const total=subs.length;
+  const submitted=subs.filter(s=>s.status==='submitted').length;
+  const done=subs.filter(s=>s.status==='done').length;
+  const needOTP=subs.filter(s=>s.hasOTP&&s.status!=='done').length;
+  const now=new Date();
+  document.getElementById('dashDate').textContent=`${String(now.getDate()).padStart(2,'0')}-${String(now.getMonth()+1).padStart(2,'0')}-${now.getFullYear()}, ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="stat-card c-blue"><div class="stat-num">${total}</div><div class="stat-label">Total Pendaftaran</div></div>
+    <div class="stat-card c-orange"><div class="stat-num">${submitted}</div><div class="stat-label">Menunggu Verifikasi</div></div>
+    <div class="stat-card c-green"><div class="stat-num">${done}</div><div class="stat-label">Selesai Diproses</div></div>
+    <div class="stat-card c-red"><div class="stat-num">${needOTP}</div><div class="stat-label">Perlu Aktivasi OTP</div></div>`;
+  const recent=subs.slice().sort((a,b)=>new Date(b.submittedAt||0)-new Date(a.submittedAt||0)).slice(0,5);
+  document.getElementById('recentList').innerHTML=recent.length?recent.map(s=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--gray-100)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700">${esc(s.namaSatker)}</div>
+        <div style="font-size:11px;color:var(--gray-500)">${esc(s.refKode)} — ${s.userCount} user</div>
+      </div>
+      <span class="badge badge-${s.status==='done'?'done':s.status==='submitted'?'submitted':'draft'}">${statusLabel(s.status)}</span>
+      <span style="font-size:11px;color:var(--gray-400)">${fmtTgl(s.submittedAt)}</span>
+      <button class="btn btn-outline btn-sm" onclick="openDetail('${esc(s.refKode)}')">Detail</button>
+    </div>`).join(''):'<p style="color:var(--gray-400);font-size:13px;text-align:center;padding:20px">Belum ada pendaftaran</p>';
+}
+
+function statusLabel(s){
+  if(s==='done')return'✅ Selesai';
+  if(s==='submitted')return'📋 Diterima';
+  return'⏳ Draft';
+}
+
+// ─── TABLE ────────────────────────────────────────────────
+let selectedRefs=new Set();
+
+function renderTable(){
+  const subs=getSubmissions();
+  const q=(document.getElementById('searchInput')?.value||'').toLowerCase();
+  const fStatus=document.getElementById('filterStatus')?.value||'';
+  const filtered=subs.filter(s=>{
+    const match=!q||(s.namaSatker||'').toLowerCase().includes(q)||(s.namaKPA||'').toLowerCase().includes(q)||(s.refKode||'').toLowerCase().includes(q)||(s.kodeSatker||'').toLowerCase().includes(q);
+    const statusOK=!fStatus||s.status===fStatus;
+    return match&&statusOK;
+  });
+  const body=document.getElementById('subTableBody');
+  if(!filtered.length){body.innerHTML=`<tr class="empty-row"><td colspan="8">Tidak ada data yang cocok</td></tr>`;updateBulkBar();return;}
+  body.innerHTML=filtered.map(s=>`
+    <tr id="row-${esc(s.refKode)}">
+      <td class="td-check"><input type="checkbox" class="row-cb" value="${esc(s.refKode)}" ${selectedRefs.has(s.refKode)?'checked':''} onchange="onRowCheck(this)"/></td>
+      <td><code style="font-size:12px">${esc(s.refKode)}</code></td>
+      <td><strong>${esc(s.namaSatker)}</strong><br/><span style="font-size:11px;color:var(--gray-500)">${esc(s.kodeSatker)}</span></td>
+      <td>${esc(s.namaKPA)}<br/><span style="font-size:11px;color:var(--gray-500)">${esc(s.nipKPA)}</span></td>
+      <td style="text-align:center">${s.userCount}</td>
+      <td>
+        <span class="badge badge-${s.status==='done'?'done':s.status==='submitted'?'submitted':'draft'}">${statusLabel(s.status)}</span>
+        ${s.hasOTP?'<br/><span class="badge badge-otp" style="margin-top:3px">🔐 OTP</span>':''}
+      </td>
+      <td style="white-space:nowrap;font-size:12px">${fmtTgl(s.submittedAt||s.timestamp||'')}</td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="openDetail('${esc(s.refKode)}')">Detail</button>
+          <button class="btn btn-danger-outline btn-sm" onclick="openSingleDelete('${esc(s.refKode)}')">🗑️</button>
+        </div>
+      </td>
+    </tr>`).join('');
+  updateBulkBar();
+}
+
+function onRowCheck(cb){
+  if(cb.checked)selectedRefs.add(cb.value);
+  else selectedRefs.delete(cb.value);
+  updateBulkBar();
+  document.getElementById('cbSelectAll').checked=
+    document.querySelectorAll('.row-cb').length===selectedRefs.size&&selectedRefs.size>0;
+}
+function toggleSelectAll(cb){
+  document.querySelectorAll('.row-cb').forEach(el=>{el.checked=cb.checked;if(cb.checked)selectedRefs.add(el.value);else selectedRefs.delete(el.value);});
+  updateBulkBar();
+}
+function selectAll(){
+  document.querySelectorAll('.row-cb').forEach(el=>{el.checked=true;selectedRefs.add(el.value);});
+  document.getElementById('cbSelectAll').checked=true;
+  updateBulkBar();
+}
+function clearSelection(){
+  selectedRefs.clear();
+  document.querySelectorAll('.row-cb').forEach(el=>el.checked=false);
+  document.getElementById('cbSelectAll').checked=false;
+  updateBulkBar();
+}
+function updateBulkBar(){
+  const bar=document.getElementById('bulkBar');
+  const cnt=selectedRefs.size;
+  if(cnt>0){bar.classList.add('on');document.getElementById('bulkCount').textContent=`${cnt} dipilih`;}
+  else bar.classList.remove('on');
+}
+
+// ─── DELETE (SINGLE + BULK) ───────────────────────────────
+let pendingDeleteRefs=[];
+
+function openSingleDelete(refKode){
+  pendingDeleteRefs=[refKode];
+  document.getElementById('hapusWarnMsg').innerHTML=`Anda akan menghapus pendaftaran dengan kode referensi:<br/><strong style="font-family:monospace">${esc(refKode)}</strong>`;
+  document.getElementById('hapusPwd').value='';
+  document.getElementById('hapusPwdErr').style.display='none';
+  openModal('modalHapus');
+}
+
+function openBulkDelete(){
+  if(selectedRefs.size===0)return;
+  pendingDeleteRefs=[...selectedRefs];
+  document.getElementById('hapusWarnMsg').innerHTML=`Anda akan menghapus <strong>${pendingDeleteRefs.length} pendaftaran</strong> sekaligus:<br/><span style="font-size:11px;font-family:monospace">${pendingDeleteRefs.map(r=>esc(r)).join(', ')}</span>`;
+  document.getElementById('hapusPwd').value='';
+  document.getElementById('hapusPwdErr').style.display='none';
+  openModal('modalHapus');
+}
+
+function confirmDelete(){
+  const pwd=document.getElementById('hapusPwd').value;
+  const errEl=document.getElementById('hapusPwdErr');
+  const users=getUsers();
+  const valid=users.find(u=>u.user===currentUser.user&&u.pass===pwd);
+  if(!valid){errEl.style.display='block';document.getElementById('hapusPwd').focus();return;}
+  errEl.style.display='none';
+  // Hapus dari submissions
+  let subs=getSubmissions();
+  pendingDeleteRefs.forEach(ref=>{
+    subs=subs.filter(s=>s.refKode!==ref);
+    // Hapus juga draft
+    localStorage.removeItem(`sakti_draft_${ref}`);
+    // Update index
+    let idx=JSON.parse(localStorage.getItem('sakti_drafts_index')||'[]');
+    idx=idx.filter(r=>r!==ref);
+    localStorage.setItem('sakti_drafts_index',JSON.stringify(idx));
+  });
+  saveSubmissions(subs);
+  selectedRefs.clear();
+  pendingDeleteRefs=[];
+  closeModal('modalHapus');
+  renderTable();
+  renderDashboard();
+  showToast(`✅ ${pendingDeleteRefs.length||'Data'} berhasil dihapus`);
+}
+
+// ─── DETAIL ───────────────────────────────────────────────
+let detailRef='';
+function openDetail(refKode){
+  detailRef=refKode;
+  const subs=getSubmissions();
+  const s=subs.find(x=>x.refKode===refKode);
+  if(!s){showToast('Data tidak ditemukan',true);return;}
+  document.getElementById('btnMarkDone').style.display=s.status==='done'?'none':'';
+  document.getElementById('detailBody').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
+      <div>
+        <div class="detail-row"><span class="detail-lbl">Kode Ref.</span><span class="detail-val" style="font-family:monospace">${esc(s.refKode)}</span></div>
+        <div class="detail-row"><span class="detail-lbl">Kode Satker</span><span class="detail-val">${esc(s.kodeSatker)}</span></div>
+        <div class="detail-row"><span class="detail-lbl">Nama Satker</span><span class="detail-val">${esc(s.namaSatker)}</span></div>
+        <div class="detail-row"><span class="detail-lbl">Status</span><span class="detail-val"><span class="badge badge-${s.status==='done'?'done':s.status==='submitted'?'submitted':'draft'}">${statusLabel(s.status)}</span></span></div>
+      </div>
+      <div>
+        <div class="detail-row"><span class="detail-lbl">Nama KPA</span><span class="detail-val">${esc(s.namaKPA)}</span></div>
+        <div class="detail-row"><span class="detail-lbl">NIP KPA</span><span class="detail-val">${esc(s.nipKPA)}</span></div>
+        <div class="detail-row"><span class="detail-lbl">Dikirim</span><span class="detail-val">${fmtTglWaktu(s.submittedAt)}</span></div>
+        <div class="detail-row"><span class="detail-lbl">Perlu OTP</span><span class="detail-val">${s.hasOTP?'<span class="badge badge-otp">🔐 Ya</span>':'Tidak'}</span></div>
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Daftar User (${s.users?.length||0})</div>
+    ${(s.users||[]).map((u,i)=>`<div class="user-list-item">
+      <div class="uname">${i+1}. ${esc(u.nama)} <span style="font-size:11px;color:var(--gray-500)">(${esc(u.nipnrp)})</span></div>
+      <div class="urole">${(u.peranList||[]).join(', ')}</div>
+      ${u.sk?`<div style="font-size:11px;color:var(--gray-500);margin-top:2px">SK: ${esc(u.sk)} — ${fmtTgl(u.tglsk)}</div>`:''}
+    </div>`).join('')}
+    ${s.filesUploaded?.length?`<div style="font-size:12px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.4px;margin:14px 0 8px">Dokumen Dikirim (${s.filesUploaded.length})</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${s.filesUploaded.map(f=>`<span style="background:var(--blue-pale);border:1px solid var(--blue-pale2);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--blue)">📎 ${esc(f.name)}</span>`).join('')}</div>`:''}`;
+  openModal('modalDetail');
+}
+
+function markDone(){
+  const subs=getSubmissions();
+  const idx=subs.findIndex(s=>s.refKode===detailRef);
+  if(idx<0)return;
+  subs[idx].status='done';subs[idx].doneAt=new Date().toISOString();
+  saveSubmissions(subs);closeModal('modalDetail');renderTable();renderDashboard();
+  showToast('✅ Status diubah ke Selesai');
+}
+
+// ─── OTP LIST ─────────────────────────────────────────────
+let otpRef='';
+function renderOTPList(){
+  const subs=getSubmissions().filter(s=>s.hasOTP&&s.status!=='done');
+  const el=document.getElementById('otpList');
+  if(!subs.length){el.innerHTML='<p style="color:var(--gray-400);font-style:italic;text-align:center;padding:20px">Tidak ada pendaftaran yang memerlukan aktivasi OTP</p>';return;}
+  el.innerHTML=subs.map(s=>`<div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--gray-100);flex-wrap:wrap">
+    <div style="flex:1;min-width:160px">
+      <div style="font-size:13px;font-weight:700">${esc(s.namaSatker)}</div>
+      <div style="font-size:11px;color:var(--gray-500)">${esc(s.refKode)} — ${fmtTgl(s.submittedAt)}</div>
+    </div>
+    <span class="badge badge-otp">🔐 OTP Diperlukan</span>
+    <button class="btn btn-primary btn-sm" onclick="openOTP('${esc(s.refKode)}')">Proses OTP</button>
+  </div>`).join('');
+}
+
+function openOTP(refKode){
+  otpRef=refKode;
+  const subs=getSubmissions();
+  const s=subs.find(x=>x.refKode===refKode);if(!s)return;
+  const otpUsers=(s.users||[]).filter(u=>(u.peranList||[]).some(k=>['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'].includes(k)));
+  document.getElementById('otpModalBody').innerHTML=`
+    <div style="margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700">${esc(s.namaSatker)}</div>
+      <div style="font-size:11px;color:var(--gray-500);margin-bottom:12px">KPA: ${esc(s.namaKPA)} — ${esc(s.refKode)}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">User yang Perlu OTP</div>
+      ${otpUsers.map(u=>`<div class="user-list-item">
+        <div class="uname">${esc(u.nama)} <span style="font-size:11px;color:var(--gray-500)">(${esc(u.nipnrp)})</span></div>
+        <div class="urole">${(u.peranList||[]).join(', ')}</div>
+      </div>`).join('')}
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--gray-600);text-transform:uppercase;margin-bottom:10px">Metode Aktivasi</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer"><input type="radio" name="otpMethod" value="langsung" checked/> 🏢 Datang Langsung ke KPPN</label>
+      <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer"><input type="radio" name="otpMethod" value="online"/> 💻 Online (Upload Dokumen)</label>
+    </div>`;
+  openModal('modalOTP');
+}
+
+function markOTPDone(){
+  const subs=getSubmissions();
+  const idx=subs.findIndex(s=>s.refKode===otpRef);
+  if(idx<0)return;
+  subs[idx].otpDone=true;subs[idx].otpDoneAt=new Date().toISOString();
+  saveSubmissions(subs);closeModal('modalOTP');renderOTPList();renderDashboard();
+  showToast('✅ OTP berhasil ditandai selesai');
+}
+
+// ─── PENGATURAN ───────────────────────────────────────────
+function gantiPassword(){
+  const lama=document.getElementById('s-pwdLama').value;
+  const baru=document.getElementById('s-pwdBaru').value;
+  const konfirm=document.getElementById('s-pwdKonfirm').value;
+  const users=getUsers();
+  const me=users.find(u=>u.user===currentUser.user);
+  if(!me||me.pass!==lama){showToast('Password lama salah',true);return;}
+  if(baru.length<6){showToast('Password baru minimal 6 karakter',true);return;}
+  if(baru!==konfirm){showToast('Konfirmasi password tidak cocok',true);return;}
+  me.pass=baru;saveUsers(users);currentUser.pass=baru;
+  document.getElementById('s-pwdLama').value='';document.getElementById('s-pwdBaru').value='';document.getElementById('s-pwdKonfirm').value='';
+  showToast('✅ Password berhasil diubah');
+}
+
+function clearAllData(){
+  if(!confirm('Hapus semua data submissions? Tindakan ini tidak dapat dibatalkan.'))return;
+  localStorage.removeItem('sakti_submissions');
+  localStorage.removeItem('sakti_drafts_index');
+  showToast('Semua data submission dihapus');
+  renderDashboard();
+}
+
+// ─── UTILS ────────────────────────────────────────────────
+function esc(str){return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+let toastT;
+function showToast(msg,isErr=false){
+  const t=document.getElementById('toast');t.textContent=msg;t.className='on'+(isErr?' err':'');
+  clearTimeout(toastT);toastT=setTimeout(()=>{t.className='';},3500);
+}
+
+function initApp(){
+  renderDashboard();
+  // auto refresh every 60s
+  setInterval(()=>{if(document.getElementById('panel-dashboard').classList.contains('active'))renderDashboard();},60000);
+}
+</script>
+</body>
+</html>
