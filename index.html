@@ -1082,73 +1082,85 @@ async function doGenerateExcel(){
   wb.created = new Date();
 
   const T  = '@';   // numFmt Text
-  const BLUE_FILL   = { type:'pattern', pattern:'solid', fgColor:{argb:'FF6D9EEB'} };
-  const YELLOW_FILL = { type:'pattern', pattern:'solid', fgColor:{argb:'FFFFE598'} };
-  const THIN = { top:{style:'thin',color:{argb:'FF000000'}}, left:{style:'thin',color:{argb:'FF000000'}}, bottom:{style:'thin',color:{argb:'FF000000'}}, right:{style:'thin',color:{argb:'FF000000'}} };
+  // Warna dari file contoh asli (diukur dari byte XML)
+  const DARK_BLUE_FILL = { type:'pattern', pattern:'solid', fgColor:{argb:'FF3C78D8'} }; // header judul
+  const BLUE_FILL      = { type:'pattern', pattern:'solid', fgColor:{argb:'FF6D9EEB'} }; // header tabel
+  const YELLOW_FILL    = { type:'pattern', pattern:'solid', fgColor:{argb:'FFFFE599'} }; // BLU
+  const THIN = {
+    top:   {style:'thin', color:{argb:'FF000000'}},
+    left:  {style:'thin', color:{argb:'FF000000'}},
+    bottom:{style:'thin', color:{argb:'FF000000'}},
+    right: {style:'thin', color:{argb:'FF000000'}},
+  };
+  const THIN_TB = { // border hanya atas-bawah (untuk header judul & level satker)
+    top:   {style:'thin', color:{argb:'FF000000'}},
+    bottom:{style:'thin', color:{argb:'FF000000'}},
+  };
 
   // ── Sheet 1: Form Pendaftaran ─────────────────────────────
   const ws = wb.addWorksheet('Form Pendaftaran');
 
-  // Lebar kolom sesuai contoh asli (diukur dari file contoh)
+  // Lebar kolom SAMA PERSIS dengan file contoh (diukur dari XML)
   ws.columns = [
-    { width:15.3 }, // A — Kode Satker
-    { width:34.4 }, // B — Peran
-    { width:23.9 }, // C — Nama
-    { width:22   }, // D — NIP
-    { width:18.3 }, // E — NPWP
-    { width:23.1 }, // F — NIK
-    { width:27   }, // G — Email
-    { width:22   }, // H — No HP
-    { width:17.9 }, // I — Nomor SK
-    { width:16   }, // J — Tanggal SK
-    { width:17.9 }, // K — Keterangan BLU
+    { width:15.33 }, // A — Kode Satker
+    { width:34.46 }, // B — Peran
+    { width:23.86 }, // C — Nama
+    { width:22    }, // D — NIP
+    { width:18.33 }, // E — NPWP
+    { width:23.13 }, // F — NIK
+    { width:27    }, // G — Email
+    { width:22    }, // H — No HP
+    { width:17.86 }, // I — Nomor SK
+    { width:16    }, // J — Tanggal SK
   ];
 
-  // ── ROW 1: Judul — merge A1:J1, bold, size 24, center ────
+  // ── ROW 1: Judul — merge A1:J1, bold size 24, center, tinggi 30.75 ──
   ws.addRow(['Formulir Pendaftaran Pengguna Aplikasi SAKTI','','','','','','','','','']);
   ws.mergeCells('A1:J1');
-  const r1 = ws.getRow(1);
-  r1.height = 30;
+  ws.getRow(1).height = 30.75;
   const c1A = ws.getCell('A1');
-  c1A.font      = { bold:true, size:24, name:'Calibri' };
+  c1A.font      = { bold:true, size:24, name:'Calibri', color:{argb:'FF000000'} };
   c1A.alignment = { horizontal:'center', vertical:'middle' };
   c1A.numFmt    = T;
 
   // ── ROW 2: kosong ─────────────────────────────────────────
   ws.addRow([]);
-  ws.getRow(2).height = 5;
+  ws.getRow(2).height = 13.5;
 
   // ── ROW 3: Kode Satker ────────────────────────────────────
-  ws.addRow(['Kode Satker', kodeSatker,'','','','','','']);
-  const r3 = ws.getRow(3);
-  r3.getCell(1).font = {bold:true}; r3.getCell(1).numFmt = T;
-  r3.getCell(2).numFmt = T;
+  ws.addRow(['Kode Satker', kodeSatker]);
+  ws.getRow(3).height = 13.5;
+  ws.getCell('A3').numFmt = T;
+  ws.getCell('B3').numFmt = T;
 
   // ── ROW 4: Nama Satker ────────────────────────────────────
-  ws.addRow(['Nama Satker', namaSatker,'','','','','','']);
-  const r4 = ws.getRow(4);
-  r4.getCell(1).font = {bold:true}; r4.getCell(1).numFmt = T;
-  r4.getCell(2).numFmt = T;
+  ws.addRow(['Nama Satker', namaSatker]);
+  ws.getRow(4).height = 13.5;
+  ws.getCell('A4').numFmt = T;
+  ws.getCell('B4').numFmt = T;
 
   // ── ROW 5: kosong ─────────────────────────────────────────
   ws.addRow([]);
-  ws.getRow(5).height = 5;
+  ws.getRow(5).height = 13.5;
 
-  // ── ROW 6: Level Satker — merge A6:J6 ────────────────────
-  ws.addRow(['Level Satker : ' + levelSatker,'','','','','','','','','']);
+  // ── ROW 6: Level Satker — merge A6:J6, bold, dark blue fill ──
+  ws.addRow(['Level Satker','','','','','','','','','']);
   ws.mergeCells('A6:J6');
-  const r6 = ws.getRow(6);
-  r6.getCell(1).font   = { bold:true };
-  r6.getCell(1).numFmt = T;
-  r6.getCell(1).alignment = { vertical:'middle' };
+  ws.getRow(6).height = 13.5;
+  const c6A = ws.getCell('A6');
+  c6A.value     = 'Level Satker';
+  c6A.font      = { bold:true, size:11, name:'Calibri', color:{argb:'FFFFFFFF'} };
+  c6A.fill      = DARK_BLUE_FILL;
+  c6A.alignment = { horizontal:'center', vertical:'middle' };
+  c6A.border    = THIN_TB;
+  c6A.numFmt    = T;
 
-  // ── ROW 7: Header tabel — biru, bold (A:J saja, sesuai contoh) ──
+  // ── ROW 7: Header tabel — biru, bold, border ──────────────
   const hdrCols = ['Kode Satker','Peran','Nama','NIP','NPWP','NIK','E-mail','No. HP','Nomor SK','Tanggal SK'];
   ws.addRow(hdrCols);
-  const r7 = ws.getRow(7);
-  r7.height = 22;
+  ws.getRow(7).height = 13.5;
   hdrCols.forEach((_,ci)=>{
-    const cell = r7.getCell(ci+1);
+    const cell = ws.getRow(7).getCell(ci+1);
     cell.font      = { bold:true, size:11, name:'Calibri' };
     cell.fill      = BLUE_FILL;
     cell.border    = THIN;
@@ -1164,7 +1176,7 @@ async function doGenerateExcel(){
         r.peran,
         u.nama   ||'',
         u.nipnrp ||'',
-        u.nik    ||'',  // NPWP = NIK
+        u.nik    ||'',  // NPWP = NIK (sesuai contoh)
         u.nik    ||'',
         u.email  ||'',
         u.hp     ||'',
@@ -1172,125 +1184,45 @@ async function doGenerateExcel(){
         formatTgl(u.tglsk)||'',
       ];
       const dataRow = ws.addRow(vals);
-      dataRow.height = 18;
+      dataRow.height = 14.25;
       vals.forEach((_,ci)=>{
         const cell = dataRow.getCell(ci+1);
         cell.numFmt    = T;
         cell.border    = THIN;
-        cell.alignment = { wrapText:true, vertical:'middle' };
+        cell.alignment = { wrapText:true, vertical:'top' };
         if(r.blu) cell.fill = YELLOW_FILL;
       });
-      // Kolom K: KHUSUS SATKER BLU jika BLU
-      if(r.blu){
-        const kCell = dataRow.getCell(11);
-        kCell.value  = 'KHUSUS SATKER BLU';
-        kCell.numFmt = T;
-        kCell.fill   = YELLOW_FILL;
-        kCell.border = THIN;
-        kCell.alignment = { vertical:'middle' };
-      }
     });
-  });
-
-  // ── Baris "dst" (baris paling bawah tabel) ───────────────
-  const dstRow = ws.addRow(['dst','','','','','','','','','']);
-  dstRow.getCell(1).numFmt = T;
-  dstRow.getCell(1).border = THIN;
-  for(let ci=2;ci<=10;ci++){ dstRow.getCell(ci).border = THIN; }
-
-  // ── Baris kosong ──────────────────────────────────────────
-  ws.addRow([]); ws.addRow([]); ws.addRow([]);
-
-  // ── Baris pernyataan (teks surat pernyataan) ──────────────
-  const pernyataan = [
-    '1. Saya menyatakan bahwa seluruh data yang diisi pada formulir ini adalah BENAR dan saya mengisinya dalam keadaan sehat, tanpa paksaan dari siapapun atau tanpa ada tekanan dari pihak manapun. Apabila terbukti diketahui sebaliknya di kemudian hari, maka saya bersedia menerima tuntutan di kemudian hari sesuai dengan ketentuan yang berlaku.',
-    '',
-    '2. Semua informasi yang dicantumkan pada formulir ini adalah BENAR dan SAH, serta membebaskan KPPN dari segala tuntutan pihak ketiga baik perdata maupun pidana, sehubungan dengan kesalahan/ketidakbenaran dalam pemberian informasi.',
-    '',
-    '3. Bilamana kemudian hari terdapat tuntutan atas transaksi pengeluaran negara atas beban APBN yang berasal dari data elektonik yang saya terbitkan, maka saya bertanggung jawab penuh atas segala risiko yang timbul.',
-  ];
-  pernyataan.forEach(txt=>{
-    const pr = ws.addRow([txt,'','','','','','','','','']);
-    ws.mergeCells(`A${pr.number}:J${pr.number}`);
-    const cell = pr.getCell(1);
-    cell.numFmt   = T;
-    cell.alignment = { wrapText:true, vertical:'middle' };
-    if(txt) pr.height = txt.length > 200 ? 45 : 30;
   });
 
   // ── Baris kosong ──────────────────────────────────────────
   ws.addRow([]); ws.addRow([]);
 
-  // ── TTD: kota, tanggal ────────────────────────────────────
+  // ── TTD: kota + tanggal di kolom G (sesuai contoh: G13) ──
+  const ttdRowNum1 = ws.rowCount + 1;
   const ttd1 = ws.addRow(['','','','','','',`${kota}, ${tglStr}`]);
-  ttd1.getCell(7).numFmt = T;
-  const ttd2 = ws.addRow(['','','','','','','Kuasa Pengguna Anggaran']);
-  ttd2.getCell(7).numFmt = T;
-  ws.addRow([]); ws.addRow([]); ws.addRow([]);
-  const ttd5 = ws.addRow(['','','','','','',namaKPA]);
-  ttd5.getCell(7).font = {bold:true}; ttd5.getCell(7).numFmt = T;
-  const ttd6 = ws.addRow(['','','','','','',`NIP ${nipKPA}`]);
-  ttd6.getCell(7).numFmt = T;
+  ttd1.getCell(7).numFmt = T; ttd1.height = 13.5;
 
-  // ── Kode Referensi Unik (2 baris di bawah NIP KPA) ───────
-  ws.addRow([]);
-  ws.addRow([]);
-  const refRow = ws.addRow([`Kode Referensi: ${refKode}`]);
+  const ttd2 = ws.addRow(['','','','','','','Kuasa Pengguna Anggaran']);
+  ttd2.getCell(7).numFmt = T; ttd2.height = 13.5;
+
+  // 5 baris kosong untuk TTD
+  for(let i=0;i<5;i++){const er=ws.addRow([]);er.height=13.5;}
+
+  const ttdNama = ws.addRow(['','','','','','',namaKPA]);
+  ttdNama.getCell(7).numFmt = T; ttdNama.height = 13.5;
+
+  const ttdNIP = ws.addRow(['','','','','','',`NIP ${nipKPA}`]);
+  ttdNIP.getCell(7).numFmt = T; ttdNIP.height = 13.5;
+
+  // ── Kode Referensi (2 baris di bawah NIP KPA, italic kecil) ──
+  ws.addRow([]); ws.addRow([]);
+  const refRow = ws.addRow([`Kode Referensi: ${refKode}`,'','','','','','','','','']);
   ws.mergeCells(`A${refRow.number}:J${refRow.number}`);
   refRow.getCell(1).numFmt    = T;
   refRow.getCell(1).font      = { italic:true, size:9, color:{argb:'FF757575'} };
   refRow.getCell(1).alignment = { horizontal:'left' };
-
-  // ── Keterangan ────────────────────────────────────────────
-  ws.addRow([]);
-  const ketData = [
-    ['Keterangan', true],
-    ['*NPWP diisi angka tanpa pemisah simbol', false],
-    ['*E-mail diisi dengan e-mail resmi Kedinasan', false],
-    ['*Tanggal SK diisi dengan format dd-mm-yyyy', false],
-  ];
-  ketData.forEach(([txt, bold])=>{
-    const kr = ws.addRow([txt,'','','','']);
-    ws.mergeCells(`A${kr.number}:E${kr.number}`);
-    kr.getCell(1).numFmt = T;
-    if(bold) kr.getCell(1).font = {bold:true};
-  });
-  const kkr = ws.addRow(['*Untuk contoh pengisian peran lengkap, silakan kunjungi','','','bit.ly/rolesakti']);
-  kkr.getCell(1).numFmt = T;
-  kkr.getCell(4).numFmt = T;
-  ws.addRow([]);
-  const dkm = [
-    ['Dikirimkan HAI berupa :', true],
-    ['* file PDF bertandatangan KPA', false],
-    ['* file excel sebagai lampiran', false],
-    ['* file SK Penetapan Pengguna SAKTI oleh KPA sebagai lampiran', false],
-  ];
-  dkm.forEach(([txt, bold])=>{
-    const dr = ws.addRow([txt,'','','']);
-    ws.mergeCells(`A${dr.number}:C${dr.number}`);
-    dr.getCell(1).numFmt = T;
-    if(bold) dr.getCell(1).font = {bold:true};
-  });
-
-  // ── Sheet 2: Info Referensi (tersembunyi, untuk upload) ───
-  const wsInfo = wb.addWorksheet('Info Referensi');
-  wsInfo.columns = [{ width:24 }, { width:70 }];
-  const tglBuat = formatTglIndo(new Date().toISOString().split('T')[0]);
-  [
-    ['=== INFO REFERENSI — JANGAN DIEDIT ===','', true],
-    ['Nomor Referensi', refKode, false],
-    ['Tanggal Dibuat', tglBuat, false],
-    ['Kode Satker', kodeSatker, false],
-    ['Nama Satker', namaSatker, false],
-    ['Nama KPA', namaKPA, false],
-    ['Status', 'Tahap 1 Selesai — Menunggu Dokumen', false],
-    ['','', false],
-    ['Langkah Selanjutnya', 'Setelah Excel ditandatangani KPA, buka halaman Upload Dokumen dan masukkan Nomor Referensi di atas.', false],
-  ].forEach(([a,b,bold])=>{
-    const ir = wsInfo.addRow([a,b]);
-    ir.getCell(1).numFmt = T; ir.getCell(2).numFmt = T;
-    if(bold) ir.getCell(1).font = {bold:true};
-  });
+  refRow.height = 13.5;
 
   // ── Download ──────────────────────────────────────────────
   const fname = `Form-SAKTI-${kodeSatker}-${refKode}.xlsx`;
