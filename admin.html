@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <style>
 :root{
   --blue:       #0D47A1;
@@ -886,104 +885,32 @@ async function adminDownloadExcel(){
   const nipKPA      = s.nip         ||'';
   const kota        = s.alamat      ||'Jayapura';
   const tglStr      = fmtTglIndoAdmin(s.tanggalDaftar);
+  const refKode     = s.refKode     ||'';
 
-  const T  = '@';
-  const DARK_BLUE_FILL = { type:'pattern', pattern:'solid', fgColor:{argb:'FF3C78D8'} };
-  const BLUE_FILL      = { type:'pattern', pattern:'solid', fgColor:{argb:'FF6D9EEB'} };
-  const YELLOW_FILL    = { type:'pattern', pattern:'solid', fgColor:{argb:'FFFFE599'} };
-  const THIN = { top:{style:'thin',color:{argb:'FF000000'}}, left:{style:'thin',color:{argb:'FF000000'}}, bottom:{style:'thin',color:{argb:'FF000000'}}, right:{style:'thin',color:{argb:'FF000000'}} };
-  const THIN_TB = { top:{style:'thin',color:{argb:'FF000000'}}, bottom:{style:'thin',color:{argb:'FF000000'}} };
-
-  const wb = new ExcelJS.Workbook();
-  wb.creator = 'SAKTI KPPN Jayapura - Admin';
-  wb.created = new Date();
-
-  const ws = wb.addWorksheet('Form Pendaftaran');
-  ws.columns = [
-    {width:15.33},{width:34.46},{width:23.86},{width:22},
-    {width:18.33},{width:23.13},{width:27},{width:22},
-    {width:17.86},{width:16},
-  ];
-
-  // Row 1: Judul
-  ws.addRow(['Formulir Pendaftaran Pengguna Aplikasi SAKTI','','','','','','','','','']);
-  ws.mergeCells('A1:J1');
-  ws.getRow(1).height=30.75;
-  const c1=ws.getCell('A1');
-  c1.font={bold:true,size:24,name:'Calibri',color:{argb:'FF000000'}};
-  c1.alignment={horizontal:'center',vertical:'middle'};c1.numFmt=T;
-
-  // Row 2: kosong
-  ws.addRow([]);ws.getRow(2).height=13.5;
-
-  // Row 3: Kode Satker
-  ws.addRow(['Kode Satker',kodeSatker]);
-  ws.getRow(3).height=13.5;ws.getCell('A3').numFmt=T;ws.getCell('B3').numFmt=T;
-
-  // Row 4: Nama Satker
-  ws.addRow(['Nama Satker',namaSatker]);
-  ws.getRow(4).height=13.5;ws.getCell('A4').numFmt=T;ws.getCell('B4').numFmt=T;
-
-  // Row 5: kosong
-  ws.addRow([]);ws.getRow(5).height=13.5;
-
-  // Row 6: Level Satker — dark blue, putih, center
-  ws.addRow(['Level Satker','','','','','','','','','']);
-  ws.mergeCells('A6:J6');
-  ws.getRow(6).height=13.5;
-  const c6=ws.getCell('A6');
-  c6.value='Level Satker';
-  c6.font={bold:true,size:11,name:'Calibri',color:{argb:'FFFFFFFF'}};
-  c6.fill=DARK_BLUE_FILL;c6.alignment={horizontal:'center',vertical:'middle'};
-  c6.border=THIN_TB;c6.numFmt=T;
-
-  // Row 7: Header tabel
-  const hdr=['Kode Satker','Peran','Nama','NIP','NPWP','NIK','E-mail','No. HP','Nomor SK','Tanggal SK'];
-  ws.addRow(hdr);ws.getRow(7).height=13.5;
-  hdr.forEach((_,ci)=>{
-    const cell=ws.getRow(7).getCell(ci+1);
-    cell.font={bold:true,size:11,name:'Calibri'};cell.fill=BLUE_FILL;
-    cell.border=THIN;cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};cell.numFmt=T;
-  });
-
-  // Row 8+: Data
-  users.forEach(u=>{
-    buildExcelRowsAdmin(u).forEach(r=>{
-      const vals=[kodeSatker,r.peran,u.nama||'',u.nipnrp||'',u.nik||'',u.nik||'',u.email||'',u.hp||'',u.sk||'',fmtTglExcel(u.tglsk)];
-      const dr=ws.addRow(vals);dr.height=14.25;
-      vals.forEach((_,ci)=>{
-        const cell=dr.getCell(ci+1);cell.numFmt=T;cell.border=THIN;
-        cell.alignment={wrapText:true,vertical:'top'};
-        if(r.blu)cell.fill=YELLOW_FILL;
-      });
+  showToast('⏳ Membuat Excel, mohon tunggu...');
+  try {
+    const res = await apiPost({
+      action: 'generateExcel',
+      kodeSatker, namaSatker, levelSatker,
+      namaKpa: namaKPA, nip: nipKPA,
+      kota, tglStr, refKode,
+      users: users.map(u=>({
+        nama:u.nama||'', nipnrp:u.nipnrp||'', nik:u.nik||'',
+        email:u.email||'', hp:u.hp||'', sk:u.sk||'',
+        tglsk:fmtTglExcel(u.tglsk)||'', peranList:u.peranList||[]
+      }))
     });
-  });
-
-  // Baris kosong
-  ws.addRow([]);ws.addRow([]);
-
-  // TTD
-  const t1=ws.addRow(['','','','','','',`${kota}, ${tglStr}`]);t1.getCell(7).numFmt=T;t1.height=13.5;
-  const t2=ws.addRow(['','','','','','','Kuasa Pengguna Anggaran']);t2.getCell(7).numFmt=T;t2.height=13.5;
-  for(let i=0;i<5;i++){const er=ws.addRow([]);er.height=13.5;}
-  const t5=ws.addRow(['','','','','','',namaKPA]);t5.getCell(7).numFmt=T;t5.height=13.5;
-  const t6=ws.addRow(['','','','','','',`NIP ${nipKPA}`]);t6.getCell(7).numFmt=T;t6.height=13.5;
-
-  // Kode Referensi (2 baris di bawah NIP KPA)
-  ws.addRow([]);ws.addRow([]);
-  const refRow=ws.addRow([`Kode Referensi: ${s.refKode}`,'','','','','','','','','']);
-  ws.mergeCells(`A${refRow.number}:J${refRow.number}`);
-  refRow.getCell(1).numFmt=T;refRow.getCell(1).font={italic:true,size:9,color:{argb:'FF757575'}};
-  refRow.getCell(1).alignment={horizontal:'left'};refRow.height=13.5;
-
-  // Download
-  const fname=`Form-SAKTI-${kodeSatker}-${s.refKode}.xlsx`;
-  const buffer=await wb.xlsx.writeBuffer();
-  const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download=fname;a.click();
-  URL.revokeObjectURL(url);
-  showToast('✅ Excel berhasil diunduh: '+fname);
+    if(!res||!res.success) throw new Error((res&&res.message)||'Server tidak merespons');
+    const fname = res.fileName || `Form-SAKTI-${kodeSatker}-${refKode}.xlsx`;
+    const bytes = Uint8Array.from(atob(res.fileBase64), c=>c.charCodeAt(0));
+    const blob  = new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement('a'); a.href=url; a.download=fname; a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ Excel berhasil diunduh: '+fname);
+  } catch(e) {
+    showToast('❌ Gagal buat Excel: '+e.message, true);
+  }
 }
 
 // ─── OTP LIST ─────────────────────────────────────────────
