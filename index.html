@@ -1,1501 +1,826 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Pendaftaran Pengguna SAKTI — KPPN Jayapura</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
-<style>
-:root{
-  --blue:       #0D47A1;
-  --blue-mid:   #1565C0;
-  --blue-light: #1976D2;
-  --blue-pale:  #E3F2FD;
-  --blue-pale2: #BBDEFB;
-  --gold:       #F9A825;
-  --gold-light: #FFF8E1;
-  --green:      #2E7D32;
-  --green-pale: #E8F5E9;
-  --red:        #C62828;
-  --red-pale:   #FFEBEE;
-  --gray-50:    #FAFAFA;
-  --gray-100:   #F5F5F5;
-  --gray-200:   #EEEEEE;
-  --gray-300:   #E0E0E0;
-  --gray-400:   #BDBDBD;
-  --gray-500:   #9E9E9E;
-  --gray-600:   #757575;
-  --gray-700:   #616161;
-  --gray-800:   #424242;
-  --gray-900:   #212121;
-  --radius:     8px;
-  --shadow:     0 1px 4px rgba(0,0,0,.10),0 2px 12px rgba(0,0,0,.06);
-  --shadow-lg:  0 4px 24px rgba(0,0,0,.13);
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',sans-serif;background:var(--gray-100);color:var(--gray-900);min-height:100vh;font-size:14px;line-height:1.5}
-a{color:var(--blue-light);text-decoration:none}
-a:hover{text-decoration:underline}
-code{font-family:monospace;font-size:13px}
-
-/* HEADER */
-header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
-.header-top{display:flex;align-items:center;gap:16px;padding:14px 32px;border-bottom:3px solid var(--gold)}
-.header-logo{width:56px;height:56px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.header-logo img{width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
-.header-titles{flex:1}
-.header-inst{font-size:11px;font-weight:500;opacity:.75;text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px}
-.header-main{font-size:18px;font-weight:800;line-height:1.25}
-.header-sub{font-size:11px;opacity:.7;margin-top:2px}
-.header-nav{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0}
-.btn-nav{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:var(--radius);padding:7px 14px;font-size:12px;font-weight:500;cursor:pointer;text-decoration:none;transition:background .15s;white-space:nowrap;font-family:'Inter',sans-serif}
-.btn-nav:hover{background:rgba(255,255,255,.22);text-decoration:none}
-
-/* PROGRESS */
-.progress-wrap{background:#fff;border-bottom:1px solid var(--gray-200);padding:14px 32px}
-.progress-steps{display:flex;align-items:center;max-width:560px;margin:0 auto}
-.ps{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:600;white-space:nowrap}
-.ps-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;border:2px solid transparent}
-.ps.active  .ps-num{background:var(--blue);color:#fff;border-color:var(--blue)}
-.ps.done    .ps-num{background:var(--green);color:#fff;border-color:var(--green)}
-.ps.inactive .ps-num{background:#fff;color:var(--gray-400);border-color:var(--gray-300)}
-.ps.active   .ps-label{color:var(--blue);font-weight:700}
-.ps.done     .ps-label{color:var(--green)}
-.ps.inactive .ps-label{color:var(--gray-400)}
-.ps-line{flex:1;height:2px;background:var(--gray-300);margin:0 10px;min-width:30px}
-.ps-line.done{background:var(--green)}
-
-/* LAYOUT */
-.container{max-width:960px;margin:28px auto;padding:0 20px 72px}
-
-/* CARD */
-.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 28px;margin-bottom:20px;border:1px solid var(--gray-200)}
-.card-title{font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.6px;padding-bottom:12px;margin-bottom:18px;border-bottom:2px solid var(--blue-pale);display:flex;align-items:center;gap:8px}
-
-/* FORM */
-.form-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
-.form-group{display:flex;flex-direction:column;flex:1;min-width:180px}
-.form-group label{font-size:11px;font-weight:600;color:var(--gray-700);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
-.form-group input,.form-group select{border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 12px;font-size:13px;color:var(--gray-900);background:#fff;font-family:'Inter',sans-serif;transition:border-color .15s,box-shadow .15s}
-.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(25,118,210,.12)}
-.form-group input.err{border-color:var(--red)!important}
-.err-msg{font-size:11px;color:var(--red);margin-top:4px;display:none}
-.has-err .err-msg{display:block}
-.hint{font-size:11px;color:var(--gray-500);margin-top:4px}
-
-/* BOXES */
-.info-box{background:var(--blue-pale);border:1px solid var(--blue-pale2);border-radius:var(--radius);padding:12px 16px;font-size:12.5px;color:var(--blue);margin-bottom:18px;line-height:1.7}
-.info-box ul{padding-left:18px;margin-top:6px}
-.info-box li{margin-bottom:3px}
-.warn-box{background:var(--gold-light);border:1px solid #FFE082;border-radius:var(--radius);padding:10px 14px;font-size:12px;color:#5D4037;margin-top:8px;line-height:1.7;display:none}
-.warn-box.on{display:block}
-.warn-box div+div{margin-top:5px;padding-top:5px;border-top:1px dashed #FFE082}
-
-/* BUTTONS */
-.btn{cursor:pointer;border:none;border-radius:var(--radius);padding:9px 18px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:7px;transition:background .15s,box-shadow .15s,transform .1s;font-family:'Inter',sans-serif;white-space:nowrap}
-.btn:active{transform:scale(.97)}
-.btn-primary{background:var(--blue-light);color:#fff}
-.btn-primary:hover{background:var(--blue-mid)}
-.btn-success{background:var(--green);color:#fff;font-size:14px;padding:11px 24px}
-.btn-success:hover{background:#1B5E20}
-.btn-danger{background:#fff;color:var(--red);border:1.5px solid var(--red);padding:7px 13px;font-size:12px}
-.btn-danger:hover{background:var(--red-pale)}
-.btn-secondary{background:var(--gray-600);color:#fff}
-.btn-secondary:hover{background:var(--gray-800)}
-.btn-outline{background:#fff;color:var(--blue-light);border:1.5px solid var(--blue-light);padding:7px 14px;font-size:12px}
-.btn-outline:hover{background:var(--blue-pale)}
-.btn-add-user{background:var(--blue-pale);color:var(--blue);border:2px dashed var(--blue-pale2);font-size:13px;padding:11px 20px;width:100%;border-radius:var(--radius);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:background .15s}
-.btn-add-user:hover{background:var(--blue-pale2)}
-
-/* USER CARD */
-.user-card{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px 20px;margin-bottom:12px}
-.user-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
-.user-card-num{font-size:13px;font-weight:700;color:var(--blue)}
-.user-card-actions{display:flex;gap:8px}
-
-/* PERAN */
-.peran-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px;margin-top:8px}
-.peran-item{display:flex;align-items:flex-start;gap:9px;padding:8px 11px;border-radius:var(--radius);border:1.5px solid var(--gray-300);background:#fff;cursor:pointer;transition:border-color .12s,background .12s}
-.peran-item:hover:not(.disabled){border-color:var(--blue-light);background:var(--blue-pale)}
-.peran-item.checked{border-color:var(--blue);background:var(--blue-pale)}
-.peran-item.disabled{opacity:.38;cursor:not-allowed;background:var(--gray-100)}
-.peran-item input[type=checkbox]{margin-top:2px;accent-color:var(--blue);width:15px;height:15px;flex-shrink:0}
-.peran-item-label{font-size:12px;line-height:1.4}
-.peran-item-label .kode{font-size:10px;color:var(--gray-500);font-family:monospace}
-.peran-group-title{font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.6px;margin:12px 0 6px;border-bottom:1px solid var(--gray-200);padding-bottom:5px}
-
-/* BADGES */
-.kb{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:inline-block;white-space:nowrap;margin:1px}
-.kb-A{background:#FFEBEE;color:#B71C1C}
-.kb-V{background:#E8F5E9;color:#1B5E20}
-.kb-O{background:#E3F2FD;color:#0D47A1}
-.kb-Ad{background:var(--gray-800);color:#fff}
-.kb-M{background:#FFF3E0;color:#E65100}
-
-/* MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9000;opacity:0;pointer-events:none;transition:opacity .2s}
-.modal-overlay.on{opacity:1;pointer-events:all}
-.modal-box{background:#fff;border-radius:12px;padding:28px 28px 24px;max-width:520px;width:92%;box-shadow:var(--shadow-lg);transform:translateY(18px);transition:transform .2s;max-height:92vh;overflow-y:auto}
-.modal-overlay.on .modal-box{transform:translateY(0)}
-.modal-box.wide{max-width:780px}
-.modal-title{font-size:16px;font-weight:700;color:var(--blue);margin-bottom:14px}
-.modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:20px}
-
-/* REF BOX */
-.ref-box{background:var(--blue);border-radius:10px;padding:22px;text-align:center;margin:16px 0}
-.ref-box .ref-label{color:rgba(255,255,255,.75);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
-.ref-box .ref-kode{color:#fff;font-size:22px;font-weight:800;letter-spacing:2px;font-family:monospace}
-.ref-box .ref-copy{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer;margin-top:10px;display:inline-block;font-family:'Inter',sans-serif;transition:background .15s}
-.ref-box .ref-copy:hover{background:rgba(255,255,255,.25)}
-
-/* ERROR PANEL */
-.error-panel{background:var(--red-pale);border:1px solid #EF9A9A;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:12px;color:#7f1d1d;display:none}
-.error-panel ul{padding-left:16px;margin-top:6px}
-.error-panel li{margin-bottom:3px}
-
-/* TOAST */
-#toast{position:fixed;bottom:24px;right:24px;background:var(--green);color:#fff;padding:11px 20px;border-radius:var(--radius);font-size:13px;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(14px);transition:opacity .3s,transform .3s;z-index:9999;max-width:320px;font-family:'Inter',sans-serif}
-#toast.on{opacity:1;transform:translateY(0)}
-#toast.err{background:var(--red)}
-
-@media(max-width:640px){
-  .card{padding:16px}
-  .header-top{padding:12px 16px;flex-wrap:wrap}
-  .peran-grid{grid-template-columns:1fr}
-  .progress-wrap{padding:12px 16px}
-  .container{padding:0 12px 60px}
-}
-</style>
-</head>
-<body>
-
-<header>
-  <div class="header-top">
-    <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
-      <div class="header-logo"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MjAgMjAwIiB3aWR0aD0iNTIwIiBoZWlnaHQ9IjIwMCI+CiAgPCEtLSBTd29vc2gga3VuaW5nIC0tPgogIDxwYXRoIGQ9Ik0gMzEwIDEwIFEgNDgwIDAgNTEwIDgwIFEgNDkwIDIwIDMyMCAzNSBaIiBmaWxsPSIjRjlBODI1IiBvcGFjaXR5PSIwLjk1Ii8+CiAgPHBhdGggZD0iTSAzMTUgMTUgUSA1MDUgNSA1MTUgOTAgUSA1MTAgMzAgMzI1IDQyIFoiIGZpbGw9IiNGOUE4MjUiLz4KICA8IS0tIEFyYyBrdW5pbmcgYmVzYXIgLS0+CiAgPHBhdGggZD0iTSAyOTUgOCBDIDQyMCAtNSA1MjAgNTAgNTE1IDEzMCBDIDUxMCA3MCA0MTUgMjAgMzAwIDMwIFoiIGZpbGw9IiNGOUE4MjUiLz4KICA8cGF0aCBkPSJNIDMwMCA1IEMgNDQwIC04IDUyNSA1NSA1MjAgMTQwIiBzdHJva2U9IiNGOUE4MjUiIHN0cm9rZS13aWR0aD0iMTgiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgoKICA8IS0tIEh1cnVmIEsgLSBiaXJ1IC0tPgogIDx0ZXh0IHg9IjE4IiB5PSIxNDgiIGZvbnQtZmFtaWx5PSJBcmlhbCBCbGFjaywgSW1wYWN0LCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEzOCIgZm9udC13ZWlnaHQ9IjkwMCIKICAgIGZpbGw9IiMyOUI2RjYiIGZvbnQtc3R5bGU9Iml0YWxpYyIgbGV0dGVyLXNwYWNpbmc9Ii0yIj5LPC90ZXh0PgoKICA8IS0tIEh1cnVmIFAgcGVydGFtYSAtIGJpcnUgLS0+CiAgPHRleHQgeD0iMTA4IiB5PSIxNDgiIGZvbnQtZmFtaWx5PSJBcmlhbCBCbGFjaywgSW1wYWN0LCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEzOCIgZm9udC13ZWlnaHQ9IjkwMCIKICAgIGZpbGw9IiMyOUI2RjYiIGZvbnQtc3R5bGU9Iml0YWxpYyIgbGV0dGVyLXNwYWNpbmc9Ii0yIj5QPC90ZXh0PgoKICA8IS0tIEh1cnVmIFAga2VkdWEgLSBrdW5pbmcgKG92ZXJsYXApIC0tPgogIDx0ZXh0IHg9IjE5OCIgeT0iMTQ4IiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssIEltcGFjdCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMzgiIGZvbnQtd2VpZ2h0PSI5MDAiCiAgICBmaWxsPSIjRjlBODI1IiBmb250LXN0eWxlPSJpdGFsaWMiIGxldHRlci1zcGFjaW5nPSItMiI+UDwvdGV4dD4KCiAgPCEtLSBIdXJ1ZiBOIC0gYmlydSAtLT4KICA8dGV4dCB4PSIyODgiIHk9IjE0OCIgZm9udC1mYW1pbHk9IkFyaWFsIEJsYWNrLCBJbXBhY3QsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTM4IiBmb250LXdlaWdodD0iOTAwIgogICAgZmlsbD0iIzI5QjZGNiIgZm9udC1zdHlsZT0iaXRhbGljIiBsZXR0ZXItc3BhY2luZz0iLTIiPk48L3RleHQ+CgogIDwhLS0gVGVrcyBKQVlBUFVSQSAtLT4KICA8dGV4dCB4PSIyMTAiIHk9IjE4OCIgZm9udC1mYW1pbHk9IkFyaWFsIEJsYWNrLCBJbXBhY3QsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMzIiIGZvbnQtd2VpZ2h0PSI5MDAiCiAgICBmaWxsPSIjMjlCNkY2IiBmb250LXN0eWxlPSJpdGFsaWMiIGxldHRlci1zcGFjaW5nPSI0Ij5KQVlBUFVSQTwvdGV4dD4KPC9zdmc+Cg==" alt="Logo KPPN Jayapura"/></div>
-      <div class="header-titles">
-        <div class="header-inst">Kantor Pelayanan Perbendaharaan Negara</div>
-        <div class="header-main">KPPN Jayapura</div>
-        <div class="header-sub">Direktorat Jenderal Perbendaharaan — Pendaftaran Pengguna SAKTI</div>
-      </div>
-    </div>
-    <div class="header-nav">
-      <button class="btn-nav" onclick="openModal('modalPanggilRekaman')" style="cursor:pointer;border:none;background:transparent">🔍 Panggil Rekaman</button>
-      <a href="upload.html" class="btn-nav">📎 Upload Dokumen</a>
-      <a href="admin.html" class="btn-nav">🔐 Admin</a>
-    </div>
-  </div>
-</header>
-
-<div class="progress-wrap">
-  <div class="progress-steps">
-    <div class="ps active">
-      <div class="ps-num">1</div>
-      <span class="ps-label">Isi Data &amp; Unduh Excel</span>
-    </div>
-    <div class="ps-line"></div>
-    <div class="ps inactive">
-      <div class="ps-num">2</div>
-      <span class="ps-label">Upload Dokumen</span>
-    </div>
-    <div class="ps-line"></div>
-    <div class="ps inactive">
-      <div class="ps-num">3</div>
-      <span class="ps-label">Selesai</span>
-    </div>
-  </div>
-</div>
-
-<div class="container">
-
-  <div class="info-box">
-    <strong>📋 Tahap 1 dari 2 — Isi Data &amp; Unduh Excel</strong>
-    <ul>
-      <li>Isi data satker, data KPA, dan daftar user yang akan didaftarkan ke SAKTI.</li>
-      <li>Centang peran setiap user. Peran yang bertentangan dinonaktifkan otomatis.</li>
-      <li>Klik <strong>"Unduh Excel &amp; Dapatkan Kode Referensi"</strong> → file Excel terunduh + kode referensi unik muncul.</li>
-      <li>Setelah Excel ditandatangani KPA, buka <a href="upload.html"><strong>halaman Upload Dokumen</strong></a> dan masukkan kode referensi tersebut.</li>
-    </ul>
-  </div>
-
-  <div class="card">
-    <div class="card-title">📋 Data Satker</div>
-    <div class="form-row">
-      <div class="form-group" id="fg-kodeSatker" style="position:relative">
-        <label>Kode Satker <span style="color:var(--red)">*</span></label>
-        <input type="text" id="kodeSatker" placeholder="Ketik 6 digit / nama satker..." maxlength="6"
-          oninput="onKodeSatkerInput(this)" onblur="hideSatkerDrop()" autocomplete="off"
-          style="font-family:monospace;letter-spacing:1px"/>
-        <div id="satkerDrop" style="display:none;position:absolute;z-index:999;background:#fff;border:1px solid var(--gray-300);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);max-height:220px;overflow-y:auto;width:100%;top:100%;left:0"></div>
-        <span class="err-msg" id="kodeSatkerErr">Kode satker wajib diisi (6 digit angka)</span>
-      </div>
-      <div class="form-group" id="fg-namaSatker">
-        <label>Nama Satker <span style="color:var(--red)">*</span></label>
-        <input type="text" id="namaSatker" placeholder="Otomatis terisi saat pilih kode satker"/>
-        <span class="err-msg">Nama satker wajib diisi</span>
-      </div>
-      <div class="form-group">
-        <label>Level Satker</label>
-        <input type="text" id="levelSatker" value="Satker" placeholder="Satker"/>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">🏛️ Data KPA (Penandatangan)</div>
-    <div class="form-row">
-      <div class="form-group" id="fg-namaKPA">
-        <label>Nama KPA <span style="color:var(--red)">*</span></label>
-        <input type="text" id="namaKPA" placeholder="Nama lengkap KPA"/>
-        <span class="err-msg">Nama KPA wajib diisi</span>
-      </div>
-      <div class="form-group" id="fg-nipKPA">
-        <label>NIP KPA <span style="color:var(--red)">*</span></label>
-        <input type="text" id="nipKPA" placeholder="Contoh: 199001012020011001" maxlength="18"/>
-        <span class="err-msg">NIP KPA wajib diisi</span>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Kota / Tempat</label>
-        <input type="text" id="kotaTTD" placeholder="Contoh: Jayapura"/>
-      </div>
-      <div class="form-group">
-        <label>Tanggal Surat</label>
-        <input type="text" id="tanggalSurat" placeholder="dd/mm/yyyy" maxlength="10"
-          oninput="formatDateInput(this)" style="font-family:monospace;letter-spacing:1px"/>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">👥 Daftar User yang Didaftarkan</div>
-    <div id="userList"></div>
-    <button class="btn-add-user" onclick="addUser()">+ Tambah User Baru</button>
-  </div>
-
-  <div class="card">
-    <div class="card-title">📥 Unduh Excel</div>
-    <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">
-      Setelah semua data terisi, klik tombol di bawah. File Excel akan terunduh dan Anda akan mendapat
-      <strong>kode referensi unik</strong> untuk melanjutkan upload dokumen di Tahap 2.
-    </p>
-    <div class="error-panel" id="errPanel"><strong>⚠️ Harap perbaiki:</strong><ul id="errList"></ul></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-success" onclick="trySubmit()">⬇️ Unduh Excel &amp; Dapatkan Kode Referensi</button>
-      <button class="btn btn-secondary" onclick="resetForm()">↺ Reset Form</button>
-    </div>
-  </div>
-
-</div>
-
-<!-- MODAL PERNYATAAN -->
-<div class="modal-overlay" id="modalPernyataan">
-  <div class="modal-box">
-    <div class="modal-title">📜 Pernyataan Kebenaran Data</div>
-    <p style="font-size:13px;color:var(--gray-600);line-height:1.7;margin-bottom:12px">Dengan mengklik <strong>Setuju</strong>, saya menyatakan bahwa:</p>
-    <div style="background:var(--blue-pale);border-left:4px solid var(--blue);padding:12px 14px;border-radius:0 6px 6px 0;font-size:13px;font-style:italic;color:var(--blue);line-height:1.7;margin-bottom:12px">
-      "Saya menyatakan bahwa semua data yang diisi dalam formulir ini adalah benar dan dapat dipertanggungjawabkan.
-      Saya tunduk pada ketentuan perundang-undangan yang berlaku terkait penggunaan Aplikasi SAKTI."
-    </div>
-    <p style="font-size:12px;color:var(--gray-600)">Data palsu dapat mengakibatkan penolakan pendaftaran dan/atau tindakan administratif.</p>
-    <div class="modal-actions">
-      <button class="btn btn-danger" onclick="closeModal('modalPernyataan')">Tidak Setuju</button>
-      <button class="btn btn-success" onclick="doGenerateExcel()">✅ Setuju &amp; Unduh Excel</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL SUKSES -->
-<div class="modal-overlay" id="modalSukses">
-  <div class="modal-box">
-    <div class="modal-title">🎉 Excel Berhasil Diunduh!</div>
-    <p style="font-size:13px;color:var(--gray-600);line-height:1.7">File Excel berhasil diunduh. Selanjutnya:</p>
-    <ol style="font-size:13px;color:var(--gray-700);padding-left:20px;margin:10px 0;line-height:2.1">
-      <li>Cetak file Excel, minta tanda tangan KPA</li>
-      <li>Scan kembali ke PDF</li>
-      <li>Kumpulkan semua dokumen pendukung</li>
-      <li>Buka halaman <strong>Upload Dokumen</strong> dan masukkan kode referensi di bawah</li>
-    </ol>
-    <p style="font-size:12px;color:var(--red);font-weight:600;margin-bottom:6px">⚠️ Simpan kode ini! Diperlukan untuk melanjutkan ke Tahap 2.</p>
-    <div class="ref-box">
-      <div class="ref-label">Kode Referensi Anda</div>
-      <div class="ref-kode" id="refKodeDisplay">00000000-000000-00</div>
-      <div class="ref-copy" onclick="copyRefKode()">📋 Salin Kode</div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modalSukses')">Tutup</button>
-      <a href="upload.html" class="btn btn-primary" id="btnKeUpload">📎 Lanjut ke Upload Dokumen →</a>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL EDIT USER -->
-<div class="modal-overlay" id="modalEdit">
-  <div class="modal-box wide">
-    <div class="modal-title">✏️ Edit Data User</div>
-    <div id="editModalBody"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modalEdit')">Batal</button>
-      <button class="btn btn-primary" onclick="saveEdit()">💾 Simpan Perubahan</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL PANGGIL REKAMAN -->
-<div class="modal-overlay" id="modalPanggilRekaman">
-  <div class="modal-box">
-    <div class="modal-title">🔍 Panggil Rekaman</div>
-    <p style="font-size:13px;color:var(--gray-600);line-height:1.7;margin-bottom:14px">
-      Masukkan kode referensi unik dari pendaftaran sebelumnya untuk memuat kembali data dan melakukan perbaikan.
-      <br/><strong style="color:var(--red)">⚠️ Hanya bisa diubah selama belum ditandai "Terdaftar di SAKTI" oleh petugas KPPN.</strong>
-    </p>
-    <div class="form-group">
-      <label>Kode Referensi</label>
-      <input type="text" id="inputPanggilRef" placeholder="Contoh: 432432-20042026-432432-01" style="font-family:monospace;letter-spacing:1px" onkeydown="if(event.key==='Enter')doPanggilRekaman()"/>
-    </div>
-    <div id="panggilErr" style="display:none;background:var(--red-pale);border:1px solid var(--red);border-radius:6px;padding:10px 14px;font-size:13px;color:var(--red);margin-top:8px"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modalPanggilRekaman')">Batal</button>
-      <button class="btn btn-primary" id="btnPanggilLoad" onclick="doPanggilRekaman()">🔍 Muat Rekaman</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast"></div>
-
-<script>
-// ─── DATA SATKER REFERENSI ────────────────────────────────
-const SATKER_REF = [
-  {kode:'000001',nama:'BPS KABUPATEN JAYAPURA'},
-  {kode:'000977',nama:'BADAN PUSAT STATISTIK KABUPATEN YAPEN'},
-  {kode:'000979',nama:'BPS KAB. KEPULAUAN YAPEN'},
-  {kode:'001278',nama:'KPP PRATAMA JAYAPURA'},
-  {kode:'001279',nama:'KPP PRATAMA SENTANI'},
-  {kode:'001280',nama:'KPP PRATAMA NABIRE'},
-  {kode:'001281',nama:'KPP PRATAMA BIAK'},
-  {kode:'001282',nama:'KPP PRATAMA SERUI'},
-  {kode:'001283',nama:'KPP PRATAMA MERAUKE'},
-  {kode:'001284',nama:'KPPBC TYPE MADYA PABEAN JAYAPURA'},
-  {kode:'001285',nama:'KPPBC TYPE PRATAMA BIAK'},
-  {kode:'001286',nama:'KPPBC TYPE PRATAMA MERAUKE'},
-  {kode:'002070',nama:'KPPN JAYAPURA'},
-  {kode:'002071',nama:'KPPN BIAK'},
-  {kode:'002072',nama:'KPPN NABIRE'},
-  {kode:'002073',nama:'KPPN SERUI'},
-  {kode:'002074',nama:'KPPN MERAUKE'},
-  {kode:'002075',nama:'KPPN TIMIKA'},
-  {kode:'002076',nama:'KPPN WAMENA'},
-  {kode:'002077',nama:'KPPN OKSIBIL'},
-  {kode:'002078',nama:'KPPN SARMI'},
-  {kode:'002079',nama:'KPPN ARSO'},
-  {kode:'003301',nama:'KANTOR PELAYANAN PERBENDAHARAAN NEGARA DEKAI'},
-  {kode:'003302',nama:'KPPN AGATS'},
-  {kode:'007408',nama:'PENGADILAN NEGERI JAYAPURA'},
-  {kode:'007409',nama:'PENGADILAN NEGERI BIAK'},
-  {kode:'007410',nama:'PENGADILAN NEGERI SERUI'},
-  {kode:'007411',nama:'PENGADILAN NEGERI WAMENA'},
-  {kode:'007412',nama:'PENGADILAN NEGERI MERAUKE'},
-  {kode:'007413',nama:'PENGADILAN NEGERI ABEPURA'},
-  {kode:'007414',nama:'PENGADILAN NEGERI NABIRE'},
-  {kode:'007415',nama:'PENGADILAN NEGERI TIMIKA'},
-  {kode:'007416',nama:'PENGADILAN NEGERI SENTANI'},
-  {kode:'007417',nama:'PENGADILAN NEGERI OKSIBIL'},
-  {kode:'007418',nama:'PENGADILAN NEGERI SARMI'},
-  {kode:'007419',nama:'PENGADILAN NEGERI DEPAPRE'},
-  {kode:'007521',nama:'PENGADILAN TINGGI PAPUA'},
-  {kode:'018003',nama:'KOMISI PEMILIHAN UMUM KABUPATEN JAYAPURA'},
-  {kode:'018004',nama:'KPU KABUPATEN KEPULAUAN YAPEN'},
-  {kode:'018005',nama:'KPU KABUPATEN BIAK NUMFOR'},
-  {kode:'018006',nama:'KPU KABUPATEN MERAUKE'},
-  {kode:'018007',nama:'KPU KABUPATEN NABIRE'},
-  {kode:'018008',nama:'KPU KABUPATEN PEGUNUNGAN BINTANG'},
-  {kode:'018009',nama:'KPU KOTA JAYAPURA'},
-  {kode:'018010',nama:'KPU KABUPATEN JAYAWIJAYA'},
-  {kode:'018011',nama:'KPU KABUPATEN PANIAI'},
-  {kode:'018012',nama:'KPU KABUPATEN PUNCAK JAYA'},
-  {kode:'018013',nama:'KPU KABUPATEN MIMIKA'},
-  {kode:'018014',nama:'KPU KABUPATEN SARMI'},
-  {kode:'018015',nama:'KPU KABUPATEN SUPIORI'},
-  {kode:'018016',nama:'KPU KABUPATEN MAMBERAMO RAYA'},
-  {kode:'018017',nama:'KPU KABUPATEN WAROPEN'},
-  {kode:'018018',nama:'KPU KABUPATEN MAMBERAMO TENGAH'},
-  {kode:'018019',nama:'KPU KABUPATEN LANNY JAYA'},
-  {kode:'018020',nama:'KPU KABUPATEN NDUGA'},
-  {kode:'018021',nama:'KPU KABUPATEN PUNCAK'},
-  {kode:'018022',nama:'KPU KABUPATEN DOGIYAI'},
-  {kode:'018023',nama:'KPU KABUPATEN INTAN JAYA'},
-  {kode:'018024',nama:'KPU KABUPATEN DEIYAI'},
-  {kode:'018025',nama:'KPU KABUPATEN YALIMO'},
-  {kode:'018026',nama:'KPU KABUPATEN MAPPI'},
-  {kode:'018027',nama:'KPU KABUPATEN BOVEN DIGOEL'},
-  {kode:'018028',nama:'KPU KABUPATEN ASMAT'},
-  {kode:'018029',nama:'KPU PROVINSI PAPUA'},
-  {kode:'018030',nama:'KPU KABUPATEN KEEROM'},
-  {kode:'019001',nama:'BAWASLU KABUPATEN JAYAPURA'},
-  {kode:'019002',nama:'BAWASLU KABUPATEN KEPULAUAN YAPEN'},
-  {kode:'019003',nama:'BAWASLU KABUPATEN BIAK NUMFOR'},
-  {kode:'019004',nama:'BAWASLU KABUPATEN MERAUKE'},
-  {kode:'019005',nama:'BAWASLU KABUPATEN NABIRE'},
-  {kode:'019006',nama:'BAWASLU KABUPATEN PEGUNUNGAN BINTANG'},
-  {kode:'019007',nama:'BAWASLU KOTA JAYAPURA'},
-  {kode:'019008',nama:'BAWASLU KABUPATEN JAYAWIJAYA'},
-  {kode:'019009',nama:'BAWASLU KABUPATEN PANIAI'},
-  {kode:'019010',nama:'BAWASLU KABUPATEN PUNCAK JAYA'},
-  {kode:'019011',nama:'BAWASLU KABUPATEN MIMIKA'},
-  {kode:'019012',nama:'BAWASLU KABUPATEN SARMI'},
-  {kode:'019013',nama:'BAWASLU KABUPATEN SUPIORI'},
-  {kode:'019014',nama:'BAWASLU KABUPATEN MAMBERAMO RAYA'},
-  {kode:'019015',nama:'BAWASLU KABUPATEN WAROPEN'},
-  {kode:'019016',nama:'BAWASLU KABUPATEN MAMBERAMO TENGAH'},
-  {kode:'019017',nama:'BAWASLU KABUPATEN LANNY JAYA'},
-  {kode:'019018',nama:'BAWASLU KABUPATEN NDUGA'},
-  {kode:'019019',nama:'BAWASLU KABUPATEN PUNCAK'},
-  {kode:'019020',nama:'BAWASLU KABUPATEN DOGIYAI'},
-  {kode:'019021',nama:'BAWASLU KABUPATEN INTAN JAYA'},
-  {kode:'019022',nama:'BAWASLU KABUPATEN DEIYAI'},
-  {kode:'019023',nama:'BAWASLU KABUPATEN YALIMO'},
-  {kode:'019024',nama:'BAWASLU KABUPATEN MAPPI'},
-  {kode:'019025',nama:'BAWASLU KABUPATEN BOVEN DIGOEL'},
-  {kode:'019026',nama:'BAWASLU KABUPATEN ASMAT'},
-  {kode:'019027',nama:'BAWASLU PROVINSI PAPUA'},
-  {kode:'019028',nama:'BAWASLU KABUPATEN KEEROM'},
-  {kode:'056001',nama:'POLRESTA JAYAPURA KOTA'},
-  {kode:'056002',nama:'POLRES JAYAPURA'},
-  {kode:'056003',nama:'POLRES BIAK NUMFOR'},
-  {kode:'056004',nama:'POLRES KEPULAUAN YAPEN'},
-  {kode:'056005',nama:'POLRES MERAUKE'},
-  {kode:'056006',nama:'POLRES NABIRE'},
-  {kode:'056007',nama:'POLRES JAYAWIJAYA'},
-  {kode:'056008',nama:'POLRES MIMIKA'},
-  {kode:'056009',nama:'POLRES PEGUNUNGAN BINTANG'},
-  {kode:'056010',nama:'POLRES SUPIORI'},
-  {kode:'056011',nama:'POLRES SARMI'},
-  {kode:'056012',nama:'POLRES KEEROM'},
-  {kode:'056013',nama:'POLRES PUNCAK JAYA'},
-  {kode:'056014',nama:'POLRES PANIAI'},
-  {kode:'056015',nama:'POLRES WAROPEN'},
-  {kode:'056016',nama:'POLRES MAPPI'},
-  {kode:'056017',nama:'POLRES BOVEN DIGOEL'},
-  {kode:'056018',nama:'POLRES ASMAT'},
-  {kode:'056019',nama:'POLDA PAPUA'},
-  {kode:'059001',nama:'KOREM 172/PWY'},
-  {kode:'059002',nama:'KODIM 1701/JAYAPURA'},
-  {kode:'059003',nama:'KODIM 1710/MIMIKA'},
-  {kode:'059004',nama:'KODIM 1715/NABIRE'},
-  {kode:'059005',nama:'KODIM 1709/YAPEN'},
-  {kode:'059006',nama:'KODIM 1707/MERAUKE'},
-  {kode:'059007',nama:'KODIM 1708/BIAK'},
-  {kode:'059008',nama:'KODIM 1702/JAYAWIJAYA'},
-  {kode:'059009',nama:'PANGKALAN TNI AU JAYAPURA'},
-  {kode:'059010',nama:'LANAL JAYAPURA'},
-  {kode:'059011',nama:'LANAL MERAUKE'},
-  {kode:'059012',nama:'KODIM 1716/JAYAPURA'},
-  {kode:'059013',nama:'KODIM 1717/MANOKWARI'},
-  {kode:'066001',nama:'BNNP PAPUA'},
-  {kode:'066002',nama:'BNN KAB. JAYAPURA'},
-  {kode:'066003',nama:'BNN KAB. BIAK NUMFOR'},
-  {kode:'066004',nama:'BNN KAB. JAYAWIJAYA'},
-  {kode:'066005',nama:'BNN KAB. MERAUKE'},
-  {kode:'066006',nama:'BNN KAB. NABIRE'},
-  {kode:'066007',nama:'BNN KAB. MIMIKA'},
-  {kode:'066008',nama:'BNN KAB. KEPULAUAN YAPEN'},
-  {kode:'066009',nama:'BNN KOTA JAYAPURA'},
-  {kode:'066010',nama:'BNN KAB. SARMI'},
-  {kode:'066011',nama:'BNN KAB. KEEROM'},
-  {kode:'066012',nama:'BNN KAB. PANIAI'},
-  {kode:'066013',nama:'BNN KAB. MAPPI'},
-  {kode:'066014',nama:'BNN KAB. BOVEN DIGOEL'},
-  {kode:'066015',nama:'BNN KAB. ASMAT'},
-  {kode:'066016',nama:'BNN KAB. PEGUNUNGAN BINTANG'},
-  {kode:'066017',nama:'BNN KAB. SUPIORI'},
-  {kode:'066018',nama:'BNN KAB. WAROPEN'},
-  {kode:'066019',nama:'BNN KAB. PUNCAK JAYA'},
-  {kode:'066020',nama:'BNN KAB. MAMBERAMO RAYA'},
-  {kode:'075001',nama:'SATKER BPS KAB. JAYAWIJAYA'},
-  {kode:'075002',nama:'BPS KAB. PANIAI'},
-  {kode:'075003',nama:'BPS KOTA JAYAPURA'},
-  {kode:'075004',nama:'BPS KABUPATEN MERAUKE'},
-  {kode:'075005',nama:'BPS KAB BIAK NUMFOR'},
-  {kode:'075006',nama:'BPS KAB. MIMIKA'},
-  {kode:'075007',nama:'BPS KAB. NABIRE'},
-  {kode:'075008',nama:'BPS KAB. PUNCAK JAYA'},
-  {kode:'075009',nama:'BPS KAB. PEGUNUNGAN BINTANG'},
-  {kode:'075010',nama:'BPS KAB SARMI'},
-  {kode:'075011',nama:'BPS KAB WAROPEN'},
-  {kode:'075012',nama:'BPS KAB. KEEROM'},
-  {kode:'075013',nama:'BPS KAB. SUPIORI'},
-  {kode:'075014',nama:'BPS KAB. MAMBERAMO RAYA'},
-  {kode:'075015',nama:'BPS KAB. MAMBERAMO TENGAH'},
-  {kode:'075016',nama:'BPS KAB. YALIMO'},
-  {kode:'075017',nama:'BPS KAB. LANNY JAYA'},
-  {kode:'075018',nama:'BPS KAB. NDUGA'},
-  {kode:'075019',nama:'BPS KAB. PUNCAK'},
-  {kode:'075020',nama:'BPS KAB. DOGIYAI'},
-  {kode:'075021',nama:'BPS KAB. INTAN JAYA'},
-  {kode:'075022',nama:'BPS KAB. DEIYAI'},
-  {kode:'075023',nama:'BPS KAB. ASMAT'},
-  {kode:'075024',nama:'BPS KAB. MAPPI'},
-  {kode:'075025',nama:'BPS KAB. BOVEN DIGOEL'},
-  {kode:'075026',nama:'BPS PROVINSI PAPUA'},
-  {kode:'079001',nama:'KEJAKSAAN NEGERI JAYAPURA'},
-  {kode:'079002',nama:'KEJAKSAAN NEGERI BIAK'},
-  {kode:'079003',nama:'KEJAKSAAN NEGERI SERUI'},
-  {kode:'079004',nama:'KEJAKSAAN NEGERI WAMENA'},
-  {kode:'079005',nama:'KEJAKSAAN NEGERI MERAUKE'},
-  {kode:'079006',nama:'KEJAKSAAN NEGERI NABIRE'},
-  {kode:'079007',nama:'KEJAKSAAN NEGERI TIMIKA'},
-  {kode:'079008',nama:'KEJAKSAAN NEGERI JAYAWIJAYA'},
-  {kode:'079009',nama:'KEJAKSAAN NEGERI SARMI'},
-  {kode:'079010',nama:'KEJAKSAAN NEGERI KEEROM'},
-  {kode:'079011',nama:'KEJAKSAAN NEGERI PEGUNUNGAN BINTANG'},
-  {kode:'079012',nama:'KEJAKSAAN NEGERI MAPPI'},
-  {kode:'079013',nama:'KEJAKSAAN NEGERI BOVEN DIGOEL'},
-  {kode:'079014',nama:'KEJAKSAAN NEGERI ASMAT'},
-  {kode:'079015',nama:'KEJAKSAAN NEGERI WAROPEN'},
-  {kode:'079016',nama:'KEJAKSAAN TINGGI PAPUA'},
-  {kode:'080001',nama:'LAPAS KELAS IIA JAYAPURA'},
-  {kode:'080002',nama:'LAPAS KELAS IIB BIAK'},
-  {kode:'080003',nama:'LAPAS KELAS IIB MERAUKE'},
-  {kode:'080004',nama:'LAPAS KELAS IIB NABIRE'},
-  {kode:'080005',nama:'LAPAS KELAS IIB WAMENA'},
-  {kode:'080006',nama:'LAPAS KELAS IIB TIMIKA'},
-  {kode:'080007',nama:'LAPAS KELAS IIB SERUI'},
-  {kode:'080008',nama:'RUTAN KELAS IIB SENTANI'},
-  {kode:'080009',nama:'RUTAN KELAS IIB SARMI'},
-  {kode:'080010',nama:'RUTAN KELAS IIB KEEROM'},
-  {kode:'080011',nama:'RUTAN KELAS IIB MERAUKE'},
-  {kode:'080012',nama:'RUTAN KELAS IIB BIAK NUMFOR'},
-  {kode:'080013',nama:'KANWIL KEMENKUMHAM PAPUA'},
-  {kode:'080014',nama:'RUTAN KELAS IIB OKSIBIL'},
-  {kode:'080015',nama:'BAPAS JAYAPURA'},
-  {kode:'080016',nama:'BAPAS MERAUKE'},
-  {kode:'080017',nama:'BAPAS NABIRE'},
-  {kode:'082001',nama:'KANTOR IMIGRASI KELAS I TPI JAYAPURA'},
-  {kode:'082002',nama:'KANTOR IMIGRASI KELAS II NON TPI WAMENA'},
-  {kode:'082003',nama:'KANTOR IMIGRASI KELAS II TPI BIAK'},
-  {kode:'082004',nama:'KANTOR IMIGRASI KELAS II TPI MERAUKE'},
-  {kode:'082005',nama:'KANTOR IMIGRASI KELAS II TPI TIMIKA'},
-  {kode:'082006',nama:'KANTOR IMIGRASI KELAS II NON TPI SARMI'},
-  {kode:'082007',nama:'KANTOR IMIGRASI KELAS II NON TPI SERUI'},
-  {kode:'082008',nama:'KANTOR IMIGRASI KELAS II NON TPI OKSIBIL'},
-  {kode:'083001',nama:'KANWIL KEMENTERIAN AGAMA PROVINSI PAPUA'},
-  {kode:'083002',nama:'KANKEMENAG KAB. JAYAPURA'},
-  {kode:'083003',nama:'KANKEMENAG KOTA JAYAPURA'},
-  {kode:'083004',nama:'KANKEMENAG KAB. BIAK NUMFOR'},
-  {kode:'083005',nama:'KANKEMENAG KAB. KEPULAUAN YAPEN'},
-  {kode:'083006',nama:'KANKEMENAG KAB. MERAUKE'},
-  {kode:'083007',nama:'KANKEMENAG KAB. JAYAWIJAYA'},
-  {kode:'083008',nama:'KANKEMENAG KAB. NABIRE'},
-  {kode:'083009',nama:'KANKEMENAG KAB. MIMIKA'},
-  {kode:'083010',nama:'KANKEMENAG KAB. PUNCAK JAYA'},
-  {kode:'083011',nama:'KANKEMENAG KAB. SARMI'},
-  {kode:'083012',nama:'KANKEMENAG KAB. KEEROM'},
-  {kode:'083013',nama:'KANKEMENAG KAB. SUPIORI'},
-  {kode:'083014',nama:'KANKEMENAG KAB. MAMBERAMO RAYA'},
-  {kode:'083015',nama:'KANKEMENAG KAB. WAROPEN'},
-  {kode:'083016',nama:'KANKEMENAG KAB. PEGUNUNGAN BINTANG'},
-  {kode:'083017',nama:'KANKEMENAG KAB. MAPPI'},
-  {kode:'083018',nama:'KANKEMENAG KAB. BOVEN DIGOEL'},
-  {kode:'083019',nama:'KANKEMENAG KAB. ASMAT'},
-  {kode:'083020',nama:'KANKEMENAG KAB. PANIAI'},
-  {kode:'083021',nama:'KANKEMENAG KAB. YALIMO'},
-  {kode:'083022',nama:'KANKEMENAG KAB. MAMBERAMO TENGAH'},
-  {kode:'083023',nama:'KANKEMENAG KAB. LANNY JAYA'},
-  {kode:'083024',nama:'KANKEMENAG KAB. NDUGA'},
-  {kode:'083025',nama:'KANKEMENAG KAB. PUNCAK'},
-  {kode:'083026',nama:'KANKEMENAG KAB. DOGIYAI'},
-  {kode:'083027',nama:'KANKEMENAG KAB. INTAN JAYA'},
-  {kode:'083028',nama:'KANKEMENAG KAB. DEIYAI'},
-  {kode:'083029',nama:'MIN JAYAPURA'},
-  {kode:'088001',nama:'BPKP PERWAKILAN PROVINSI PAPUA'},
-  {kode:'092001',nama:'BALAI BESAR METEOROLOGI DAN GEOFISIKA WILAYAH V'},
-  {kode:'092002',nama:'STASIUN METEOROLOGI SENTANI JAYAPURA'},
-  {kode:'092003',nama:'STASIUN METEOROLOGI BIAK'},
-  {kode:'092004',nama:'STASIUN METEOROLOGI NABIRE'},
-  {kode:'092005',nama:'STASIUN METEOROLOGI WAMENA'},
-  {kode:'092006',nama:'STASIUN METEOROLOGI MERAUKE'},
-  {kode:'092007',nama:'STASIUN METEOROLOGI TIMIKA'},
-  {kode:'092008',nama:'STASIUN METEOROLOGI SERUI'},
-  {kode:'092009',nama:'STASIUN METEOROLOGI OKSIBIL'},
-  {kode:'092010',nama:'STASIUN METEOROLOGI SARMI'},
-  {kode:'092011',nama:'STASIUN KLIMATOLOGI JAYAPURA'},
-  {kode:'092012',nama:'STASIUN GEOFISIKA JAYAPURA'},
-  {kode:'093001',nama:'KANTOR SAR JAYAPURA'},
-  {kode:'093002',nama:'KANTOR SAR TIMIKA'},
-  {kode:'093003',nama:'KANTOR SAR MERAUKE'},
-  {kode:'094001',nama:'BADAN KARANTINA PERTANIAN JAYAPURA'},
-  {kode:'094002',nama:'STASIUN KARANTINA PERTANIAN KELAS I BIAK'},
-  {kode:'094003',nama:'STASIUN KARANTINA PERTANIAN KELAS I TIMIKA'},
-  {kode:'094004',nama:'STASIUN KARANTINA PERTANIAN KELAS I MERAUKE'},
-  {kode:'095001',nama:'KANTOR WILAYAH BPN PAPUA'},
-  {kode:'095002',nama:'KANTOR PERTANAHAN KAB. JAYAPURA'},
-  {kode:'095003',nama:'KANTOR PERTANAHAN KOTA JAYAPURA'},
-  {kode:'095004',nama:'KANTOR PERTANAHAN KAB. BIAK NUMFOR'},
-  {kode:'095005',nama:'KANTOR PERTANAHAN KAB. KEPULAUAN YAPEN'},
-  {kode:'095006',nama:'KANTOR PERTANAHAN KAB. MERAUKE'},
-  {kode:'095007',nama:'KANTOR PERTANAHAN KAB. JAYAWIJAYA'},
-  {kode:'095008',nama:'KANTOR PERTANAHAN KAB. NABIRE'},
-  {kode:'095009',nama:'KANTOR PERTANAHAN KAB. MIMIKA'},
-  {kode:'095010',nama:'KANTOR PERTANAHAN KAB. SARMI'},
-  {kode:'095011',nama:'KANTOR PERTANAHAN KAB. KEEROM'},
-  {kode:'095012',nama:'KANTOR PERTANAHAN KAB. SUPIORI'},
-  {kode:'095013',nama:'KANTOR PERTANAHAN KAB. PEGUNUNGAN BINTANG'},
-  {kode:'095014',nama:'KANTOR PERTANAHAN KAB. WAROPEN'},
-  {kode:'095015',nama:'KANTOR PERTANAHAN KAB. MAPPI'},
-  {kode:'095016',nama:'KANTOR PERTANAHAN KAB. BOVEN DIGOEL'},
-  {kode:'095017',nama:'KANTOR PERTANAHAN KAB. ASMAT'},
-  {kode:'095018',nama:'KANTOR PERTANAHAN KAB. MAMBERAMO RAYA'},
-  {kode:'095019',nama:'KANTOR PERTANAHAN KAB. PANIAI'},
-  {kode:'095020',nama:'KANTOR PERTANAHAN KAB. PUNCAK JAYA'},
-  {kode:'095021',nama:'KANTOR PERTANAHAN KAB. MAMBERAMO TENGAH'},
-  {kode:'095022',nama:'KANTOR PERTANAHAN KAB. YALIMO'},
-  {kode:'095023',nama:'KANTOR PERTANAHAN KAB. LANNY JAYA'},
-  {kode:'095024',nama:'KANTOR PERTANAHAN KAB. NDUGA'},
-  {kode:'095025',nama:'KANTOR PERTANAHAN KAB. INTAN JAYA'},
-  {kode:'095026',nama:'KANTOR PERTANAHAN KAB. DOGIYAI'},
-  {kode:'095027',nama:'KANTOR PERTANAHAN KAB. DEIYAI'},
-  {kode:'095028',nama:'KANTOR PERTANAHAN KAB. PUNCAK'},
-  {kode:'097001',nama:'DINAS KEHUTANAN PROVINSI PAPUA'},
-  {kode:'097002',nama:'BALAI KONSERVASI SUMBER DAYA ALAM PAPUA 1'},
-  {kode:'097003',nama:'BKSDA PAPUA 2'},
-  {kode:'097004',nama:'BALAI TAMAN NASIONAL LORENTZ'},
-  {kode:'097005',nama:'TAMAN NASIONAL WASUR MERAUKE'},
-];
-// Merge dengan data satker dari server (diisi saat loadSatkerRef)
-let SATKER_MERGED = [...SATKER_REF];
-
-// ─── SATKER AUTOCOMPLETE ──────────────────────────────────
-function onKodeSatkerInput(el){
-  const val = el.value.replace(/\D/g,''); // only digits
-  el.value = val;
-  const drop = document.getElementById('satkerDrop');
-  if(!val){drop.style.display='none';return;}
-  const q = val.toLowerCase();
-  const matches = SATKER_MERGED.filter(s=>s.kode.startsWith(q)||s.nama.toLowerCase().includes(q)).slice(0,15);
-  if(!matches.length){drop.style.display='none';return;}
-  drop.innerHTML = matches.map(s=>`
-    <div onmousedown="selectSatker('${s.kode}','${s.nama.replace(/'/g,"\\'")}');return false;"
-      style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--gray-200);font-size:13px;transition:background .1s"
-      onmouseover="this.style.background='#EBF3FF'" onmouseout="this.style.background=''">
-      <span style="font-family:monospace;font-weight:600;color:var(--blue)">${s.kode}</span>
-      <span style="margin-left:8px;color:var(--gray-800)">${s.nama}</span>
-    </div>`).join('');
-  drop.style.display='block';
-}
-function hideSatkerDrop(){
-  setTimeout(()=>{const d=document.getElementById('satkerDrop');if(d)d.style.display='none';},150);
-}
-function selectSatker(kode, nama){
-  const el = document.getElementById('kodeSatker');
-  if(el) el.value = kode;
-  const elNama = document.getElementById('namaSatker');
-  if(elNama) elNama.value = nama;
-  const drop = document.getElementById('satkerDrop');
-  if(drop) drop.style.display='none';
-}
-
-// ─── DATE FORMAT dd/mm/yyyy ───────────────────────────────
-function formatDateInput(el){
-  let v = el.value.replace(/\D/g,'');
-  if(v.length>2) v = v.slice(0,2)+'/'+v.slice(2);
-  if(v.length>5) v = v.slice(0,5)+'/'+v.slice(5);
-  el.value = v.slice(0,10);
-}
-function parseDMY(str){
-  // Parses dd/mm/yyyy → Date object
-  if(!str)return null;
-  const p = str.split('/');
-  if(p.length!==3)return null;
-  const [dd,mm,yyyy] = p.map(Number);
-  if(!dd||!mm||!yyyy)return null;
-  return new Date(yyyy,mm-1,dd);
-}
-function todayDMY(){
-  const d=new Date();
-  return`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-}
-async function loadSatkerRef(){
-  // Load tambahan satker dari server (RefSatker sheet)
-  try{
-    const res = await apiPost({action:'getSatkerList'});
-    if(res.success && Array.isArray(res.list)){
-      const serverKodes = new Set(res.list.map(s=>s.kode));
-      const local = SATKER_REF.filter(s=>!serverKodes.has(s.kode));
-      SATKER_MERGED = [...res.list, ...local];
-      SATKER_MERGED.sort((a,b)=>a.kode.localeCompare(b.kode));
-    }
-  }catch(e){/* gunakan SATKER_REF lokal */}
-}
-
-// ─── DATA PERAN ───────────────────────────────────────────
-const PERAN_DATA = [
-  {kode:'SATKER_KPA',                           label:'KPA',                                 kelompok:'APPROVER',  modul:['ANGGARAN','PEMBAYARAN']},
-  {kode:'SATKER_PPSPM',                         label:'PPSPM',                               kelompok:'APPROVER',  modul:['PEMBAYARAN']},
-  {kode:'SATKER_APPROVER_PERSEDIAAN',           label:'Approver Persediaan',                 kelompok:'APPROVER',  modul:['PERSEDIAAN']},
-  {kode:'SATKER_APPROVER_PERSEDIAAN_PEMBANTU',  label:'Approver Persediaan Pembantu',        kelompok:'APPROVER',  modul:['PERSEDIAAN']},
-  {kode:'SATKER_APPROVER_ASET',                 label:'Approver Aset',                       kelompok:'APPROVER',  modul:['ASET']},
-  {kode:'SATKER_APPROVER_ASET_PEMBANTU',        label:'Approver Aset Pembantu (UAPKPB)',     kelompok:'APPROVER',  modul:['ASET']},
-  {kode:'SATKER_PPK',                           label:'PPK',                                 kelompok:'VALIDATOR', modul:['KOMITMEN','PEMBAYARAN']},
-  {kode:'SATKER_PPK_DFDD',                      label:'PPK Penyalur DAK Fisik & Dana Desa',  kelompok:'VALIDATOR', modul:['KOMITMEN_DFDD','PEMBAYARAN']},
-  {kode:'SATKER_VALIDATOR_ANGGARAN',            label:'Validator Anggaran (Khusus BLU)',      kelompok:'VALIDATOR', modul:['ANGGARAN']},
-  {kode:'SATKER_VALIDATOR_ASET',                label:'Validator Aset',                      kelompok:'VALIDATOR', modul:['ASET']},
-  {kode:'SATKER_VALIDATOR_ASET_PEMBANTU',       label:'Validator Aset Pembantu (UAPKPB)',    kelompok:'VALIDATOR', modul:['ASET']},
-  {kode:'SATKER_OPERATOR_ANGGARAN',             label:'Operator Anggaran',                   kelompok:'OPERATOR',  modul:['ANGGARAN']},
-  {kode:'SATKER_OPERATOR_PEMBAYARAN',           label:'Operator Pembayaran (SPP + SPM)',      kelompok:'OPERATOR',  modul:['PEMBAYARAN']},
-  {kode:'SATKER_OPERATOR_PEMBAYARAN_SPM',       label:'Operator Pembayaran SPM saja',         kelompok:'OPERATOR',  modul:['PEMBAYARAN']},
-  {kode:'SATKER_OPERATOR_PEMBAYARAN_SPP',       label:'Operator Pembayaran SPP saja',         kelompok:'OPERATOR',  modul:['PEMBAYARAN']},
-  {kode:'SATKER_OPERATOR_KOMITMEN',             label:'Operator Komitmen',                   kelompok:'OPERATOR',  modul:['KOMITMEN']},
-  {kode:'SATKER_BENDAHARA_PENGELUARAN',         label:'Bendahara Pengeluaran',               kelompok:'OPERATOR',  modul:['BENDAHARA']},
-  {kode:'SATKER_BENDAHARA_PENGELUARAN_PEMBANTU',label:'Bendahara Pengeluaran Pembantu',      kelompok:'OPERATOR',  modul:['BENDAHARA']},
-  {kode:'SATKER_BENDAHARA_PENERIMAAN',          label:'Bendahara Penerimaan',                kelompok:'OPERATOR',  modul:['BENDAHARA']},
-  {kode:'SATKER_OPERATOR_PNBP',                 label:'Operator PNBP',                       kelompok:'OPERATOR',  modul:['BENDAHARA']},
-  {kode:'SATKER_OPERATOR_PELAPORAN',            label:'Operator Pelaporan / GL',             kelompok:'OPERATOR',  modul:['GLP']},
-  {kode:'SATKER_OPERATOR_PERSEDIAAN',           label:'Operator Persediaan',                 kelompok:'OPERATOR',  modul:['PERSEDIAAN']},
-  {kode:'SATKER_OPERATOR_PERSEDIAAN_PEMBANTU',  label:'Operator Persediaan Pembantu',        kelompok:'OPERATOR',  modul:['PERSEDIAAN']},
-  {kode:'SATKER_OPERATOR_ASET',                 label:'Operator Aset',                       kelompok:'OPERATOR',  modul:['ASET']},
-  {kode:'SATKER_OPERATOR_ASET_PEMBANTU',        label:'Operator Aset Pembantu (UAPKPB)',     kelompok:'OPERATOR',  modul:['ASET']},
-  {kode:'SATKER_OPERATOR_PIUTANG',              label:'Operator Piutang',                    kelompok:'OPERATOR',  modul:['PIUTANG']},
-  {kode:'SATKER_OPERATOR_SPI',                  label:'Operator SPI (Khusus BLU)',           kelompok:'OPERATOR',  modul:['PELAPORAN']},
-  {kode:'SATKER_ADMIN',                         label:'Admin Satker',                        kelompok:'ADMIN',     modul:['ADMIN']},
-];
-function getKelompok(k){return (PERAN_DATA.find(p=>p.kode===k)||{}).kelompok||null;}
-function getLabel(k){return (PERAN_DATA.find(p=>p.kode===k)||{}).label||k;}
-function getModul(k){return (PERAN_DATA.find(p=>p.kode===k)||{}).modul||[];}
-
-// ─── KONFLIK PERAN ────────────────────────────────────────
-function checkPeranConflict(newKode,currentList){
-  const isKPA=k=>k==='SATKER_KPA';
-  const isPPK=k=>k==='SATKER_PPK'||k==='SATKER_PPK_DFDD';
-  const isPPSPM=k=>k==='SATKER_PPSPM';
-  const isBend=k=>k.includes('BENDAHARA')||k==='SATKER_OPERATOR_PNBP';
-  const isGLP=k=>k==='SATKER_OPERATOR_PELAPORAN'||k==='SATKER_OPERATOR_SPI';
-  const hasKPA=currentList.some(isKPA);
-  const hasPPK=currentList.some(isPPK);
-  const hasPPSPM=currentList.some(isPPSPM);
-  const hasBend=currentList.some(isBend);
-  const hasGLP=currentList.some(isGLP);
-  // KPA tidak bisa rangkap Operator Pelaporan/GLP
-  if(isKPA(newKode)&&hasGLP) return{conflict:true,block:true,warn:'KPA tidak diperkenankan merangkap Operator Pelaporan/GLP.'};
-  if(isGLP(newKode)&&hasKPA) return{conflict:true,block:true,warn:'Operator Pelaporan/GLP tidak diperkenankan merangkap KPA.'};
-  if(isKPA(newKode)&&hasPPK&&hasPPSPM) return{conflict:true,block:true,warn:'KPA tidak dapat merangkap PPK dan PPSPM sekaligus.'};
-  if(isPPK(newKode)&&hasKPA&&hasPPSPM) return{conflict:true,block:true,warn:'Tidak dapat menambahkan PPK karena KPA sudah merangkap PPSPM.'};
-  if(isPPSPM(newKode)&&hasKPA&&hasPPK) return{conflict:true,block:true,warn:'Tidak dapat menambahkan PPSPM karena KPA sudah merangkap PPK.'};
-  if(isBend(newKode)&&(hasKPA||hasPPK||hasPPSPM)) return{conflict:true,block:true,warn:'Bendahara tidak diperkenankan merangkap KPA, PPK, atau PPSPM.'};
-  if((isKPA(newKode)||isPPK(newKode)||isPPSPM(newKode))&&hasBend) return{conflict:true,block:true,warn:'KPA/PPK/PPSPM tidak diperkenankan merangkap jabatan Bendahara.'};
-  const KPA_EXC=['SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
-  const isKPAExc=(hasKPA&&KPA_EXC.includes(newKode))||(isKPA(newKode)&&currentList.some(k=>KPA_EXC.includes(k)));
-  if(!isKPAExc){
-    const newM=getModul(newKode);
-    const exM=currentList.flatMap(k=>getModul(k));
-    const mc=newM.find(m=>exM.includes(m));
-    if(mc){const cp=currentList.find(k=>getModul(k).includes(mc));return{conflict:true,block:true,warn:`Modul "${mc}" sudah dipakai oleh "${getLabel(cp)}".`};}
-  }
-  if((isKPA(newKode)&&hasPPK)||(isPPK(newKode)&&hasKPA))
-    return{conflict:false,block:false,warn:'Plt. KPA tidak diperkenankan merangkap PPK. Pastikan yang bersangkutan adalah KPA Definitif.'};
-  return{conflict:false,block:false,warn:null};
-}
-function getDisabledPeran(currentList){
-  const d=new Set();
-  PERAN_DATA.forEach(p=>{if(currentList.includes(p.kode))return;if(checkPeranConflict(p.kode,currentList).block)d.add(p.kode);});
-  return d;
-}
-
-// ─── APPS SCRIPT API URL ──────────────────────────────────
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwTezzITyyz0c2UqNlLFEcC5rbYKnS_CHyl9qWQ763UWhdGnhYtFk0hf2QiDqv19V669w/exec';
-
-async function apiPost(payload){
-  const r=await fetch(APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
-  if(!r.ok)throw new Error(`HTTP ${r.status}`);
-  return r.json();
-}
-
-// ─── KODE REFERENSI: ddmmyyyy-KODE-nn ────────────────────
-function genRefKode(kodeSatker){
-  const now=new Date();
-  const dd=String(now.getDate()).padStart(2,'0');
-  const mm=String(now.getMonth()+1).padStart(2,'0');
-  const yyyy=now.getFullYear();
-  const tgl=`${dd}${mm}${yyyy}`;
-  const kode=(kodeSatker||'000000').toString().slice(0,6).padStart(6,'0');
-  // Pakai counter lokal sebagai fallback — server akan validasi duplikat
-  const idx=JSON.parse(localStorage.getItem('sakti_drafts_index')||'[]');
-  const prefix=`${tgl}-${kode}`;
-  const count=idx.filter(r=>r.startsWith(prefix)).length;
-  return `${prefix}-${String(count).padStart(2,'0')}`;
-}
-
-// ─── USER STATE ───────────────────────────────────────────
-let userIdSeq=0;
-const users=[];
-function addUser(data={}){
-  const id=++userIdSeq;
-  users.push({id,nama:data.nama||'',nipnrp:data.nipnrp||'',nik:data.nik||'',email:data.email||'',hp:data.hp||'',sk:data.sk||'',tglsk:data.tglsk||'',peranList:data.peranList||[]});
-  renderUserCard(id);reindexUsers();
-}
-function removeUser(id){
-  const idx=users.findIndex(u=>u.id===id);
-  if(idx!==-1)users.splice(idx,1);
-  document.getElementById(`uc-${id}`)?.remove();reindexUsers();
-}
-function reindexUsers(){
-  users.forEach((u,i)=>{const el=document.getElementById(`ucnum-${u.id}`);if(el)el.textContent=`User ${i+1}`;});
-}
-function getUserById(id){return users.find(u=>u.id===id);}
-
-// ─── RENDER USER CARD ─────────────────────────────────────
-function renderUserCard(id){
-  const u=getUserById(id);
-  const wrap=document.getElementById('userList');
-  document.getElementById(`uc-${id}`)?.remove();
-  const div=document.createElement('div');
-  div.className='user-card';div.id=`uc-${id}`;
-  div.innerHTML=`
-    <div class="user-card-header">
-      <span class="user-card-num" id="ucnum-${id}">User</span>
-      <div class="user-card-actions">
-        <button class="btn btn-outline" onclick="openEditModal(${id})">✏️ Edit</button>
-        <button class="btn btn-danger" onclick="removeUser(${id})">✕ Hapus</button>
-      </div>
-    </div>
-    <div id="ucSummary-${id}"></div>`;
-  wrap.appendChild(div);renderUserSummary(id);
-}
-function renderUserSummary(id){
-  const u=getUserById(id);
-  const el=document.getElementById(`ucSummary-${id}`);
-  if(!el)return;
-  const kelompoks=[...new Set(u.peranList.map(k=>getKelompok(k)).filter(Boolean))];
-  const kbCls=kelompoks.length>1?'kb-M':kelompoks[0]?`kb-${kelompoks[0][0]}`:'';
-  el.innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--gray-700)">
-    <span><strong>Nama:</strong> ${u.nama||'<em style="color:var(--gray-400)">belum diisi</em>'}</span>
-    <span style="color:var(--gray-300)">|</span>
-    <span><strong>NIP/NRP:</strong> ${u.nipnrp||'—'}</span>
-    <span style="color:var(--gray-300)">|</span>
-    <span><strong>Email:</strong> ${u.email||'—'}</span>
-    <span style="color:var(--gray-300)">|</span>
-    <span><strong>Peran:</strong> ${u.peranList.length?u.peranList.map(k=>`<span class="kb ${kbCls}">${getLabel(k)}</span>`).join(''):'<em style="color:var(--red)">belum dipilih</em>'}</span>
-  </div>`;
-}
-
-// ─── EDIT MODAL ───────────────────────────────────────────
-let editingId=null;
-function openEditModal(id){
-  editingId=id;
-  const u=getUserById(id);
-  const groups={};
-  PERAN_DATA.forEach(p=>{if(!groups[p.kelompok])groups[p.kelompok]=[];groups[p.kelompok].push(p);});
-  let ph='';
-  ['APPROVER','VALIDATOR','OPERATOR','ADMIN'].forEach(k=>{
-    ph+=`<div class="peran-group-title">${k}</div><div class="peran-grid">`;
-    (groups[k]||[]).forEach(p=>{
-      const ck=u.peranList.includes(p.kode);
-      ph+=`<label class="peran-item${ck?' checked':''}" id="epi-${p.kode}">
-        <input type="checkbox" value="${p.kode}" ${ck?'checked':''} onchange="onEditPeranChange(this)"/>
-        <span class="peran-item-label">${p.label}<br/><span class="kode">${p.kode}</span></span>
-      </label>`;
-    });
-    ph+='</div>';
-  });
-  document.getElementById('editModalBody').innerHTML=`
-    <div class="form-row">
-      <div class="form-group"><label>Nama <span style="color:var(--red)">*</span></label><input type="text" id="e-nama" value="${esc(u.nama)}" placeholder="Nama lengkap"/></div>
-      <div class="form-group"><label>NIP / NRP <span style="color:var(--red)">*</span></label><input type="text" id="e-nipnrp" value="${esc(u.nipnrp)}" placeholder="NIP atau NRP"/></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label>NIK (KTP) <span style="color:var(--red)">*</span></label><input type="text" id="e-nik" value="${esc(u.nik)}" placeholder="16 digit" maxlength="16"/><span class="hint">NPWP diambil dari NIK secara sistem</span></div>
-      <div class="form-group"><label>Email Kedinasan <span style="color:var(--red)">*</span></label><input type="email" id="e-email" value="${esc(u.email)}" placeholder="xxx@instansi.go.id"/><span class="hint">Harus berakhiran .go.id</span><span class="err-msg" id="e-email-err" style="display:none">Email harus berakhiran .go.id</span></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label>No. HP</label><input type="text" id="e-hp" value="${esc(u.hp)}" placeholder="08xxx"/></div>
-      <div class="form-group"><label>Nomor SK <span style="color:var(--red)">*</span></label><input type="text" id="e-sk" value="${esc(u.sk)}" placeholder="KEP-xx/xx/2024"/></div>
-      <div class="form-group"><label>Tanggal SK <span style="color:var(--red)">*</span></label><input type="text" id="e-tglsk" value="${esc(u.tglsk)}" placeholder="dd/mm/yyyy" maxlength="10" oninput="formatDateInput(this)" style="font-family:monospace;letter-spacing:1px"/></div>
-    </div>
-    <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;margin:14px 0 4px">Peran</div>
-    <div class="info-box" style="margin-bottom:10px;font-size:11px">Centang peran. Peran yang bertentangan akan dinonaktifkan otomatis.</div>
-    ${ph}
-    <div class="warn-box" id="editWarnBox"></div>`;
-  refreshEditCheckboxStates();
-  openModal('modalEdit');
-}
-function onEditPeranChange(cb){
-  document.getElementById(`epi-${cb.value}`)?.classList.toggle('checked',cb.checked);
-  refreshEditCheckboxStates();
-}
-function getCheckedPeran(){
-  return Array.from(document.querySelectorAll('#editModalBody input[type=checkbox]:checked')).map(cb=>cb.value);
-}
-function refreshEditCheckboxStates(){
-  const checked=getCheckedPeran();
-  const warnBox=document.getElementById('editWarnBox');
-  const disabledSet=getDisabledPeran(checked);
-  const warnings=new Set();
-  checked.forEach(kode=>{const r=checkPeranConflict(kode,checked.filter(k=>k!==kode));if(r.warn&&!r.block)warnings.add(r.warn);});
-  PERAN_DATA.forEach(p=>{
-    const cb=document.querySelector(`#editModalBody input[value="${p.kode}"]`);
-    const el=document.getElementById(`epi-${p.kode}`);
-    if(!cb||!el)return;
-    const isD=!cb.checked&&disabledSet.has(p.kode);
-    cb.disabled=isD;el.classList.toggle('disabled',isD);el.classList.toggle('checked',cb.checked);
-    el.title=isD?(checkPeranConflict(p.kode,checked).warn||''):'';
-  });
-  if(warnings.size>0){warnBox.innerHTML=[...warnings].map(w=>`<div>⚠️ ${w}</div>`).join('');warnBox.classList.add('on');}
-  else{warnBox.innerHTML='';warnBox.classList.remove('on');}
-}
-function saveEdit(){
-  const nama=(document.getElementById('e-nama')?.value||'').trim();
-  const nipnrp=(document.getElementById('e-nipnrp')?.value||'').trim();
-  const nik=(document.getElementById('e-nik')?.value||'').trim();
-  const email=(document.getElementById('e-email')?.value||'').trim();
-  const hp=(document.getElementById('e-hp')?.value||'').trim();
-  const sk=(document.getElementById('e-sk')?.value||'').trim();
-  const tglsk=(document.getElementById('e-tglsk')?.value||'').trim();
-  const peranList=getCheckedPeran();
-  const emailErr=document.getElementById('e-email-err');
-  if(email&&!email.toLowerCase().endsWith('.go.id')){emailErr.style.display='block';document.getElementById('e-email').classList.add('err');showToast('Email harus berakhiran .go.id',true);return;}
-  emailErr.style.display='none';document.getElementById('e-email').classList.remove('err');
-  if(!nama){showToast('Nama wajib diisi',true);return;}
-  if(!nipnrp){showToast('NIP/NRP wajib diisi',true);return;}
-  if(!peranList.length){showToast('Pilih minimal satu peran',true);return;}
-  // Cek duplikat NIP/NRP dengan user lain dalam formulir ini
-  const dupNIP=users.find(u=>u.id!==editingId&&u.nipnrp&&u.nipnrp===nipnrp);
-  if(dupNIP){showToast(`❌ NIP/NRP sudah digunakan oleh: ${dupNIP.nama}`,true);return;}
-  // Cek duplikat NIK dengan user lain dalam formulir ini
-  if(nik){
-    const dupNIK=users.find(u=>u.id!==editingId&&u.nik&&u.nik===nik);
-    if(dupNIK){showToast(`❌ NIK sudah digunakan oleh: ${dupNIK.nama}`,true);return;}
-  }
-  // Cek duplikat Email dengan user lain dalam formulir ini
-  if(email){
-    const dupEmail=users.find(u=>u.id!==editingId&&u.email&&u.email.toLowerCase()===email.toLowerCase());
-    if(dupEmail){showToast(`❌ Email sudah digunakan oleh: ${dupEmail.nama}`,true);return;}
-  }
-  // Cek duplikat No HP dengan user lain dalam formulir ini
-  if(hp){
-    const dupHP=users.find(u=>u.id!==editingId&&u.hp&&u.hp===hp);
-    if(dupHP){showToast(`❌ No. HP sudah digunakan oleh: ${dupHP.nama}`,true);return;}
-  }
-  const u=getUserById(editingId);if(!u)return;
-  u.nama=nama;u.nipnrp=nipnrp;u.nik=nik;u.email=email;u.hp=hp;u.sk=sk;u.tglsk=tglsk;u.peranList=peranList;
-  renderUserSummary(editingId);closeModal('modalEdit');showToast('✅ Data user berhasil diperbarui');
-}
-
-// ─── MODAL ────────────────────────────────────────────────
-function openModal(id){document.getElementById(id)?.classList.add('on');}
-function closeModal(id){document.getElementById(id)?.classList.remove('on');}
-document.addEventListener('click',e=>{
-  ['modalPernyataan','modalEdit','modalSukses','modalPanggilRekaman'].forEach(mid=>{const m=document.getElementById(mid);if(m&&e.target===m)closeModal(mid);});
-});
-
-// ─── VALIDASI ─────────────────────────────────────────────
-function trySubmit(){
-  const errors=[];
-  [['kodeSatker','Kode Satker'],['namaSatker','Nama Satker'],['namaKPA','Nama KPA'],['nipKPA','NIP KPA']].forEach(([id,label])=>{
-    const el=document.getElementById(id);const fg=document.getElementById(`fg-${id}`);
-    if(!el?.value.trim()){errors.push(`${label} wajib diisi`);el?.classList.add('err');fg?.classList.add('has-err');}
-    else{el.classList.remove('err');fg?.classList.remove('has-err');}
-  });
-  // Validasi kode satker: harus 6 digit
-  {const ks=document.getElementById('kodeSatker');const ksv=(ks?.value||'').trim();
-   if(ksv&&!/^\d{6}$/.test(ksv)){errors.push('Kode Satker harus tepat 6 digit angka');ks?.classList.add('err');}
-  }
-  // Validasi tanggal surat: dd/mm/yyyy
-  {const ts=(document.getElementById('tanggalSurat')?.value||'').trim();
-   if(ts&&!/^\d{2}\/\d{2}\/\d{4}$/.test(ts)){errors.push('Tanggal Surat harus format dd/mm/yyyy');}
-  }
-  if(!users.length)errors.push('Tambahkan minimal satu user');
-  // Cek duplikat NIK, NIP/NRP, Email, No HP antar user dalam formulir yang sama
-  const seenNIK=new Map(), seenNIP=new Map(), seenEmail=new Map(), seenHP=new Map();
-  users.forEach((u,i)=>{
-    const n=i+1;
-    if(!u.nama)errors.push(`User ${n}: Nama wajib diisi`);
-    if(!u.nipnrp)errors.push(`User ${n}: NIP/NRP wajib diisi`);
-    if(!u.sk)errors.push(`User ${n}: Nomor SK wajib diisi`);
-    if(!u.tglsk)errors.push(`User ${n}: Tanggal SK wajib diisi`);
-    else if(!/^\d{2}\/\d{2}\/\d{4}$/.test(u.tglsk))errors.push(`User ${n}: Tanggal SK harus format dd/mm/yyyy`);
-    if(!u.peranList.length)errors.push(`User ${n}: Pilih minimal satu peran`);
-    if(u.email&&!u.email.toLowerCase().endsWith('.go.id'))errors.push(`User ${n}: Email harus berakhiran .go.id`);
-    u.peranList.forEach((kode,idx)=>{const r=checkPeranConflict(kode,u.peranList.slice(0,idx));if(r.conflict&&r.block)errors.push(`User ${n} (${u.nama}): ${r.warn}`);});
-    // Cek duplikat NIK
-    if(u.nik){
-      if(seenNIK.has(u.nik)) errors.push(`User ${n} (${u.nama}): NIK sama dengan User ${seenNIK.get(u.nik)+1} — tidak boleh duplikat`);
-      else seenNIK.set(u.nik,i);
-    }
-    // Cek duplikat NIP/NRP
-    if(u.nipnrp){
-      if(seenNIP.has(u.nipnrp)) errors.push(`User ${n} (${u.nama}): NIP/NRP sama dengan User ${seenNIP.get(u.nipnrp)+1} — tidak boleh duplikat`);
-      else seenNIP.set(u.nipnrp,i);
-    }
-    // Cek duplikat Email
-    if(u.email){
-      const emailKey=u.email.toLowerCase();
-      if(seenEmail.has(emailKey)) errors.push(`User ${n} (${u.nama}): Email sama dengan User ${seenEmail.get(emailKey)+1} — tidak boleh duplikat`);
-      else seenEmail.set(emailKey,i);
-    }
-    // Cek duplikat No HP
-    if(u.hp){
-      if(seenHP.has(u.hp)) errors.push(`User ${n} (${u.nama}): No. HP sama dengan User ${seenHP.get(u.hp)+1} — tidak boleh duplikat`);
-      else seenHP.set(u.hp,i);
-    }
-  });
-  const allPeran=users.flatMap(u=>u.peranList);
-  if(allPeran.filter(k=>k==='SATKER_KPA').length>1)errors.push('Hanya boleh ada 1 KPA dalam satu formulir.');
-  if(allPeran.filter(k=>k==='SATKER_PPSPM').length>1)errors.push('Hanya boleh ada 1 PPSPM dalam satu formulir.');
-  if(allPeran.filter(k=>k==='SATKER_BENDAHARA_PENGELUARAN').length>1)errors.push('Hanya boleh ada 1 Bendahara Pengeluaran dalam satu formulir.');
-  if(allPeran.filter(k=>k==='SATKER_BENDAHARA_PENERIMAAN').length>1)errors.push('Hanya boleh ada 1 Bendahara Penerimaan dalam satu formulir.');
-  const panel=document.getElementById('errPanel');const list=document.getElementById('errList');
-  if(errors.length){panel.style.display='block';list.innerHTML=errors.map(e=>`<li>${e}</li>`).join('');panel.scrollIntoView({behavior:'smooth',block:'center'});return;}
-  panel.style.display='none';openModal('modalPernyataan');
-}
-
-// ─── GENERATE EXCEL ───────────────────────────────────────
-let lastRefKode='';
-async function doGenerateExcel(){
-  closeModal('modalPernyataan');
-  const kodeSatker=document.getElementById('kodeSatker').value.trim();
-  const namaSatker=document.getElementById('namaSatker').value.trim();
-  const levelSatker=document.getElementById('levelSatker').value.trim()||'Satker';
-  const namaKPA=document.getElementById('namaKPA').value.trim();
-  const nipKPA=document.getElementById('nipKPA').value.trim();
-  const kota=document.getElementById('kotaTTD').value.trim()||'Jayapura';
-  const tglSurat=document.getElementById('tanggalSurat').value;
-  const tglStr=tglSurat?formatTglIndo(tglSurat):'______';
-  const refKode=genRefKode(kodeSatker);
-  lastRefKode=refKode;
-
-  // ─── LOGIKA PECAH BARIS PER PERAN ────────────────────────
-  // Peran yang selalu baris sendiri (1 peran = 1 baris)
-  const SOLO_PERAN = new Set([
-    'SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM',
-    'SATKER_ADMIN',
-    'SATKER_VALIDATOR_ANGGARAN',  // BLU — baris sendiri + flag KHUSUS SATKER BLU
-    'SATKER_OPERATOR_SPI',        // BLU — baris sendiri + flag KHUSUS SATKER BLU
-  ]);
-  const BLU_PERAN = new Set(['SATKER_VALIDATOR_ANGGARAN','SATKER_OPERATOR_SPI']);
-
-  // Hasilkan baris Excel per user
-  function buildExcelRows(u, kodeSatker){
-    const rows = [];
-    const soloList = [];
-    const operatorList = [];  // peran non-solo (bisa digabung dalam 1 baris)
-
-    u.peranList.forEach(kode=>{
-      if(SOLO_PERAN.has(kode)) soloList.push(kode);
-      else operatorList.push(kode);
-    });
-
-    // Baris untuk peran solo (masing-masing 1 baris)
-    soloList.forEach(kode=>{
-      const isBLU = BLU_PERAN.has(kode);
-      rows.push({
-        peran: kode,
-        blu: isBLU,
-        u,
-      });
-    });
-
-    // Baris untuk peran operator (semua digabung 1 baris)
-    if(operatorList.length > 0){
-      rows.push({
-        peran: operatorList.join(', '),
-        blu: false,
-        u,
-      });
-    }
-
-    return rows;
-  }
-
-  // ─── ExcelJS — generate workbook SAMA PERSIS dengan format contoh ────
-  const wb = new ExcelJS.Workbook();
-  wb.creator = 'SAKTI KPPN Jayapura';
-  wb.created = new Date();
-
-  const T  = '@';   // numFmt Text
-  const BLUE_FILL   = { type:'pattern', pattern:'solid', fgColor:{argb:'FF6D9EEB'} };
-  const YELLOW_FILL = { type:'pattern', pattern:'solid', fgColor:{argb:'FFFFE598'} };
-  const THIN = { top:{style:'thin',color:{argb:'FF000000'}}, left:{style:'thin',color:{argb:'FF000000'}}, bottom:{style:'thin',color:{argb:'FF000000'}}, right:{style:'thin',color:{argb:'FF000000'}} };
-
-  // ── Sheet 1: Form Pendaftaran ─────────────────────────────
-  const ws = wb.addWorksheet('Form Pendaftaran');
-
-  // Lebar kolom sesuai contoh asli (diukur dari file contoh)
-  ws.columns = [
-    { width:15.3 }, // A — Kode Satker
-    { width:34.4 }, // B — Peran
-    { width:23.9 }, // C — Nama
-    { width:22   }, // D — NIP
-    { width:18.3 }, // E — NPWP
-    { width:23.1 }, // F — NIK
-    { width:27   }, // G — Email
-    { width:22   }, // H — No HP
-    { width:17.9 }, // I — Nomor SK
-    { width:16   }, // J — Tanggal SK
-    { width:17.9 }, // K — Keterangan BLU
-  ];
-
-  // ── ROW 1: Judul — merge A1:J1, bold, size 24, center ────
-  ws.addRow(['Formulir Pendaftaran Pengguna Aplikasi SAKTI','','','','','','','','','']);
-  ws.mergeCells('A1:J1');
-  const r1 = ws.getRow(1);
-  r1.height = 30;
-  const c1A = ws.getCell('A1');
-  c1A.font      = { bold:true, size:24, name:'Calibri' };
-  c1A.alignment = { horizontal:'center', vertical:'middle' };
-  c1A.numFmt    = T;
-
-  // ── ROW 2: kosong ─────────────────────────────────────────
-  ws.addRow([]);
-  ws.getRow(2).height = 5;
-
-  // ── ROW 3: Kode Satker ────────────────────────────────────
-  ws.addRow(['Kode Satker', kodeSatker,'','','','','','']);
-  const r3 = ws.getRow(3);
-  r3.getCell(1).font = {bold:true}; r3.getCell(1).numFmt = T;
-  r3.getCell(2).numFmt = T;
-
-  // ── ROW 4: Nama Satker ────────────────────────────────────
-  ws.addRow(['Nama Satker', namaSatker,'','','','','','']);
-  const r4 = ws.getRow(4);
-  r4.getCell(1).font = {bold:true}; r4.getCell(1).numFmt = T;
-  r4.getCell(2).numFmt = T;
-
-  // ── ROW 5: kosong ─────────────────────────────────────────
-  ws.addRow([]);
-  ws.getRow(5).height = 5;
-
-  // ── ROW 6: Level Satker — merge A6:J6 ────────────────────
-  ws.addRow(['Level Satker : ' + levelSatker,'','','','','','','','','']);
-  ws.mergeCells('A6:J6');
-  const r6 = ws.getRow(6);
-  r6.getCell(1).font   = { bold:true };
-  r6.getCell(1).numFmt = T;
-  r6.getCell(1).alignment = { vertical:'middle' };
-
-  // ── ROW 7: Header tabel — biru, bold (A:J saja, sesuai contoh) ──
-  const hdrCols = ['Kode Satker','Peran','Nama','NIP','NPWP','NIK','E-mail','No. HP','Nomor SK','Tanggal SK'];
-  ws.addRow(hdrCols);
-  const r7 = ws.getRow(7);
-  r7.height = 22;
-  hdrCols.forEach((_,ci)=>{
-    const cell = r7.getCell(ci+1);
-    cell.font      = { bold:true, size:11, name:'Calibri' };
-    cell.fill      = BLUE_FILL;
-    cell.border    = THIN;
-    cell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
-    cell.numFmt    = T;
-  });
-
-  // ── ROW 8+: Data user ─────────────────────────────────────
-  users.forEach(u=>{
-    buildExcelRows(u, kodeSatker).forEach(r=>{
-      const vals = [
-        kodeSatker,
-        r.peran,
-        u.nama   ||'',
-        u.nipnrp ||'',
-        u.nik    ||'',  // NPWP = NIK
-        u.nik    ||'',
-        u.email  ||'',
-        u.hp     ||'',
-        u.sk     ||'',
-        formatTgl(u.tglsk)||'',
-      ];
-      const dataRow = ws.addRow(vals);
-      dataRow.height = 18;
-      vals.forEach((_,ci)=>{
-        const cell = dataRow.getCell(ci+1);
-        cell.numFmt    = T;
-        cell.border    = THIN;
-        cell.alignment = { wrapText:true, vertical:'middle' };
-        if(r.blu) cell.fill = YELLOW_FILL;
-      });
-      // Kolom K: KHUSUS SATKER BLU jika BLU
-      if(r.blu){
-        const kCell = dataRow.getCell(11);
-        kCell.value  = 'KHUSUS SATKER BLU';
-        kCell.numFmt = T;
-        kCell.fill   = YELLOW_FILL;
-        kCell.border = THIN;
-        kCell.alignment = { vertical:'middle' };
-      }
-    });
-  });
-
-  // ── Baris "dst" (baris paling bawah tabel) ───────────────
-  const dstRow = ws.addRow(['dst','','','','','','','','','']);
-  dstRow.getCell(1).numFmt = T;
-  dstRow.getCell(1).border = THIN;
-  for(let ci=2;ci<=10;ci++){ dstRow.getCell(ci).border = THIN; }
-
-  // ── Baris kosong ──────────────────────────────────────────
-  ws.addRow([]); ws.addRow([]); ws.addRow([]);
-
-  // ── Baris pernyataan (teks surat pernyataan) ──────────────
-  const pernyataan = [
-    '1. Saya menyatakan bahwa seluruh data yang diisi pada formulir ini adalah BENAR dan saya mengisinya dalam keadaan sehat, tanpa paksaan dari siapapun atau tanpa ada tekanan dari pihak manapun. Apabila terbukti diketahui sebaliknya di kemudian hari, maka saya bersedia menerima tuntutan di kemudian hari sesuai dengan ketentuan yang berlaku.',
-    '',
-    '2. Semua informasi yang dicantumkan pada formulir ini adalah BENAR dan SAH, serta membebaskan KPPN dari segala tuntutan pihak ketiga baik perdata maupun pidana, sehubungan dengan kesalahan/ketidakbenaran dalam pemberian informasi.',
-    '',
-    '3. Bilamana kemudian hari terdapat tuntutan atas transaksi pengeluaran negara atas beban APBN yang berasal dari data elektonik yang saya terbitkan, maka saya bertanggung jawab penuh atas segala risiko yang timbul.',
-  ];
-  pernyataan.forEach(txt=>{
-    const pr = ws.addRow([txt,'','','','','','','','','']);
-    ws.mergeCells(`A${pr.number}:J${pr.number}`);
-    const cell = pr.getCell(1);
-    cell.numFmt   = T;
-    cell.alignment = { wrapText:true, vertical:'middle' };
-    if(txt) pr.height = txt.length > 200 ? 45 : 30;
-  });
-
-  // ── Baris kosong ──────────────────────────────────────────
-  ws.addRow([]); ws.addRow([]);
-
-  // ── TTD: kota, tanggal ────────────────────────────────────
-  const ttd1 = ws.addRow(['','','','','','',`${kota}, ${tglStr}`]);
-  ttd1.getCell(7).numFmt = T;
-  const ttd2 = ws.addRow(['','','','','','','Kuasa Pengguna Anggaran']);
-  ttd2.getCell(7).numFmt = T;
-  ws.addRow([]); ws.addRow([]); ws.addRow([]);
-  const ttd5 = ws.addRow(['','','','','','',namaKPA]);
-  ttd5.getCell(7).font = {bold:true}; ttd5.getCell(7).numFmt = T;
-  const ttd6 = ws.addRow(['','','','','','',`NIP ${nipKPA}`]);
-  ttd6.getCell(7).numFmt = T;
-
-  // ── Kode Referensi Unik (2 baris di bawah NIP KPA) ───────
-  ws.addRow([]);
-  ws.addRow([]);
-  const refRow = ws.addRow([`Kode Referensi: ${refKode}`]);
-  ws.mergeCells(`A${refRow.number}:J${refRow.number}`);
-  refRow.getCell(1).numFmt    = T;
-  refRow.getCell(1).font      = { italic:true, size:9, color:{argb:'FF757575'} };
-  refRow.getCell(1).alignment = { horizontal:'left' };
-
-  // ── Keterangan ────────────────────────────────────────────
-  ws.addRow([]);
-  const ketData = [
-    ['Keterangan', true],
-    ['*NPWP diisi angka tanpa pemisah simbol', false],
-    ['*E-mail diisi dengan e-mail resmi Kedinasan', false],
-    ['*Tanggal SK diisi dengan format dd-mm-yyyy', false],
-  ];
-  ketData.forEach(([txt, bold])=>{
-    const kr = ws.addRow([txt,'','','','']);
-    ws.mergeCells(`A${kr.number}:E${kr.number}`);
-    kr.getCell(1).numFmt = T;
-    if(bold) kr.getCell(1).font = {bold:true};
-  });
-  const kkr = ws.addRow(['*Untuk contoh pengisian peran lengkap, silakan kunjungi','','','bit.ly/rolesakti']);
-  kkr.getCell(1).numFmt = T;
-  kkr.getCell(4).numFmt = T;
-  ws.addRow([]);
-  const dkm = [
-    ['Dikirimkan HAI berupa :', true],
-    ['* file PDF bertandatangan KPA', false],
-    ['* file excel sebagai lampiran', false],
-    ['* file SK Penetapan Pengguna SAKTI oleh KPA sebagai lampiran', false],
-  ];
-  dkm.forEach(([txt, bold])=>{
-    const dr = ws.addRow([txt,'','','']);
-    ws.mergeCells(`A${dr.number}:C${dr.number}`);
-    dr.getCell(1).numFmt = T;
-    if(bold) dr.getCell(1).font = {bold:true};
-  });
-
-  // ── Sheet 2: Info Referensi (tersembunyi, untuk upload) ───
-  const wsInfo = wb.addWorksheet('Info Referensi');
-  wsInfo.columns = [{ width:24 }, { width:70 }];
-  const tglBuat = formatTglIndo(new Date().toISOString().split('T')[0]);
-  [
-    ['=== INFO REFERENSI — JANGAN DIEDIT ===','', true],
-    ['Nomor Referensi', refKode, false],
-    ['Tanggal Dibuat', tglBuat, false],
-    ['Kode Satker', kodeSatker, false],
-    ['Nama Satker', namaSatker, false],
-    ['Nama KPA', namaKPA, false],
-    ['Status', 'Tahap 1 Selesai — Menunggu Dokumen', false],
-    ['','', false],
-    ['Langkah Selanjutnya', 'Setelah Excel ditandatangani KPA, buka halaman Upload Dokumen dan masukkan Nomor Referensi di atas.', false],
-  ].forEach(([a,b,bold])=>{
-    const ir = wsInfo.addRow([a,b]);
-    ir.getCell(1).numFmt = T; ir.getCell(2).numFmt = T;
-    if(bold) ir.getCell(1).font = {bold:true};
-  });
-
-  // ── Download ──────────────────────────────────────────────
-  const fname = `Form-SAKTI-${kodeSatker}-${refKode}.xlsx`;
-  const buffer = await wb.xlsx.writeBuffer();
-  const blob = new Blob([buffer], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = fname; a.click();
-  URL.revokeObjectURL(url);
-
-  // Simpan ke Sheets via Apps Script
-  try{
-    const payload={
-      action:'submitDaftar',
-      refKode,namaSatker,kodeSatker,namaKPA,nip:nipKPA,
-      noHp:'',email:'',alamat:kota,
-      levelSatker,tglSurat,fname,
-      userCount:users.length,
-      usersJson:JSON.stringify(users.map(u=>({nama:u.nama,nipnrp:u.nipnrp,nik:u.nik,email:u.email,hp:u.hp,sk:u.sk,tglsk:u.tglsk,peranList:u.peranList}))),
-    };
-    apiPost(payload).then(res=>{
-      if(res.success){
-        if(res.otp) localStorage.setItem(`sakti_otp_${refKode}`, res.otp);
-        showToast('✅ Data berhasil dikirim ke server');
-      } else {
-        // Tampilkan error duplikat secara jelas
-        const msg = res.message || 'Terjadi kesalahan di server';
-        const panel = document.getElementById('errPanel');
-        const list  = document.getElementById('errList');
-        if(panel && list){
-          const lines = msg.split('\n').filter(Boolean);
-          list.innerHTML = lines.map(l=>`<li>${l}</li>`).join('');
-          panel.style.display = 'block';
-          panel.scrollIntoView({behavior:'smooth', block:'center'});
-        }
-        showToast('⚠️ ' + msg.split('\n')[0], true);
-        // Tutup modal sukses kalau terlanjur terbuka
-        closeModal('modalSukses');
-      }
-    }).catch(()=>showToast('⚠️ Gagal kirim ke server, cek koneksi', true));
-  }catch(e){}
-
-  // Simpan juga ke localStorage sebagai backup
-  saveDraftLocal(refKode,kodeSatker,namaSatker,namaKPA,nipKPA,levelSatker,kota,tglSurat,fname);
-  document.getElementById('refKodeDisplay').textContent=refKode;
-  document.getElementById('btnKeUpload').href=`upload.html?ref=${encodeURIComponent(refKode)}`;
-  openModal('modalSukses');
-}
-
-function saveDraftLocal(refKode,kodeSatker,namaSatker,namaKPA,nipKPA,levelSatker,kota,tglSurat,fname){
-  try{
-    const draft={refKode,kodeSatker,namaSatker,namaKPA,nipKPA,levelSatker,kota,tglSurat,fname,
-      timestamp:new Date().toISOString(),status:'draft',userCount:users.length,
-      users:users.map(u=>({nama:u.nama,nipnrp:u.nipnrp,nik:u.nik,email:u.email,hp:u.hp,sk:u.sk,tglsk:u.tglsk,peranList:u.peranList})),
-      hasOTP:users.some(u=>u.peranList.some(k=>['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'].includes(k)))};
-    localStorage.setItem(`sakti_draft_${refKode}`,JSON.stringify(draft));
-    const idx=JSON.parse(localStorage.getItem('sakti_drafts_index')||'[]');
-    if(!idx.includes(refKode)){idx.push(refKode);localStorage.setItem('sakti_drafts_index',JSON.stringify(idx));}
-  }catch(e){}
-}
-
-function copyRefKode(){
-  const kode=document.getElementById('refKodeDisplay').textContent;
-  navigator.clipboard?.writeText(kode).then(()=>showToast('✅ Kode berhasil disalin!')).catch(()=>{
-    const ta=document.createElement('textarea');ta.value=kode;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();showToast('✅ Kode berhasil disalin!');
-  });
-}
-
-// ─── UTILS ────────────────────────────────────────────────
-function s(v){return{v:String(v==null?'':v),t:'s'};}
-function esc(str){return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function formatTgl(d){
-  // d can be dd/mm/yyyy (text input) or ISO yyyy-mm-dd
-  if(!d)return'';
-  if(/^\d{2}\/\d{2}\/\d{4}$/.test(d)){
-    // already dd/mm/yyyy → return as dd-mm-yyyy for display
-    return d.replace(/\//g,'-');
-  }
-  const dt=new Date(d);
-  if(isNaN(dt))return d;
-  return`${String(dt.getDate()).padStart(2,'0')}-${String(dt.getMonth()+1).padStart(2,'0')}-${dt.getFullYear()}`;
-}
-function formatTglIndo(d){
-  // d can be dd/mm/yyyy (text input), ISO yyyy-mm-dd, or Date object
-  if(!d)return'';
-  const B=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-  let dt;
-  if(d instanceof Date){dt=d;}
-  else if(/^\d{2}\/\d{2}\/\d{4}$/.test(d)){dt=parseDMY(d);}
-  else{dt=new Date(d);}
-  if(!dt||isNaN(dt))return d;
-  return`${dt.getDate()} ${B[dt.getMonth()]} ${dt.getFullYear()}`;
-}
-let toastT;
-function showToast(msg,isErr=false){
-  const t=document.getElementById('toast');t.textContent=msg;t.className='on'+(isErr?' err':'');
-  clearTimeout(toastT);toastT=setTimeout(()=>{t.className='';},3500);
-}
-function resetForm(){
-  if(!confirm('Reset semua data? Data yang belum diunduh akan hilang.'))return;
-  ['kodeSatker','namaSatker','levelSatker','namaKPA','nipKPA','kotaTTD'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-  document.getElementById('tanggalSurat').value=todayDMY();
-  users.length=0;document.getElementById('userList').innerHTML='';
-  document.getElementById('errPanel').style.display='none';
-  addUser();showToast('Form telah direset');
-}
-// ─── PANGGIL REKAMAN ──────────────────────────────────────
-async function doPanggilRekaman(){
-  const refInput=document.getElementById('inputPanggilRef');
-  const errBox=document.getElementById('panggilErr');
-  const btn=document.getElementById('btnPanggilLoad');
-  const ref=(refInput?.value||'').trim();
-  errBox.style.display='none';
-  if(!ref){errBox.textContent='Kode referensi tidak boleh kosong.';errBox.style.display='block';return;}
-
-  btn.disabled=true;btn.textContent='⏳ Memuat...';
-  try{
-    const res=await apiPost({action:'getRekamanByRef',refKode:ref});
-    if(!res.success){
-      errBox.textContent=res.message||'Terjadi kesalahan.';
-      errBox.style.display='block';
-      btn.disabled=false;btn.textContent='🔍 Muat Rekaman';
-      return;
-    }
-
-    // Konfirmasi sebelum timpa form
-    if(!confirm(`Ditemukan rekaman:\n\nSatker: ${res.namaSatker}\nKode Satker: ${res.kodeSatker}\nStatus: ${res.status}\n\nMuat data ini ke form? Form yang sedang diisi akan diganti.`)){
-      btn.disabled=false;btn.textContent='🔍 Muat Rekaman';
-      return;
-    }
-
-    // Isi field utama
-    const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
-    setVal('kodeSatker',  res.kodeSatker);
-    setVal('namaSatker',  res.namaSatker);
-    setVal('levelSatker', res.levelSatker);
-    setVal('namaKPA',     res.namaKpa);
-    setVal('nipKPA',      res.nip);
-    setVal('kotaTTD',     res.alamat);
-
-    // Reset daftar user lalu isi dari rekaman
-    users.length=0;
-    document.getElementById('userList').innerHTML='';
-    document.getElementById('errPanel').style.display='none';
-
-    (res.users||[]).forEach(u=>{
-      const id=addUser(); // returns new user id
-      const usr=getUserById(id);
-      if(usr){
-        usr.nama=u.nama||''; usr.nipnrp=u.nipnrp||''; usr.nik=u.nik||'';
-        usr.email=u.email||''; usr.hp=u.hp||''; usr.sk=u.sk||''; usr.tglsk=u.tglsk||'';
-        usr.peranList=u.peranList||[];
-        renderUserSummary(id);
-      }
-    });
-
-    closeModal('modalPanggilRekaman');
-    refInput.value='';
-    showToast(`✅ Rekaman ${ref} berhasil dimuat. Perbaiki data lalu unduh ulang Excel.`);
-  }catch(err){
-    errBox.textContent='Gagal terhubung ke server. Cek koneksi internet.';
-    errBox.style.display='block';
-  }finally{
-    btn.disabled=false;btn.textContent='🔍 Muat Rekaman';
-  }
-}
-
-window.onload=()=>{
-  document.getElementById('tanggalSurat').value=todayDMY();
-  addUser();
-  loadSatkerRef();
+// ================================================================
+// Google Apps Script — SAKTI KPPN Jayapura
+// Backend lengkap: Auth, Data (Sheets), File (Drive)
+// ================================================================
+
+// ===== KONFIGURASI — WAJIB DIISI =====
+const CONFIG = {
+  FOLDER_ID:        'GANTI_DENGAN_ID_FOLDER_DRIVE_KAMU',   // ID folder Google Drive
+  SPREADSHEET_ID:   'GANTI_DENGAN_ID_SPREADSHEET_KAMU',    // ID Google Sheets
+  SESSION_DURATION: 8 * 60 * 60 * 1000,                    // 8 jam (ms)
+  ADMIN_SECRET:     'KPPN_JAYAPURA_SECRET_2024',            // Secret untuk hash
 };
-</script>
-</body>
-</html>
+
+// ===== SHEET NAMES =====
+const SHEET = {
+  USERS:        'Users',
+  PENDAFTARAN:  'Pendaftaran',
+  SESSIONS:     'Sessions',
+  PENGGUNA:     'PenggunaTerdaftar',   // NIK + NIP semua user yang pernah didaftarkan
+  REF_SATKER:   'RefSatker',           // Referensi kode + nama satker
+};
+
+// ================================================================
+// ROUTER UTAMA
+// ================================================================
+function doPost(e) {
+  try {
+    // CORS headers
+    const data   = JSON.parse(e.postData.contents);
+    const action = data.action || '';
+
+    // Routes yang tidak butuh auth
+    if (action === 'login')          return handleLogin(data);
+    if (action === 'submitDaftar')   return handleSubmitDaftar(data);
+    if (action === 'cekRef')         return handleCekRef(data);
+    if (action === 'getRekamanByRef') return handleGetRekamanByRef(data);
+    if (action === 'getSatkerList')  return handleGetSatkerList();
+
+    // Routes yang butuh auth
+    const auth = checkSession(data.token);
+    if (!auth.valid) return jsonErr('Sesi tidak valid atau sudah habis. Silakan login ulang.');
+
+    // Admin routes
+    if (action === 'logout')          return handleLogout(data.token);
+    if (action === 'getDaftarList')   return handleGetDaftarList(auth);
+    if (action === 'getDetail')       return handleGetDetail(data, auth);
+    if (action === 'hapusData')       return handleHapusData(data, auth);
+    if (action === 'uploadFile')      return handleUploadFile(data, auth);
+    if (action === 'getUsers')        return handleGetUsers(auth);
+    if (action === 'addUser')         return handleAddUser(data, auth);
+    if (action === 'deleteUser')      return handleDeleteUser(data, auth);
+    if (action === 'changePassword')  return handleChangePassword(data, auth);
+    if (action === 'getDashboard')     return handleGetDashboard(auth);
+    if (action === 'aktivasiOTP')      return handleAktivasiOTP(data, auth);
+    if (action === 'tandaiTerdaftar')  return handleTandaiTerdaftar(data, auth);
+    if (action === 'getRekamanByRef')  return handleGetRekamanByRef(data);
+    if (action === 'getSatkerList')    return handleGetSatkerList();
+    if (action === 'addSatker')        return handleAddSatker(data, auth);
+    if (action === 'updateSatker')     return handleUpdateSatker(data, auth);
+    if (action === 'deleteSatker')     return handleDeleteSatker(data, auth);
+
+    return jsonErr('Action tidak dikenal: ' + action);
+  } catch (err) {
+    return jsonErr('Server error: ' + err.toString());
+  }
+}
+
+function doGet(e) {
+  const action = (e.parameter && e.parameter.action) || '';
+  if (action === 'ping') return jsonOk({ message: 'SAKTI KPPN Jayapura - Aktif ✅' });
+  return jsonOk({ message: 'SAKTI KPPN Jayapura Backend' });
+}
+
+// ================================================================
+// INISIALISASI SPREADSHEET
+// Jalankan sekali dari editor Apps Script sebelum deploy!
+// ================================================================
+function initSpreadsheet() {
+  const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+
+  // Sheet Users
+  let shUsers = ss.getSheetByName(SHEET.USERS);
+  if (!shUsers) {
+    shUsers = ss.insertSheet(SHEET.USERS);
+    shUsers.appendRow(['username', 'passwordHash', 'role', 'createdAt']);
+    // User admin default
+    shUsers.appendRow(['admin', hashPassword('kppn2024'), 'Admin', new Date().toISOString()]);
+    shUsers.appendRow(['kppn1', hashPassword('sakti123'), 'Petugas', new Date().toISOString()]);
+  }
+
+  // Sheet Pendaftaran
+  let shDaftar = ss.getSheetByName(SHEET.PENDAFTARAN);
+  if (!shDaftar) {
+    shDaftar = ss.insertSheet(SHEET.PENDAFTARAN);
+    shDaftar.appendRow([
+      'refKode','namaSatker','kodeSatker','namaKpa','nip',
+      'noHp','email','alamat','tanggalDaftar','status',
+      'otpCode','otpAktif','driveFolder','filesJson','catatanAdmin',
+      'levelSatker','usersJson','sudahTerdaftar'  // kolom 16, 17, 18
+    ]);
+  }
+
+  // Sheet Sessions
+  let shSess = ss.getSheetByName(SHEET.SESSIONS);
+  if (!shSess) {
+    shSess = ss.insertSheet(SHEET.SESSIONS);
+    shSess.appendRow(['token','username','role','createdAt','expiresAt']);
+  }
+
+  // Sheet PenggunaTerdaftar — untuk cek duplikat NIK/NIP lintas pendaftaran
+  let shPengguna = ss.getSheetByName(SHEET.PENGGUNA);
+  if (!shPengguna) {
+    shPengguna = ss.insertSheet(SHEET.PENGGUNA);
+    shPengguna.appendRow(['refKode','namaSatker','nama','nipnrp','nik','peran','terdaftarAt']);
+  }
+
+  // Sheet RefSatker — referensi kode dan nama satker
+  let shRef = ss.getSheetByName(SHEET.REF_SATKER);
+  if (!shRef) {
+    shRef = ss.insertSheet(SHEET.REF_SATKER);
+    shRef.appendRow(['kode','nama','createdAt','updatedAt']);
+  }
+
+  return jsonOk({ message: 'Spreadsheet berhasil diinisialisasi' });
+}
+
+// ================================================================
+// AUTH — LOGIN / LOGOUT / SESSION
+// ================================================================
+function handleLogin(data) {
+  const username = (data.username || '').trim();
+  const password = data.password || '';
+
+  if (!username || !password) return jsonErr('Username dan password wajib diisi');
+
+  const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh    = ss.getSheetByName(SHEET.USERS);
+  const rows  = sh.getDataRange().getValues();
+
+  // rows[0] = header
+  for (let i = 1; i < rows.length; i++) {
+    const [uname, pwHash, role] = rows[i];
+    if (uname === username && pwHash === hashPassword(password)) {
+      // Hapus session lama user ini
+      cleanOldSessions(username);
+
+      // Buat token baru
+      const token     = generateToken();
+      const now       = new Date();
+      const expiresAt = new Date(now.getTime() + CONFIG.SESSION_DURATION);
+
+      const shSess = ss.getSheetByName(SHEET.SESSIONS);
+      shSess.appendRow([token, username, role, now.toISOString(), expiresAt.toISOString()]);
+
+      return jsonOk({ token, username, role, expiresAt: expiresAt.toISOString() });
+    }
+  }
+
+  return jsonErr('Username atau password salah');
+}
+
+function handleLogout(token) {
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.SESSIONS);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === token) {
+      sh.deleteRow(i + 1);
+      break;
+    }
+  }
+  return jsonOk({ message: 'Logout berhasil' });
+}
+
+function checkSession(token) {
+  if (!token) return { valid: false };
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.SESSIONS);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    const [tok, username, role, , expiresAt] = rows[i];
+    if (tok === token) {
+      if (new Date() > new Date(expiresAt)) {
+        sh.deleteRow(i + 1); // Hapus expired session
+        return { valid: false };
+      }
+      return { valid: true, username, role, rowIndex: i + 1 };
+    }
+  }
+  return { valid: false };
+}
+
+function cleanOldSessions(username) {
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.SESSIONS);
+  const rows = sh.getDataRange().getValues();
+  // Hapus dari bawah agar index tidak bergeser
+  for (let i = rows.length - 1; i >= 1; i--) {
+    if (rows[i][1] === username) sh.deleteRow(i + 1);
+  }
+}
+
+// ================================================================
+// PENDAFTARAN — SUBMIT, CEK, LIST, DETAIL, HAPUS
+// ================================================================
+function handleSubmitDaftar(data) {
+  const required = ['refKode','namaSatker','kodeSatker'];
+  for (const f of required) {
+    if (!data[f]) return jsonErr(`Field wajib kosong: ${f}`);
+  }
+
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.PENDAFTARAN);
+  const rows = sh.getDataRange().getValues();
+
+  // Cek duplikat refKode
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === data.refKode) return jsonErr('Kode referensi sudah digunakan');
+  }
+
+  // Cek duplikat NIK / NIP lintas pendaftaran
+  let usersArr = [];
+  try { usersArr = JSON.parse(data.usersJson || '[]'); } catch(e) {}
+
+  if (usersArr.length > 0) {
+    const shPengguna = ss.getSheetByName(SHEET.PENGGUNA);
+    const pRows = shPengguna ? shPengguna.getDataRange().getValues() : [];
+
+    // Kumpulkan semua NIK dan NIP yang sudah terdaftar
+    const registeredNIK = new Map(); // nik -> {nama, satker}
+    const registeredNIP = new Map(); // nipnrp -> {nama, satker}
+    for (let i = 1; i < pRows.length; i++) {
+      const [pRef, pSatker, pNama, pNip, pNik] = pRows[i];
+      if (pNik)  registeredNIK.set(String(pNik).trim(),  { nama: pNama, satker: pSatker, ref: pRef });
+      if (pNip)  registeredNIP.set(String(pNip).trim(),  { nama: pNama, satker: pSatker, ref: pRef });
+    }
+
+    // Cek setiap user baru
+    const dupErrors = [];
+    for (const u of usersArr) {
+      const nik    = String(u.nik    || '').trim();
+      const nipnrp = String(u.nipnrp || '').trim();
+      const nama   = u.nama || '(tanpa nama)';
+
+      if (nik && registeredNIK.has(nik)) {
+        const ex = registeredNIK.get(nik);
+        dupErrors.push(`NIK ${nik} (${nama}) sudah terdaftar atas nama "${ex.nama}" dari satker "${ex.satker}" (ref: ${ex.ref})`);
+      }
+      if (nipnrp && registeredNIP.has(nipnrp)) {
+        const ex = registeredNIP.get(nipnrp);
+        dupErrors.push(`NIP/NRP ${nipnrp} (${nama}) sudah terdaftar atas nama "${ex.nama}" dari satker "${ex.satker}" (ref: ${ex.ref})`);
+      }
+    }
+
+    if (dupErrors.length > 0) {
+      return jsonErr('Terdapat pengguna yang sudah pernah didaftarkan:\n' + dupErrors.join('\n'));
+    }
+  }
+
+  const otp = generateOTP();
+  sh.appendRow([
+    data.refKode,
+    data.namaSatker,
+    data.kodeSatker,
+    data.namaKpa || data.namaKPA || '',
+    data.nip     || data.nipKPA  || '',
+    data.noHp    || '',
+    data.email   || '',
+    data.alamat  || '',
+    new Date().toISOString(),
+    'Menunggu',         // status
+    otp,                // otpCode
+    'false',            // otpAktif
+    '',                 // driveFolder
+    '{}',               // filesJson
+    '',                 // catatanAdmin
+    data.levelSatker || '',  // levelSatker (kolom 16)
+    data.usersJson   || '[]', // usersJson  (kolom 17)
+  ]);
+
+  // Simpan daftar pengguna ke sheet PenggunaTerdaftar
+  if (usersArr.length > 0) {
+    const shPengguna = ss.getSheetByName(SHEET.PENGGUNA);
+    if (shPengguna) {
+      const now = new Date().toISOString();
+      for (const u of usersArr) {
+        shPengguna.appendRow([
+          data.refKode,
+          data.namaSatker,
+          u.nama    || '',
+          u.nipnrp  || '',
+          u.nik     || '',
+          (u.peranList || []).join(', '),
+          now,
+        ]);
+      }
+    }
+  }
+
+  return jsonOk({ refKode: data.refKode, otp });
+}
+
+function handleCekRef(data) {
+  const refKode = (data.refKode || '').trim();
+  if (!refKode) return jsonErr('refKode wajib diisi');
+
+  const row = findPendaftaran(refKode);
+  if (!row) return jsonErr('Kode referensi tidak ditemukan');
+
+  return jsonOk({
+    refKode:    row[0],
+    namaSatker: row[1],
+    status:     row[9],
+    otpAktif:   row[11] === 'true',
+  });
+}
+
+function handleGetDaftarList(auth) {
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.PENDAFTARAN);
+  const rows = sh.getDataRange().getValues();
+
+  const OTP_ROLES = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+  const list = [];
+  for (let i = 1; i < rows.length; i++) {
+    // Cek apakah ada role yang butuh OTP
+    let hasOTP = false;
+    try {
+      const usrs = JSON.parse(rows[i][16] || '[]');
+      hasOTP = usrs.some(u => (u.peranList || []).some(k => OTP_ROLES.includes(k)));
+    } catch(e) {}
+
+    list.push({
+      refKode:        rows[i][0],
+      namaSatker:     rows[i][1],
+      kodeSatker:     rows[i][2],
+      namaKpa:        rows[i][3],
+      nip:            rows[i][4],
+      userCount:      (() => { try { return JSON.parse(rows[i][16]||'[]').length; } catch(e){ return 0; } })(),
+      tanggalDaftar:  rows[i][8],
+      status:         rows[i][9],
+      otpAktif:       rows[i][11] === 'true',
+      hasOTP:         hasOTP,
+      sudahTerdaftar: rows[i][17] === 'true',
+    });
+  }
+
+  return jsonOk({ list });
+}
+
+function handleGetDetail(data, auth) {
+  const refKode = data.refKode || '';
+  const row = findPendaftaran(refKode);
+  if (!row) return jsonErr('Data tidak ditemukan');
+
+  let filesJson = {};
+  try { filesJson = JSON.parse(row[13] || '{}'); } catch(e) {}
+
+  let usersArr = [];
+  try { usersArr = JSON.parse(row[16] || '[]'); } catch(e) {}
+
+  // Fallback: ambil dari PenggunaTerdaftar jika kolom usersJson kosong (data lama)
+  if (!usersArr.length) {
+    const shP = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID).getSheetByName(SHEET.PENGGUNA);
+    if (shP) {
+      const pRows = shP.getDataRange().getValues();
+      const byRef = {};
+      for (let i = 1; i < pRows.length; i++) {
+        if (pRows[i][0] === row[0]) {
+          usersArr.push({
+            nama:     pRows[i][2],
+            nipnrp:   pRows[i][3],
+            nik:      pRows[i][4],
+            peranList: pRows[i][5] ? pRows[i][5].split(', ') : [],
+          });
+        }
+      }
+    }
+  }
+
+  return jsonOk({
+    refKode:      row[0],
+    namaSatker:   row[1],
+    kodeSatker:   row[2],
+    namaKpa:      row[3],
+    nip:          row[4],
+    noHp:         row[5],
+    email:        row[6],
+    alamat:       row[7],
+    tanggalDaftar:row[8],
+    status:       row[9],
+    otpCode:      auth.role === 'Admin' ? row[10] : '***',
+    otpAktif:     row[11] === 'true',
+    driveFolder:  row[12],
+    files:        filesJson,
+    catatanAdmin: row[14],
+    levelSatker:     row[15] || '',
+    users:           usersArr,
+    sudahTerdaftar:  row[17] === 'true',
+  });
+}
+
+function handleHapusData(data, auth) {
+  if (auth.role !== 'Admin') return jsonErr('Hanya Admin yang bisa menghapus data');
+
+  const refs = data.refs || [];
+  if (!refs.length) return jsonErr('Tidak ada data yang dipilih');
+
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.PENDAFTARAN);
+  const rows = sh.getDataRange().getValues();
+
+  let deletedCount = 0;
+  // Hapus dari bawah agar index tidak bergeser
+  for (let i = rows.length - 1; i >= 1; i--) {
+    if (refs.includes(rows[i][0])) {
+      sh.deleteRow(i + 1);
+      deletedCount++;
+    }
+  }
+
+  // Hapus juga data pengguna terkait dari sheet PenggunaTerdaftar
+  const shPengguna = ss.getSheetByName(SHEET.PENGGUNA);
+  if (shPengguna) {
+    const pRows = shPengguna.getDataRange().getValues();
+    for (let i = pRows.length - 1; i >= 1; i--) {
+      if (refs.includes(pRows[i][0])) shPengguna.deleteRow(i + 1);
+    }
+  }
+
+  return jsonOk({ message: `${deletedCount} data berhasil dihapus`, deletedCount });
+}
+
+function handleAktivasiOTP(data, auth) {
+  const refKode = data.refKode || '';
+  const catatan = data.catatan || '';
+
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.PENDAFTARAN);
+  const rows = sh.getDataRange().getValues();
+
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === refKode) {
+      sh.getRange(i + 1, 10).setValue('Aktif');   // status
+      sh.getRange(i + 1, 12).setValue('true');    // otpAktif
+      if (catatan) sh.getRange(i + 1, 15).setValue(catatan); // catatan
+      return jsonOk({ message: 'OTP berhasil diaktivasi', refKode });
+    }
+  }
+
+  return jsonErr('Data tidak ditemukan');
+}
+
+// ================================================================
+// TANDAI SUDAH TERDAFTAR DI SAKTI
+// ================================================================
+function handleTandaiTerdaftar(data, auth) {
+  const refKode = data.refKode || '';
+  if (!refKode) return jsonErr('refKode wajib diisi');
+
+  const ss  = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh  = ss.getSheetByName(SHEET.PENDAFTARAN);
+  const rows = sh.getDataRange().getValues();
+
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === refKode) {
+      sh.getRange(i + 1, 18).setValue('true');  // kolom R = sudahTerdaftar
+      sh.getRange(i + 1, 10).setValue('Terdaftar'); // update status
+      return jsonOk({ message: 'Berhasil ditandai sudah terdaftar di SAKTI', refKode });
+    }
+  }
+  return jsonErr('Data tidak ditemukan');
+}
+
+// ================================================================
+// AMBIL REKAMAN SATKER BERDASAR KODE UNIK (untuk callback/edit)
+// ================================================================
+function handleGetRekamanByRef(data) {
+  const refKode = (data.refKode || '').trim();
+  if (!refKode) return jsonErr('Kode referensi wajib diisi');
+
+  const row = findPendaftaran(refKode);
+  if (!row) return jsonErr('Kode referensi tidak ditemukan. Pastikan kode yang dimasukkan benar.');
+
+  // Blokir jika sudah ditandai terdaftar
+  if (row[17] === 'true') {
+    return jsonErr('Pendaftaran ini sudah ditandai TERDAFTAR di SAKTI oleh petugas KPPN. Data tidak dapat diubah lagi.');
+  }
+
+  let usersArr = [];
+  try { usersArr = JSON.parse(row[16] || '[]'); } catch(e) {}
+
+  return jsonOk({
+    refKode:      row[0],
+    namaSatker:   row[1],
+    kodeSatker:   row[2],
+    namaKpa:      row[3],
+    nip:          row[4],
+    alamat:       row[7],
+    levelSatker:  row[15] || '',
+    status:       row[9],
+    sudahTerdaftar: row[17] === 'true',
+    users:        usersArr,
+  });
+}
+
+// ================================================================
+// FILE UPLOAD KE GOOGLE DRIVE
+// ================================================================
+function handleUploadFile(data, auth) {
+  const refKode    = data.refKode    || '';
+  const namaSatker = data.namaSatker || 'Satker';
+  const fileKey    = data.fileKey    || 'file';
+  const fileName   = data.fileName   || 'dokumen';
+  const fileData   = data.fileData   || '';   // base64
+  const mimeType   = data.mimeType   || 'application/octet-stream';
+
+  if (!fileData) return jsonErr('Data file kosong');
+  if (!refKode)  return jsonErr('refKode wajib diisi');
+
+  const rootFolder     = DriveApp.getFolderById(CONFIG.FOLDER_ID);
+  const subFolderName  = `${refKode} — ${namaSatker}`;
+
+  let subFolder;
+  const existing = rootFolder.getFoldersByName(subFolderName);
+  subFolder = existing.hasNext() ? existing.next() : rootFolder.createFolder(subFolderName);
+
+  // Folder KTP untuk file KTP
+  let targetFolder = subFolder;
+  if (fileKey.startsWith('ktp_')) {
+    const ktpFolders = subFolder.getFoldersByName('KTP');
+    targetFolder = ktpFolders.hasNext() ? ktpFolders.next() : subFolder.createFolder('KTP');
+  }
+
+  // Simpan file
+  const blob = Utilities.newBlob(Utilities.base64Decode(fileData), mimeType, fileName);
+  const file = targetFolder.createFile(blob);
+
+  // Set file agar hanya bisa diakses yang punya link (bukan publik)
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  const fileUrl    = file.getUrl();
+  const folderUrl  = subFolder.getUrl();
+
+  // Update filesJson di Sheets
+  updateFilesJson(refKode, fileKey, { url: fileUrl, name: fileName });
+  updateDriveFolder(refKode, folderUrl);
+
+  return jsonOk({ success: true, fileUrl, folderUrl, fileName });
+}
+
+function updateFilesJson(refKode, fileKey, fileInfo) {
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.PENDAFTARAN);
+  const rows = sh.getDataRange().getValues();
+
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === refKode) {
+      let filesJson = {};
+      try { filesJson = JSON.parse(rows[i][13] || '{}'); } catch(e) {}
+      filesJson[fileKey] = fileInfo;
+      sh.getRange(i + 1, 14).setValue(JSON.stringify(filesJson));
+      return;
+    }
+  }
+}
+
+function updateDriveFolder(refKode, folderUrl) {
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.PENDAFTARAN);
+  const rows = sh.getDataRange().getValues();
+
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === refKode) {
+      sh.getRange(i + 1, 13).setValue(folderUrl);
+      return;
+    }
+  }
+}
+
+// ================================================================
+// MANAJEMEN USER ADMIN
+// ================================================================
+function handleGetUsers(auth) {
+  if (auth.role !== 'Admin') return jsonErr('Hanya Admin yang bisa melihat daftar user');
+
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.USERS);
+  const rows = sh.getDataRange().getValues();
+
+  const users = [];
+  for (let i = 1; i < rows.length; i++) {
+    users.push({
+      username:  rows[i][0],
+      role:      rows[i][2],
+      createdAt: rows[i][3],
+    });
+  }
+
+  return jsonOk({ users });
+}
+
+function handleAddUser(data, auth) {
+  if (auth.role !== 'Admin') return jsonErr('Hanya Admin yang bisa menambah user');
+
+  const username = (data.username || '').trim();
+  const password = data.password || '';
+  const role     = data.role || 'Petugas';
+
+  if (!username || !password) return jsonErr('Username dan password wajib diisi');
+  if (password.length < 6)    return jsonErr('Password minimal 6 karakter');
+  if (!['Admin','Petugas'].includes(role)) return jsonErr('Role tidak valid');
+
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.USERS);
+  const rows = sh.getDataRange().getValues();
+
+  // Cek duplikat
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === username) return jsonErr('Username sudah digunakan');
+  }
+
+  sh.appendRow([username, hashPassword(password), role, new Date().toISOString()]);
+  return jsonOk({ message: `User '${username}' berhasil ditambahkan` });
+}
+
+function handleDeleteUser(data, auth) {
+  if (auth.role !== 'Admin') return jsonErr('Hanya Admin yang bisa menghapus user');
+
+  const username = data.username || '';
+  if (username === auth.username) return jsonErr('Tidak bisa menghapus akun sendiri');
+
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.USERS);
+  const rows = sh.getDataRange().getValues();
+
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === username) {
+      sh.deleteRow(i + 1);
+      // Hapus semua session user ini
+      cleanOldSessions(username);
+      return jsonOk({ message: `User '${username}' berhasil dihapus` });
+    }
+  }
+
+  return jsonErr('User tidak ditemukan');
+}
+
+function handleChangePassword(data, auth) {
+  const passwordLama = data.passwordLama || '';
+  const passwordBaru = data.passwordBaru || '';
+
+  if (!passwordLama || !passwordBaru) return jsonErr('Password lama dan baru wajib diisi');
+  if (passwordBaru.length < 6)        return jsonErr('Password baru minimal 6 karakter');
+
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.USERS);
+  const rows = sh.getDataRange().getValues();
+
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === auth.username) {
+      if (rows[i][1] !== hashPassword(passwordLama)) {
+        return jsonErr('Password lama salah');
+      }
+      sh.getRange(i + 1, 2).setValue(hashPassword(passwordBaru));
+      return jsonOk({ message: 'Password berhasil diubah' });
+    }
+  }
+
+  return jsonErr('User tidak ditemukan');
+}
+
+// ================================================================
+// DASHBOARD STATS
+// ================================================================
+function handleGetDashboard(auth) {
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.PENDAFTARAN);
+  const rows = sh.getDataRange().getValues();
+
+  let total = 0, menunggu = 0, aktif = 0, ditolak = 0;
+  for (let i = 1; i < rows.length; i++) {
+    total++;
+    const status = rows[i][9];
+    if (status === 'Menunggu') menunggu++;
+    else if (status === 'Aktif') aktif++;
+    else if (status === 'Ditolak') ditolak++;
+  }
+
+  return jsonOk({ total, menunggu, aktif, ditolak });
+}
+
+// ================================================================
+// REFERENSI SATKER — CRUD
+// ================================================================
+
+/**
+ * Public: Kembalikan seluruh daftar satker dari sheet RefSatker.
+ * Jika sheet kosong, kembalikan list kosong (frontend akan pakai local SATKER_REF).
+ */
+function handleGetSatkerList() {
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  let sh = ss.getSheetByName(SHEET.REF_SATKER);
+  if (!sh) return jsonOk({ list: [] });
+
+  const rows = sh.getDataRange().getValues();
+  const list = [];
+  for (let i = 1; i < rows.length; i++) {
+    if (!rows[i][0]) continue; // skip baris kosong
+    list.push({ kode: String(rows[i][0]), nama: String(rows[i][1]) });
+  }
+  return jsonOk({ list });
+}
+
+/**
+ * Admin/Petugas: Tambah satker baru ke RefSatker.
+ */
+function handleAddSatker(data, auth) {
+  const kode = (data.kode || '').trim();
+  const nama = (data.nama || '').trim();
+
+  if (!kode || !nama)       return jsonErr('Kode dan nama satker wajib diisi');
+  if (!/^\d{6}$/.test(kode)) return jsonErr('Kode satker harus tepat 6 digit angka');
+
+  const ss  = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  let sh = ss.getSheetByName(SHEET.REF_SATKER);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET.REF_SATKER);
+    sh.appendRow(['kode','nama','createdAt','updatedAt']);
+  }
+
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === kode) return jsonErr(`Kode ${kode} sudah ada dalam daftar`);
+  }
+
+  sh.appendRow([kode, nama, new Date().toISOString(), new Date().toISOString()]);
+  return jsonOk({ message: `Satker ${kode} — ${nama} berhasil ditambahkan` });
+}
+
+/**
+ * Admin/Petugas: Ubah nama satker (kode tidak boleh diubah karena jadi identifier).
+ */
+function handleUpdateSatker(data, auth) {
+  const kode    = (data.kode || '').trim();
+  const namaBaru = (data.nama || '').trim();
+
+  if (!kode || !namaBaru) return jsonErr('Kode dan nama baru wajib diisi');
+
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.REF_SATKER);
+  if (!sh) return jsonErr('Sheet RefSatker belum ada');
+
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === kode) {
+      sh.getRange(i + 1, 2).setValue(namaBaru);
+      sh.getRange(i + 1, 4).setValue(new Date().toISOString());
+      return jsonOk({ message: `Satker ${kode} berhasil diperbarui` });
+    }
+  }
+  return jsonErr(`Kode ${kode} tidak ditemukan`);
+}
+
+/**
+ * Admin saja: Hapus satker dari RefSatker.
+ */
+function handleDeleteSatker(data, auth) {
+  if (auth.role !== 'Admin') return jsonErr('Hanya Admin yang bisa menghapus satker');
+
+  const kode = (data.kode || '').trim();
+  if (!kode) return jsonErr('Kode satker wajib diisi');
+
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.REF_SATKER);
+  if (!sh) return jsonErr('Sheet RefSatker belum ada');
+
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === kode) {
+      sh.deleteRow(i + 1);
+      return jsonOk({ message: `Satker ${kode} berhasil dihapus` });
+    }
+  }
+  return jsonErr(`Kode ${kode} tidak ditemukan`);
+}
+
+// ================================================================
+// HELPER FUNCTIONS
+// ================================================================
+function findPendaftaran(refKode) {
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.PENDAFTARAN);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === refKode) return rows[i];
+  }
+  return null;
+}
+
+function hashPassword(password) {
+  // SHA-256 via Utilities
+  const raw     = password + CONFIG.ADMIN_SECRET;
+  const bytes   = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, raw);
+  return bytes.map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join('');
+}
+
+function generateToken() {
+  return Utilities.getUuid() + '-' + new Date().getTime().toString(36);
+}
+
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function jsonOk(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify({ success: true, ...obj }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function jsonErr(message) {
+  return ContentService
+    .createTextOutput(JSON.stringify({ success: false, message }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
