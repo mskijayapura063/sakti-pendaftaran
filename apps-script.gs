@@ -29,9 +29,10 @@ function doPost(e) {
     const action = data.action || '';
 
     // Routes yang tidak butuh auth
-    if (action === 'login')         return handleLogin(data);
-    if (action === 'submitDaftar')  return handleSubmitDaftar(data);
-    if (action === 'cekRef')        return handleCekRef(data);
+    if (action === 'login')          return handleLogin(data);
+    if (action === 'submitDaftar')   return handleSubmitDaftar(data);
+    if (action === 'cekRef')         return handleCekRef(data);
+    if (action === 'getRekamanByRef') return handleGetRekamanByRef(data);
 
     // Routes yang butuh auth
     const auth = checkSession(data.token);
@@ -47,8 +48,10 @@ function doPost(e) {
     if (action === 'addUser')         return handleAddUser(data, auth);
     if (action === 'deleteUser')      return handleDeleteUser(data, auth);
     if (action === 'changePassword')  return handleChangePassword(data, auth);
-    if (action === 'getDashboard')    return handleGetDashboard(auth);
-    if (action === 'aktivasiOTP')     return handleAktivasiOTP(data, auth);
+    if (action === 'getDashboard')     return handleGetDashboard(auth);
+    if (action === 'aktivasiOTP')      return handleAktivasiOTP(data, auth);
+    if (action === 'tandaiTerdaftar')  return handleTandaiTerdaftar(data, auth);
+    if (action === 'getRekamanByRef')  return handleGetRekamanByRef(data);
 
     return jsonErr('Action tidak dikenal: ' + action);
   } catch (err) {
@@ -87,7 +90,7 @@ function initSpreadsheet() {
       'refKode','namaSatker','kodeSatker','namaKpa','nip',
       'noHp','email','alamat','tanggalDaftar','status',
       'otpCode','otpAktif','driveFolder','filesJson','catatanAdmin',
-      'levelSatker','usersJson'  // kolom 16 & 17
+      'levelSatker','usersJson','sudahTerdaftar'  // kolom 16, 17, 18
     ]);
   }
 
@@ -304,16 +307,28 @@ function handleGetDaftarList(auth) {
   const sh   = ss.getSheetByName(SHEET.PENDAFTARAN);
   const rows = sh.getDataRange().getValues();
 
+  const OTP_ROLES = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
   const list = [];
   for (let i = 1; i < rows.length; i++) {
+    // Cek apakah ada role yang butuh OTP
+    let hasOTP = false;
+    try {
+      const usrs = JSON.parse(rows[i][16] || '[]');
+      hasOTP = usrs.some(u => (u.peranList || []).some(k => OTP_ROLES.includes(k)));
+    } catch(e) {}
+
     list.push({
-      refKode:      rows[i][0],
-      namaSatker:   rows[i][1],
-      kodeSatker:   rows[i][2],
-      namaKpa:      rows[i][3],
-      tanggalDaftar:rows[i][8],
-      status:       rows[i][9],
-      otpAktif:     rows[i][11] === 'true',
+      refKode:        rows[i][0],
+      namaSatker:     rows[i][1],
+      kodeSatker:     rows[i][2],
+      namaKpa:        rows[i][3],
+      nip:            rows[i][4],
+      userCount:      (() => { try { return JSON.parse(rows[i][16]||'[]').length; } catch(e){ return 0; } })(),
+      tanggalDaftar:  rows[i][8],
+      status:         rows[i][9],
+      otpAktif:       rows[i][11] === 'true',
+      hasOTP:         hasOTP,
+      sudahTerdaftar: rows[i][17] === 'true',
     });
   }
 
@@ -366,8 +381,9 @@ function handleGetDetail(data, auth) {
     driveFolder:  row[12],
     files:        filesJson,
     catatanAdmin: row[14],
-    levelSatker:  row[15] || '',
-    users:        usersArr,
+    levelSatker:     row[15] || '',
+    users:           usersArr,
+    sudahTerdaftar:  row[17] === 'true',
   });
 }
 
@@ -420,6 +436,59 @@ function handleAktivasiOTP(data, auth) {
   }
 
   return jsonErr('Data tidak ditemukan');
+}
+
+// ================================================================
+// TANDAI SUDAH TERDAFTAR DI SAKTI
+// ================================================================
+function handleTandaiTerdaftar(data, auth) {
+  const refKode = data.refKode || '';
+  if (!refKode) return jsonErr('refKode wajib diisi');
+
+  const ss  = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh  = ss.getSheetByName(SHEET.PENDAFTARAN);
+  const rows = sh.getDataRange().getValues();
+
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === refKode) {
+      sh.getRange(i + 1, 18).setValue('true');  // kolom R = sudahTerdaftar
+      sh.getRange(i + 1, 10).setValue('Terdaftar'); // update status
+      return jsonOk({ message: 'Berhasil ditandai sudah terdaftar di SAKTI', refKode });
+    }
+  }
+  return jsonErr('Data tidak ditemukan');
+}
+
+// ================================================================
+// AMBIL REKAMAN SATKER BERDASAR KODE UNIK (untuk callback/edit)
+// ================================================================
+function handleGetRekamanByRef(data) {
+  const refKode = (data.refKode || '').trim();
+  if (!refKode) return jsonErr('Kode referensi wajib diisi');
+
+  const row = findPendaftaran(refKode);
+  if (!row) return jsonErr('Kode referensi tidak ditemukan. Pastikan kode yang dimasukkan benar.');
+
+  // Blokir jika sudah ditandai terdaftar
+  if (row[17] === 'true') {
+    return jsonErr('Pendaftaran ini sudah ditandai TERDAFTAR di SAKTI oleh petugas KPPN. Data tidak dapat diubah lagi.');
+  }
+
+  let usersArr = [];
+  try { usersArr = JSON.parse(row[16] || '[]'); } catch(e) {}
+
+  return jsonOk({
+    refKode:      row[0],
+    namaSatker:   row[1],
+    kodeSatker:   row[2],
+    namaKpa:      row[3],
+    nip:          row[4],
+    alamat:       row[7],
+    levelSatker:  row[15] || '',
+    status:       row[9],
+    sudahTerdaftar: row[17] === 'true',
+    users:        usersArr,
+  });
 }
 
 // ================================================================

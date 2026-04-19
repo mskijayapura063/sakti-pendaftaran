@@ -183,6 +183,7 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
       </div>
     </div>
     <div class="header-nav">
+      <button class="btn-nav" onclick="openModal('modalPanggilRekaman')" style="cursor:pointer;border:none;background:transparent">🔍 Panggil Rekaman</button>
       <a href="upload.html" class="btn-nav">📎 Upload Dokumen</a>
       <a href="admin.html" class="btn-nav">🔐 Admin</a>
     </div>
@@ -336,6 +337,26 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modalEdit')">Batal</button>
       <button class="btn btn-primary" onclick="saveEdit()">💾 Simpan Perubahan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PANGGIL REKAMAN -->
+<div class="modal-overlay" id="modalPanggilRekaman">
+  <div class="modal-box">
+    <div class="modal-title">🔍 Panggil Rekaman</div>
+    <p style="font-size:13px;color:var(--gray-600);line-height:1.7;margin-bottom:14px">
+      Masukkan kode referensi unik dari pendaftaran sebelumnya untuk memuat kembali data dan melakukan perbaikan.
+      <br/><strong style="color:var(--red)">⚠️ Hanya bisa diubah selama belum ditandai "Terdaftar di SAKTI" oleh petugas KPPN.</strong>
+    </p>
+    <div class="form-group">
+      <label>Kode Referensi</label>
+      <input type="text" id="inputPanggilRef" placeholder="Contoh: 432432-20042026-432432-01" style="font-family:monospace;letter-spacing:1px" onkeydown="if(event.key==='Enter')doPanggilRekaman()"/>
+    </div>
+    <div id="panggilErr" style="display:none;background:var(--red-pale);border:1px solid var(--red);border-radius:6px;padding:10px 14px;font-size:13px;color:var(--red);margin-top:8px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalPanggilRekaman')">Batal</button>
+      <button class="btn btn-primary" id="btnPanggilLoad" onclick="doPanggilRekaman()">🔍 Muat Rekaman</button>
     </div>
   </div>
 </div>
@@ -599,7 +620,7 @@ function saveEdit(){
 function openModal(id){document.getElementById(id)?.classList.add('on');}
 function closeModal(id){document.getElementById(id)?.classList.remove('on');}
 document.addEventListener('click',e=>{
-  ['modalPernyataan','modalEdit','modalSukses'].forEach(mid=>{const m=document.getElementById(mid);if(m&&e.target===m)closeModal(mid);});
+  ['modalPernyataan','modalEdit','modalSukses','modalPanggilRekaman'].forEach(mid=>{const m=document.getElementById(mid);if(m&&e.target===m)closeModal(mid);});
 });
 
 // ─── VALIDASI ─────────────────────────────────────────────
@@ -868,6 +889,15 @@ async function doGenerateExcel(){
   const ttd6 = ws.addRow(['','','','','','',`NIP ${nipKPA}`]);
   ttd6.getCell(7).numFmt = T;
 
+  // ── Kode Referensi Unik (2 baris di bawah NIP KPA) ───────
+  ws.addRow([]);
+  ws.addRow([]);
+  const refRow = ws.addRow([`Kode Referensi: ${refKode}`]);
+  ws.mergeCells(`A${refRow.number}:J${refRow.number}`);
+  refRow.getCell(1).numFmt    = T;
+  refRow.getCell(1).font      = { italic:true, size:9, color:{argb:'FF757575'} };
+  refRow.getCell(1).alignment = { horizontal:'left' };
+
   // ── Keterangan ────────────────────────────────────────────
   ws.addRow([]);
   const ketData = [
@@ -1012,6 +1042,67 @@ function resetForm(){
   document.getElementById('errPanel').style.display='none';
   addUser();showToast('Form telah direset');
 }
+// ─── PANGGIL REKAMAN ──────────────────────────────────────
+async function doPanggilRekaman(){
+  const refInput=document.getElementById('inputPanggilRef');
+  const errBox=document.getElementById('panggilErr');
+  const btn=document.getElementById('btnPanggilLoad');
+  const ref=(refInput?.value||'').trim();
+  errBox.style.display='none';
+  if(!ref){errBox.textContent='Kode referensi tidak boleh kosong.';errBox.style.display='block';return;}
+
+  btn.disabled=true;btn.textContent='⏳ Memuat...';
+  try{
+    const res=await apiPost({action:'getRekamanByRef',refKode:ref});
+    if(!res.success){
+      errBox.textContent=res.message||'Terjadi kesalahan.';
+      errBox.style.display='block';
+      btn.disabled=false;btn.textContent='🔍 Muat Rekaman';
+      return;
+    }
+
+    // Konfirmasi sebelum timpa form
+    if(!confirm(`Ditemukan rekaman:\n\nSatker: ${res.namaSatker}\nKode Satker: ${res.kodeSatker}\nStatus: ${res.status}\n\nMuat data ini ke form? Form yang sedang diisi akan diganti.`)){
+      btn.disabled=false;btn.textContent='🔍 Muat Rekaman';
+      return;
+    }
+
+    // Isi field utama
+    const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+    setVal('kodeSatker',  res.kodeSatker);
+    setVal('namaSatker',  res.namaSatker);
+    setVal('levelSatker', res.levelSatker);
+    setVal('namaKPA',     res.namaKpa);
+    setVal('nipKPA',      res.nip);
+    setVal('kotaTTD',     res.alamat);
+
+    // Reset daftar user lalu isi dari rekaman
+    users.length=0;
+    document.getElementById('userList').innerHTML='';
+    document.getElementById('errPanel').style.display='none';
+
+    (res.users||[]).forEach(u=>{
+      const id=addUser(); // returns new user id
+      const usr=getUserById(id);
+      if(usr){
+        usr.nama=u.nama||''; usr.nipnrp=u.nipnrp||''; usr.nik=u.nik||'';
+        usr.email=u.email||''; usr.hp=u.hp||''; usr.sk=u.sk||''; usr.tglsk=u.tglsk||'';
+        usr.peranList=u.peranList||[];
+        renderUserSummary(id);
+      }
+    });
+
+    closeModal('modalPanggilRekaman');
+    refInput.value='';
+    showToast(`✅ Rekaman ${ref} berhasil dimuat. Perbaiki data lalu unduh ulang Excel.`);
+  }catch(err){
+    errBox.textContent='Gagal terhubung ke server. Cek koneksi internet.';
+    errBox.style.display='block';
+  }finally{
+    btn.disabled=false;btn.textContent='🔍 Muat Rekaman';
+  }
+}
+
 window.onload=()=>{
   document.getElementById('tanggalSurat').value=new Date().toISOString().split('T')[0];
   addUser();

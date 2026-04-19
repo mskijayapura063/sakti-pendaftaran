@@ -402,7 +402,8 @@ input[type=checkbox]{accent-color:var(--blue);width:15px;height:15px;cursor:poin
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modalDetail')">Tutup</button>
       <button class="btn btn-secondary" id="btnUnduhExcel" onclick="adminDownloadExcel()" style="background:#217346;color:#fff;border-color:#217346">📥 Unduh Excel</button>
-      <button class="btn btn-success" id="btnMarkDone" onclick="markDone()">✅ Tandai Selesai</button>
+      <button class="btn btn-primary" id="btnTandaiTerdaftar" onclick="tandaiTerdaftar()">📋 Tandai Terdaftar di SAKTI</button>
+      <button class="btn btn-success" id="btnMarkDone" onclick="markDone()">✅ Aktivasi OTP</button>
     </div>
   </div>
 </div>
@@ -602,7 +603,8 @@ async function renderDashboard(){
 }
 
 function statusLabel(s){
-  if(s==='Aktif')return'✅ Aktif';
+  if(s==='Aktif')return'✅ OTP Aktif';
+  if(s==='Terdaftar')return'📋 Terdaftar di SAKTI';
   if(s==='Menunggu')return'⏳ Menunggu';
   if(s==='Ditolak')return'❌ Ditolak';
   if(s==='done')return'✅ Selesai';
@@ -632,8 +634,8 @@ function renderTable(){
       <td>${esc(s.namaKpa||s.namaKPA||'')}<br/><span style="font-size:11px;color:var(--gray-500)">${esc(s.nip||s.nipKPA||'')}</span></td>
       <td style="text-align:center">${s.userCount||'-'}</td>
       <td>
-        <span class="badge badge-${s.status==='Aktif'?'done':s.status==='Ditolak'?'draft':'submitted'}">${statusLabel(s.status)}</span>
-        ${!s.otpAktif&&s.status==='Menunggu'?'<br/><span class="badge badge-otp" style="margin-top:3px">🔐 OTP</span>':''}
+        <span class="badge badge-${s.status==='Aktif'?'done':s.status==='Terdaftar'?'submitted':s.status==='Ditolak'?'draft':'otp'}">${statusLabel(s.status)}</span>
+        ${s.sudahTerdaftar&&!s.otpAktif&&s.hasOTP?'<br/><span class="badge badge-otp" style="margin-top:3px">🔐 Perlu OTP</span>':''}
       </td>
       <td style="white-space:nowrap;font-size:12px">${fmtTgl(s.tanggalDaftar||s.submittedAt||'')}</td>
       <td>
@@ -754,7 +756,14 @@ async function openDetail(refKode){
     if(!res.success){showToast(res.message||'Gagal memuat',true);closeModal('modalDetail');return;}
     detailData=res; // simpan untuk download Excel
     const s=res;
-    document.getElementById('btnMarkDone').style.display=s.status==='Aktif'?'none':'';
+    // Tombol "Tandai Terdaftar" — sembunyikan kalau sudah terdaftar
+    const btnTandai=document.getElementById('btnTandaiTerdaftar');
+    if(btnTandai) btnTandai.style.display=s.sudahTerdaftar?'none':'';
+    // Tombol "Aktivasi OTP" — hanya muncul jika sudah terdaftar, ada role OTP, dan OTP belum aktif
+    const OTP_ROLES_CHECK=['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+    const hasOTPRole=(s.users||[]).some(u=>(u.peranList||[]).some(k=>OTP_ROLES_CHECK.includes(k)));
+    const showOTP=s.sudahTerdaftar&&hasOTPRole&&!s.otpAktif;
+    document.getElementById('btnMarkDone').style.display=showOTP?'':'none';
     let filesHtml='';
     const files=s.files||{};
     const fileKeys=Object.keys(files);
@@ -785,8 +794,23 @@ async function openDetail(refKode){
   }
 }
 
+async function tandaiTerdaftar(){
+  if(!detailRef){showToast('Tidak ada data yang dipilih',true);return;}
+  if(!confirm(`Tandai pendaftaran "${detailRef}" sebagai SUDAH TERDAFTAR di SAKTI?\n\nSetelah ini satker tidak bisa mengubah data lagi.`))return;
+  try{
+    const res=await apiPost({action:'tandaiTerdaftar',refKode:detailRef});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    showToast('✅ Berhasil ditandai Terdaftar di SAKTI');
+    closeModal('modalDetail');
+    await fetchSubmissions();
+    renderTable();renderDashboard();
+    // Buka ulang detail untuk refresh tombol
+    setTimeout(()=>openDetail(detailRef),400);
+  }catch(err){showToast(err.message||'Terjadi kesalahan',true);}
+}
+
 async function markDone(){
-  const catatan=prompt('Catatan aktivasi (opsional):')||'';
+  const catatan=prompt('Catatan aktivasi OTP (opsional):')||'';
   try{
     const res=await apiPost({action:'aktivasiOTP',refKode:detailRef,catatan});
     if(!res.success){showToast(res.message||'Gagal',true);return;}
@@ -926,6 +950,13 @@ async function adminDownloadExcel(){
   const t5=ws.addRow(['','','','','','',namaKPA]);t5.getCell(7).font={bold:true};t5.getCell(7).numFmt=T;
   const t6=ws.addRow(['','','','','','',`NIP ${nipKPA}`]);t6.getCell(7).numFmt=T;
 
+  // Kode Referensi (2 baris di bawah NIP KPA)
+  ws.addRow([]);ws.addRow([]);
+  const refRow=ws.addRow([`Kode Referensi: ${s.refKode}`]);
+  ws.mergeCells(`A${refRow.number}:J${refRow.number}`);
+  refRow.getCell(1).numFmt=T;refRow.getCell(1).font={italic:true,size:9,color:{argb:'FF757575'}};
+  refRow.getCell(1).alignment={horizontal:'left'};
+
   ws.addRow([]);
   [['Keterangan',true],['*NPWP diisi angka tanpa pemisah simbol',false],
    ['*E-mail diisi dengan e-mail resmi Kedinasan',false],
@@ -957,7 +988,7 @@ async function adminDownloadExcel(){
 let otpRef='';
 async function renderOTPList(){
   await fetchSubmissions();
-  const subs=getSubmissions().filter(s=>!s.otpAktif&&s.status==='Menunggu');
+  const subs=getSubmissions().filter(s=>s.sudahTerdaftar&&s.hasOTP&&!s.otpAktif);
   const el=document.getElementById('otpList');
   if(!subs.length){el.innerHTML='<p style="color:var(--gray-400);font-style:italic;text-align:center;padding:20px">Tidak ada pendaftaran yang memerlukan aktivasi OTP</p>';return;}
   el.innerHTML=subs.map(s=>`<div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--gray-100);flex-wrap:wrap">
