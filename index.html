@@ -224,14 +224,17 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
   <div class="card">
     <div class="card-title">📋 Data Satker</div>
     <div class="form-row">
-      <div class="form-group" id="fg-kodeSatker">
+      <div class="form-group" id="fg-kodeSatker" style="position:relative">
         <label>Kode Satker <span style="color:var(--red)">*</span></label>
-        <input type="text" id="kodeSatker" placeholder="Contoh: 123456" maxlength="10"/>
-        <span class="err-msg">Kode satker wajib diisi</span>
+        <input type="text" id="kodeSatker" placeholder="Ketik 6 digit / nama satker..." maxlength="6"
+          oninput="onKodeSatkerInput(this)" onblur="hideSatkerDrop()" autocomplete="off"
+          style="font-family:monospace;letter-spacing:1px"/>
+        <div id="satkerDrop" style="display:none;position:absolute;z-index:999;background:#fff;border:1px solid var(--gray-300);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);max-height:220px;overflow-y:auto;width:100%;top:100%;left:0"></div>
+        <span class="err-msg" id="kodeSatkerErr">Kode satker wajib diisi (6 digit angka)</span>
       </div>
       <div class="form-group" id="fg-namaSatker">
         <label>Nama Satker <span style="color:var(--red)">*</span></label>
-        <input type="text" id="namaSatker" placeholder="Nama lengkap satker"/>
+        <input type="text" id="namaSatker" placeholder="Otomatis terisi saat pilih kode satker"/>
         <span class="err-msg">Nama satker wajib diisi</span>
       </div>
       <div class="form-group">
@@ -262,7 +265,8 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
       </div>
       <div class="form-group">
         <label>Tanggal Surat</label>
-        <input type="date" id="tanggalSurat"/>
+        <input type="text" id="tanggalSurat" placeholder="dd/mm/yyyy" maxlength="10"
+          oninput="formatDateInput(this)" style="font-family:monospace;letter-spacing:1px"/>
       </div>
     </div>
   </div>
@@ -364,6 +368,369 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
 <div id="toast"></div>
 
 <script>
+// ─── DATA SATKER REFERENSI ────────────────────────────────
+const SATKER_REF = [
+  {kode:'000001',nama:'BPS KABUPATEN JAYAPURA'},
+  {kode:'000977',nama:'BADAN PUSAT STATISTIK KABUPATEN YAPEN'},
+  {kode:'000979',nama:'BPS KAB. KEPULAUAN YAPEN'},
+  {kode:'001278',nama:'KPP PRATAMA JAYAPURA'},
+  {kode:'001279',nama:'KPP PRATAMA SENTANI'},
+  {kode:'001280',nama:'KPP PRATAMA NABIRE'},
+  {kode:'001281',nama:'KPP PRATAMA BIAK'},
+  {kode:'001282',nama:'KPP PRATAMA SERUI'},
+  {kode:'001283',nama:'KPP PRATAMA MERAUKE'},
+  {kode:'001284',nama:'KPPBC TYPE MADYA PABEAN JAYAPURA'},
+  {kode:'001285',nama:'KPPBC TYPE PRATAMA BIAK'},
+  {kode:'001286',nama:'KPPBC TYPE PRATAMA MERAUKE'},
+  {kode:'002070',nama:'KPPN JAYAPURA'},
+  {kode:'002071',nama:'KPPN BIAK'},
+  {kode:'002072',nama:'KPPN NABIRE'},
+  {kode:'002073',nama:'KPPN SERUI'},
+  {kode:'002074',nama:'KPPN MERAUKE'},
+  {kode:'002075',nama:'KPPN TIMIKA'},
+  {kode:'002076',nama:'KPPN WAMENA'},
+  {kode:'002077',nama:'KPPN OKSIBIL'},
+  {kode:'002078',nama:'KPPN SARMI'},
+  {kode:'002079',nama:'KPPN ARSO'},
+  {kode:'003301',nama:'KANTOR PELAYANAN PERBENDAHARAAN NEGARA DEKAI'},
+  {kode:'003302',nama:'KPPN AGATS'},
+  {kode:'007408',nama:'PENGADILAN NEGERI JAYAPURA'},
+  {kode:'007409',nama:'PENGADILAN NEGERI BIAK'},
+  {kode:'007410',nama:'PENGADILAN NEGERI SERUI'},
+  {kode:'007411',nama:'PENGADILAN NEGERI WAMENA'},
+  {kode:'007412',nama:'PENGADILAN NEGERI MERAUKE'},
+  {kode:'007413',nama:'PENGADILAN NEGERI ABEPURA'},
+  {kode:'007414',nama:'PENGADILAN NEGERI NABIRE'},
+  {kode:'007415',nama:'PENGADILAN NEGERI TIMIKA'},
+  {kode:'007416',nama:'PENGADILAN NEGERI SENTANI'},
+  {kode:'007417',nama:'PENGADILAN NEGERI OKSIBIL'},
+  {kode:'007418',nama:'PENGADILAN NEGERI SARMI'},
+  {kode:'007419',nama:'PENGADILAN NEGERI DEPAPRE'},
+  {kode:'007521',nama:'PENGADILAN TINGGI PAPUA'},
+  {kode:'018003',nama:'KOMISI PEMILIHAN UMUM KABUPATEN JAYAPURA'},
+  {kode:'018004',nama:'KPU KABUPATEN KEPULAUAN YAPEN'},
+  {kode:'018005',nama:'KPU KABUPATEN BIAK NUMFOR'},
+  {kode:'018006',nama:'KPU KABUPATEN MERAUKE'},
+  {kode:'018007',nama:'KPU KABUPATEN NABIRE'},
+  {kode:'018008',nama:'KPU KABUPATEN PEGUNUNGAN BINTANG'},
+  {kode:'018009',nama:'KPU KOTA JAYAPURA'},
+  {kode:'018010',nama:'KPU KABUPATEN JAYAWIJAYA'},
+  {kode:'018011',nama:'KPU KABUPATEN PANIAI'},
+  {kode:'018012',nama:'KPU KABUPATEN PUNCAK JAYA'},
+  {kode:'018013',nama:'KPU KABUPATEN MIMIKA'},
+  {kode:'018014',nama:'KPU KABUPATEN SARMI'},
+  {kode:'018015',nama:'KPU KABUPATEN SUPIORI'},
+  {kode:'018016',nama:'KPU KABUPATEN MAMBERAMO RAYA'},
+  {kode:'018017',nama:'KPU KABUPATEN WAROPEN'},
+  {kode:'018018',nama:'KPU KABUPATEN MAMBERAMO TENGAH'},
+  {kode:'018019',nama:'KPU KABUPATEN LANNY JAYA'},
+  {kode:'018020',nama:'KPU KABUPATEN NDUGA'},
+  {kode:'018021',nama:'KPU KABUPATEN PUNCAK'},
+  {kode:'018022',nama:'KPU KABUPATEN DOGIYAI'},
+  {kode:'018023',nama:'KPU KABUPATEN INTAN JAYA'},
+  {kode:'018024',nama:'KPU KABUPATEN DEIYAI'},
+  {kode:'018025',nama:'KPU KABUPATEN YALIMO'},
+  {kode:'018026',nama:'KPU KABUPATEN MAPPI'},
+  {kode:'018027',nama:'KPU KABUPATEN BOVEN DIGOEL'},
+  {kode:'018028',nama:'KPU KABUPATEN ASMAT'},
+  {kode:'018029',nama:'KPU PROVINSI PAPUA'},
+  {kode:'018030',nama:'KPU KABUPATEN KEEROM'},
+  {kode:'019001',nama:'BAWASLU KABUPATEN JAYAPURA'},
+  {kode:'019002',nama:'BAWASLU KABUPATEN KEPULAUAN YAPEN'},
+  {kode:'019003',nama:'BAWASLU KABUPATEN BIAK NUMFOR'},
+  {kode:'019004',nama:'BAWASLU KABUPATEN MERAUKE'},
+  {kode:'019005',nama:'BAWASLU KABUPATEN NABIRE'},
+  {kode:'019006',nama:'BAWASLU KABUPATEN PEGUNUNGAN BINTANG'},
+  {kode:'019007',nama:'BAWASLU KOTA JAYAPURA'},
+  {kode:'019008',nama:'BAWASLU KABUPATEN JAYAWIJAYA'},
+  {kode:'019009',nama:'BAWASLU KABUPATEN PANIAI'},
+  {kode:'019010',nama:'BAWASLU KABUPATEN PUNCAK JAYA'},
+  {kode:'019011',nama:'BAWASLU KABUPATEN MIMIKA'},
+  {kode:'019012',nama:'BAWASLU KABUPATEN SARMI'},
+  {kode:'019013',nama:'BAWASLU KABUPATEN SUPIORI'},
+  {kode:'019014',nama:'BAWASLU KABUPATEN MAMBERAMO RAYA'},
+  {kode:'019015',nama:'BAWASLU KABUPATEN WAROPEN'},
+  {kode:'019016',nama:'BAWASLU KABUPATEN MAMBERAMO TENGAH'},
+  {kode:'019017',nama:'BAWASLU KABUPATEN LANNY JAYA'},
+  {kode:'019018',nama:'BAWASLU KABUPATEN NDUGA'},
+  {kode:'019019',nama:'BAWASLU KABUPATEN PUNCAK'},
+  {kode:'019020',nama:'BAWASLU KABUPATEN DOGIYAI'},
+  {kode:'019021',nama:'BAWASLU KABUPATEN INTAN JAYA'},
+  {kode:'019022',nama:'BAWASLU KABUPATEN DEIYAI'},
+  {kode:'019023',nama:'BAWASLU KABUPATEN YALIMO'},
+  {kode:'019024',nama:'BAWASLU KABUPATEN MAPPI'},
+  {kode:'019025',nama:'BAWASLU KABUPATEN BOVEN DIGOEL'},
+  {kode:'019026',nama:'BAWASLU KABUPATEN ASMAT'},
+  {kode:'019027',nama:'BAWASLU PROVINSI PAPUA'},
+  {kode:'019028',nama:'BAWASLU KABUPATEN KEEROM'},
+  {kode:'056001',nama:'POLRESTA JAYAPURA KOTA'},
+  {kode:'056002',nama:'POLRES JAYAPURA'},
+  {kode:'056003',nama:'POLRES BIAK NUMFOR'},
+  {kode:'056004',nama:'POLRES KEPULAUAN YAPEN'},
+  {kode:'056005',nama:'POLRES MERAUKE'},
+  {kode:'056006',nama:'POLRES NABIRE'},
+  {kode:'056007',nama:'POLRES JAYAWIJAYA'},
+  {kode:'056008',nama:'POLRES MIMIKA'},
+  {kode:'056009',nama:'POLRES PEGUNUNGAN BINTANG'},
+  {kode:'056010',nama:'POLRES SUPIORI'},
+  {kode:'056011',nama:'POLRES SARMI'},
+  {kode:'056012',nama:'POLRES KEEROM'},
+  {kode:'056013',nama:'POLRES PUNCAK JAYA'},
+  {kode:'056014',nama:'POLRES PANIAI'},
+  {kode:'056015',nama:'POLRES WAROPEN'},
+  {kode:'056016',nama:'POLRES MAPPI'},
+  {kode:'056017',nama:'POLRES BOVEN DIGOEL'},
+  {kode:'056018',nama:'POLRES ASMAT'},
+  {kode:'056019',nama:'POLDA PAPUA'},
+  {kode:'059001',nama:'KOREM 172/PWY'},
+  {kode:'059002',nama:'KODIM 1701/JAYAPURA'},
+  {kode:'059003',nama:'KODIM 1710/MIMIKA'},
+  {kode:'059004',nama:'KODIM 1715/NABIRE'},
+  {kode:'059005',nama:'KODIM 1709/YAPEN'},
+  {kode:'059006',nama:'KODIM 1707/MERAUKE'},
+  {kode:'059007',nama:'KODIM 1708/BIAK'},
+  {kode:'059008',nama:'KODIM 1702/JAYAWIJAYA'},
+  {kode:'059009',nama:'PANGKALAN TNI AU JAYAPURA'},
+  {kode:'059010',nama:'LANAL JAYAPURA'},
+  {kode:'059011',nama:'LANAL MERAUKE'},
+  {kode:'059012',nama:'KODIM 1716/JAYAPURA'},
+  {kode:'059013',nama:'KODIM 1717/MANOKWARI'},
+  {kode:'066001',nama:'BNNP PAPUA'},
+  {kode:'066002',nama:'BNN KAB. JAYAPURA'},
+  {kode:'066003',nama:'BNN KAB. BIAK NUMFOR'},
+  {kode:'066004',nama:'BNN KAB. JAYAWIJAYA'},
+  {kode:'066005',nama:'BNN KAB. MERAUKE'},
+  {kode:'066006',nama:'BNN KAB. NABIRE'},
+  {kode:'066007',nama:'BNN KAB. MIMIKA'},
+  {kode:'066008',nama:'BNN KAB. KEPULAUAN YAPEN'},
+  {kode:'066009',nama:'BNN KOTA JAYAPURA'},
+  {kode:'066010',nama:'BNN KAB. SARMI'},
+  {kode:'066011',nama:'BNN KAB. KEEROM'},
+  {kode:'066012',nama:'BNN KAB. PANIAI'},
+  {kode:'066013',nama:'BNN KAB. MAPPI'},
+  {kode:'066014',nama:'BNN KAB. BOVEN DIGOEL'},
+  {kode:'066015',nama:'BNN KAB. ASMAT'},
+  {kode:'066016',nama:'BNN KAB. PEGUNUNGAN BINTANG'},
+  {kode:'066017',nama:'BNN KAB. SUPIORI'},
+  {kode:'066018',nama:'BNN KAB. WAROPEN'},
+  {kode:'066019',nama:'BNN KAB. PUNCAK JAYA'},
+  {kode:'066020',nama:'BNN KAB. MAMBERAMO RAYA'},
+  {kode:'075001',nama:'SATKER BPS KAB. JAYAWIJAYA'},
+  {kode:'075002',nama:'BPS KAB. PANIAI'},
+  {kode:'075003',nama:'BPS KOTA JAYAPURA'},
+  {kode:'075004',nama:'BPS KABUPATEN MERAUKE'},
+  {kode:'075005',nama:'BPS KAB BIAK NUMFOR'},
+  {kode:'075006',nama:'BPS KAB. MIMIKA'},
+  {kode:'075007',nama:'BPS KAB. NABIRE'},
+  {kode:'075008',nama:'BPS KAB. PUNCAK JAYA'},
+  {kode:'075009',nama:'BPS KAB. PEGUNUNGAN BINTANG'},
+  {kode:'075010',nama:'BPS KAB SARMI'},
+  {kode:'075011',nama:'BPS KAB WAROPEN'},
+  {kode:'075012',nama:'BPS KAB. KEEROM'},
+  {kode:'075013',nama:'BPS KAB. SUPIORI'},
+  {kode:'075014',nama:'BPS KAB. MAMBERAMO RAYA'},
+  {kode:'075015',nama:'BPS KAB. MAMBERAMO TENGAH'},
+  {kode:'075016',nama:'BPS KAB. YALIMO'},
+  {kode:'075017',nama:'BPS KAB. LANNY JAYA'},
+  {kode:'075018',nama:'BPS KAB. NDUGA'},
+  {kode:'075019',nama:'BPS KAB. PUNCAK'},
+  {kode:'075020',nama:'BPS KAB. DOGIYAI'},
+  {kode:'075021',nama:'BPS KAB. INTAN JAYA'},
+  {kode:'075022',nama:'BPS KAB. DEIYAI'},
+  {kode:'075023',nama:'BPS KAB. ASMAT'},
+  {kode:'075024',nama:'BPS KAB. MAPPI'},
+  {kode:'075025',nama:'BPS KAB. BOVEN DIGOEL'},
+  {kode:'075026',nama:'BPS PROVINSI PAPUA'},
+  {kode:'079001',nama:'KEJAKSAAN NEGERI JAYAPURA'},
+  {kode:'079002',nama:'KEJAKSAAN NEGERI BIAK'},
+  {kode:'079003',nama:'KEJAKSAAN NEGERI SERUI'},
+  {kode:'079004',nama:'KEJAKSAAN NEGERI WAMENA'},
+  {kode:'079005',nama:'KEJAKSAAN NEGERI MERAUKE'},
+  {kode:'079006',nama:'KEJAKSAAN NEGERI NABIRE'},
+  {kode:'079007',nama:'KEJAKSAAN NEGERI TIMIKA'},
+  {kode:'079008',nama:'KEJAKSAAN NEGERI JAYAWIJAYA'},
+  {kode:'079009',nama:'KEJAKSAAN NEGERI SARMI'},
+  {kode:'079010',nama:'KEJAKSAAN NEGERI KEEROM'},
+  {kode:'079011',nama:'KEJAKSAAN NEGERI PEGUNUNGAN BINTANG'},
+  {kode:'079012',nama:'KEJAKSAAN NEGERI MAPPI'},
+  {kode:'079013',nama:'KEJAKSAAN NEGERI BOVEN DIGOEL'},
+  {kode:'079014',nama:'KEJAKSAAN NEGERI ASMAT'},
+  {kode:'079015',nama:'KEJAKSAAN NEGERI WAROPEN'},
+  {kode:'079016',nama:'KEJAKSAAN TINGGI PAPUA'},
+  {kode:'080001',nama:'LAPAS KELAS IIA JAYAPURA'},
+  {kode:'080002',nama:'LAPAS KELAS IIB BIAK'},
+  {kode:'080003',nama:'LAPAS KELAS IIB MERAUKE'},
+  {kode:'080004',nama:'LAPAS KELAS IIB NABIRE'},
+  {kode:'080005',nama:'LAPAS KELAS IIB WAMENA'},
+  {kode:'080006',nama:'LAPAS KELAS IIB TIMIKA'},
+  {kode:'080007',nama:'LAPAS KELAS IIB SERUI'},
+  {kode:'080008',nama:'RUTAN KELAS IIB SENTANI'},
+  {kode:'080009',nama:'RUTAN KELAS IIB SARMI'},
+  {kode:'080010',nama:'RUTAN KELAS IIB KEEROM'},
+  {kode:'080011',nama:'RUTAN KELAS IIB MERAUKE'},
+  {kode:'080012',nama:'RUTAN KELAS IIB BIAK NUMFOR'},
+  {kode:'080013',nama:'KANWIL KEMENKUMHAM PAPUA'},
+  {kode:'080014',nama:'RUTAN KELAS IIB OKSIBIL'},
+  {kode:'080015',nama:'BAPAS JAYAPURA'},
+  {kode:'080016',nama:'BAPAS MERAUKE'},
+  {kode:'080017',nama:'BAPAS NABIRE'},
+  {kode:'082001',nama:'KANTOR IMIGRASI KELAS I TPI JAYAPURA'},
+  {kode:'082002',nama:'KANTOR IMIGRASI KELAS II NON TPI WAMENA'},
+  {kode:'082003',nama:'KANTOR IMIGRASI KELAS II TPI BIAK'},
+  {kode:'082004',nama:'KANTOR IMIGRASI KELAS II TPI MERAUKE'},
+  {kode:'082005',nama:'KANTOR IMIGRASI KELAS II TPI TIMIKA'},
+  {kode:'082006',nama:'KANTOR IMIGRASI KELAS II NON TPI SARMI'},
+  {kode:'082007',nama:'KANTOR IMIGRASI KELAS II NON TPI SERUI'},
+  {kode:'082008',nama:'KANTOR IMIGRASI KELAS II NON TPI OKSIBIL'},
+  {kode:'083001',nama:'KANWIL KEMENTERIAN AGAMA PROVINSI PAPUA'},
+  {kode:'083002',nama:'KANKEMENAG KAB. JAYAPURA'},
+  {kode:'083003',nama:'KANKEMENAG KOTA JAYAPURA'},
+  {kode:'083004',nama:'KANKEMENAG KAB. BIAK NUMFOR'},
+  {kode:'083005',nama:'KANKEMENAG KAB. KEPULAUAN YAPEN'},
+  {kode:'083006',nama:'KANKEMENAG KAB. MERAUKE'},
+  {kode:'083007',nama:'KANKEMENAG KAB. JAYAWIJAYA'},
+  {kode:'083008',nama:'KANKEMENAG KAB. NABIRE'},
+  {kode:'083009',nama:'KANKEMENAG KAB. MIMIKA'},
+  {kode:'083010',nama:'KANKEMENAG KAB. PUNCAK JAYA'},
+  {kode:'083011',nama:'KANKEMENAG KAB. SARMI'},
+  {kode:'083012',nama:'KANKEMENAG KAB. KEEROM'},
+  {kode:'083013',nama:'KANKEMENAG KAB. SUPIORI'},
+  {kode:'083014',nama:'KANKEMENAG KAB. MAMBERAMO RAYA'},
+  {kode:'083015',nama:'KANKEMENAG KAB. WAROPEN'},
+  {kode:'083016',nama:'KANKEMENAG KAB. PEGUNUNGAN BINTANG'},
+  {kode:'083017',nama:'KANKEMENAG KAB. MAPPI'},
+  {kode:'083018',nama:'KANKEMENAG KAB. BOVEN DIGOEL'},
+  {kode:'083019',nama:'KANKEMENAG KAB. ASMAT'},
+  {kode:'083020',nama:'KANKEMENAG KAB. PANIAI'},
+  {kode:'083021',nama:'KANKEMENAG KAB. YALIMO'},
+  {kode:'083022',nama:'KANKEMENAG KAB. MAMBERAMO TENGAH'},
+  {kode:'083023',nama:'KANKEMENAG KAB. LANNY JAYA'},
+  {kode:'083024',nama:'KANKEMENAG KAB. NDUGA'},
+  {kode:'083025',nama:'KANKEMENAG KAB. PUNCAK'},
+  {kode:'083026',nama:'KANKEMENAG KAB. DOGIYAI'},
+  {kode:'083027',nama:'KANKEMENAG KAB. INTAN JAYA'},
+  {kode:'083028',nama:'KANKEMENAG KAB. DEIYAI'},
+  {kode:'083029',nama:'MIN JAYAPURA'},
+  {kode:'088001',nama:'BPKP PERWAKILAN PROVINSI PAPUA'},
+  {kode:'092001',nama:'BALAI BESAR METEOROLOGI DAN GEOFISIKA WILAYAH V'},
+  {kode:'092002',nama:'STASIUN METEOROLOGI SENTANI JAYAPURA'},
+  {kode:'092003',nama:'STASIUN METEOROLOGI BIAK'},
+  {kode:'092004',nama:'STASIUN METEOROLOGI NABIRE'},
+  {kode:'092005',nama:'STASIUN METEOROLOGI WAMENA'},
+  {kode:'092006',nama:'STASIUN METEOROLOGI MERAUKE'},
+  {kode:'092007',nama:'STASIUN METEOROLOGI TIMIKA'},
+  {kode:'092008',nama:'STASIUN METEOROLOGI SERUI'},
+  {kode:'092009',nama:'STASIUN METEOROLOGI OKSIBIL'},
+  {kode:'092010',nama:'STASIUN METEOROLOGI SARMI'},
+  {kode:'092011',nama:'STASIUN KLIMATOLOGI JAYAPURA'},
+  {kode:'092012',nama:'STASIUN GEOFISIKA JAYAPURA'},
+  {kode:'093001',nama:'KANTOR SAR JAYAPURA'},
+  {kode:'093002',nama:'KANTOR SAR TIMIKA'},
+  {kode:'093003',nama:'KANTOR SAR MERAUKE'},
+  {kode:'094001',nama:'BADAN KARANTINA PERTANIAN JAYAPURA'},
+  {kode:'094002',nama:'STASIUN KARANTINA PERTANIAN KELAS I BIAK'},
+  {kode:'094003',nama:'STASIUN KARANTINA PERTANIAN KELAS I TIMIKA'},
+  {kode:'094004',nama:'STASIUN KARANTINA PERTANIAN KELAS I MERAUKE'},
+  {kode:'095001',nama:'KANTOR WILAYAH BPN PAPUA'},
+  {kode:'095002',nama:'KANTOR PERTANAHAN KAB. JAYAPURA'},
+  {kode:'095003',nama:'KANTOR PERTANAHAN KOTA JAYAPURA'},
+  {kode:'095004',nama:'KANTOR PERTANAHAN KAB. BIAK NUMFOR'},
+  {kode:'095005',nama:'KANTOR PERTANAHAN KAB. KEPULAUAN YAPEN'},
+  {kode:'095006',nama:'KANTOR PERTANAHAN KAB. MERAUKE'},
+  {kode:'095007',nama:'KANTOR PERTANAHAN KAB. JAYAWIJAYA'},
+  {kode:'095008',nama:'KANTOR PERTANAHAN KAB. NABIRE'},
+  {kode:'095009',nama:'KANTOR PERTANAHAN KAB. MIMIKA'},
+  {kode:'095010',nama:'KANTOR PERTANAHAN KAB. SARMI'},
+  {kode:'095011',nama:'KANTOR PERTANAHAN KAB. KEEROM'},
+  {kode:'095012',nama:'KANTOR PERTANAHAN KAB. SUPIORI'},
+  {kode:'095013',nama:'KANTOR PERTANAHAN KAB. PEGUNUNGAN BINTANG'},
+  {kode:'095014',nama:'KANTOR PERTANAHAN KAB. WAROPEN'},
+  {kode:'095015',nama:'KANTOR PERTANAHAN KAB. MAPPI'},
+  {kode:'095016',nama:'KANTOR PERTANAHAN KAB. BOVEN DIGOEL'},
+  {kode:'095017',nama:'KANTOR PERTANAHAN KAB. ASMAT'},
+  {kode:'095018',nama:'KANTOR PERTANAHAN KAB. MAMBERAMO RAYA'},
+  {kode:'095019',nama:'KANTOR PERTANAHAN KAB. PANIAI'},
+  {kode:'095020',nama:'KANTOR PERTANAHAN KAB. PUNCAK JAYA'},
+  {kode:'095021',nama:'KANTOR PERTANAHAN KAB. MAMBERAMO TENGAH'},
+  {kode:'095022',nama:'KANTOR PERTANAHAN KAB. YALIMO'},
+  {kode:'095023',nama:'KANTOR PERTANAHAN KAB. LANNY JAYA'},
+  {kode:'095024',nama:'KANTOR PERTANAHAN KAB. NDUGA'},
+  {kode:'095025',nama:'KANTOR PERTANAHAN KAB. INTAN JAYA'},
+  {kode:'095026',nama:'KANTOR PERTANAHAN KAB. DOGIYAI'},
+  {kode:'095027',nama:'KANTOR PERTANAHAN KAB. DEIYAI'},
+  {kode:'095028',nama:'KANTOR PERTANAHAN KAB. PUNCAK'},
+  {kode:'097001',nama:'DINAS KEHUTANAN PROVINSI PAPUA'},
+  {kode:'097002',nama:'BALAI KONSERVASI SUMBER DAYA ALAM PAPUA 1'},
+  {kode:'097003',nama:'BKSDA PAPUA 2'},
+  {kode:'097004',nama:'BALAI TAMAN NASIONAL LORENTZ'},
+  {kode:'097005',nama:'TAMAN NASIONAL WASUR MERAUKE'},
+];
+// Merge dengan data satker dari server (diisi saat loadSatkerRef)
+let SATKER_MERGED = [...SATKER_REF];
+
+// ─── SATKER AUTOCOMPLETE ──────────────────────────────────
+function onKodeSatkerInput(el){
+  const val = el.value.replace(/\D/g,''); // only digits
+  el.value = val;
+  const drop = document.getElementById('satkerDrop');
+  if(!val){drop.style.display='none';return;}
+  const q = val.toLowerCase();
+  const matches = SATKER_MERGED.filter(s=>s.kode.startsWith(q)||s.nama.toLowerCase().includes(q)).slice(0,15);
+  if(!matches.length){drop.style.display='none';return;}
+  drop.innerHTML = matches.map(s=>`
+    <div onmousedown="selectSatker('${s.kode}','${s.nama.replace(/'/g,"\\'")}');return false;"
+      style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--gray-200);font-size:13px;transition:background .1s"
+      onmouseover="this.style.background='#EBF3FF'" onmouseout="this.style.background=''">
+      <span style="font-family:monospace;font-weight:600;color:var(--blue)">${s.kode}</span>
+      <span style="margin-left:8px;color:var(--gray-800)">${s.nama}</span>
+    </div>`).join('');
+  drop.style.display='block';
+}
+function hideSatkerDrop(){
+  setTimeout(()=>{const d=document.getElementById('satkerDrop');if(d)d.style.display='none';},150);
+}
+function selectSatker(kode, nama){
+  const el = document.getElementById('kodeSatker');
+  if(el) el.value = kode;
+  const elNama = document.getElementById('namaSatker');
+  if(elNama) elNama.value = nama;
+  const drop = document.getElementById('satkerDrop');
+  if(drop) drop.style.display='none';
+}
+
+// ─── DATE FORMAT dd/mm/yyyy ───────────────────────────────
+function formatDateInput(el){
+  let v = el.value.replace(/\D/g,'');
+  if(v.length>2) v = v.slice(0,2)+'/'+v.slice(2);
+  if(v.length>5) v = v.slice(0,5)+'/'+v.slice(5);
+  el.value = v.slice(0,10);
+}
+function parseDMY(str){
+  // Parses dd/mm/yyyy → Date object
+  if(!str)return null;
+  const p = str.split('/');
+  if(p.length!==3)return null;
+  const [dd,mm,yyyy] = p.map(Number);
+  if(!dd||!mm||!yyyy)return null;
+  return new Date(yyyy,mm-1,dd);
+}
+function todayDMY(){
+  const d=new Date();
+  return`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+}
+async function loadSatkerRef(){
+  // Load tambahan satker dari server (RefSatker sheet)
+  try{
+    const res = await apiPost({action:'getSatkerList'});
+    if(res.success && Array.isArray(res.list)){
+      const serverKodes = new Set(res.list.map(s=>s.kode));
+      const local = SATKER_REF.filter(s=>!serverKodes.has(s.kode));
+      SATKER_MERGED = [...res.list, ...local];
+      SATKER_MERGED.sort((a,b)=>a.kode.localeCompare(b.kode));
+    }
+  }catch(e){/* gunakan SATKER_REF lokal */}
+}
+
 // ─── DATA PERAN ───────────────────────────────────────────
 const PERAN_DATA = [
   {kode:'SATKER_KPA',                           label:'KPA',                                 kelompok:'APPROVER',  modul:['ANGGARAN','PEMBAYARAN']},
@@ -545,7 +912,7 @@ function openEditModal(id){
     <div class="form-row">
       <div class="form-group"><label>No. HP</label><input type="text" id="e-hp" value="${esc(u.hp)}" placeholder="08xxx"/></div>
       <div class="form-group"><label>Nomor SK <span style="color:var(--red)">*</span></label><input type="text" id="e-sk" value="${esc(u.sk)}" placeholder="KEP-xx/xx/2024"/></div>
-      <div class="form-group"><label>Tanggal SK <span style="color:var(--red)">*</span></label><input type="date" id="e-tglsk" value="${esc(u.tglsk)}"/></div>
+      <div class="form-group"><label>Tanggal SK <span style="color:var(--red)">*</span></label><input type="text" id="e-tglsk" value="${esc(u.tglsk)}" placeholder="dd/mm/yyyy" maxlength="10" oninput="formatDateInput(this)" style="font-family:monospace;letter-spacing:1px"/></div>
     </div>
     <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;margin:14px 0 4px">Peran</div>
     <div class="info-box" style="margin-bottom:10px;font-size:11px">Centang peran. Peran yang bertentangan akan dinonaktifkan otomatis.</div>
@@ -631,6 +998,14 @@ function trySubmit(){
     if(!el?.value.trim()){errors.push(`${label} wajib diisi`);el?.classList.add('err');fg?.classList.add('has-err');}
     else{el.classList.remove('err');fg?.classList.remove('has-err');}
   });
+  // Validasi kode satker: harus 6 digit
+  {const ks=document.getElementById('kodeSatker');const ksv=(ks?.value||'').trim();
+   if(ksv&&!/^\d{6}$/.test(ksv)){errors.push('Kode Satker harus tepat 6 digit angka');ks?.classList.add('err');}
+  }
+  // Validasi tanggal surat: dd/mm/yyyy
+  {const ts=(document.getElementById('tanggalSurat')?.value||'').trim();
+   if(ts&&!/^\d{2}\/\d{2}\/\d{4}$/.test(ts)){errors.push('Tanggal Surat harus format dd/mm/yyyy');}
+  }
   if(!users.length)errors.push('Tambahkan minimal satu user');
   // Cek duplikat NIK, NIP/NRP, Email, No HP antar user dalam formulir yang sama
   const seenNIK=new Map(), seenNIP=new Map(), seenEmail=new Map(), seenHP=new Map();
@@ -640,6 +1015,7 @@ function trySubmit(){
     if(!u.nipnrp)errors.push(`User ${n}: NIP/NRP wajib diisi`);
     if(!u.sk)errors.push(`User ${n}: Nomor SK wajib diisi`);
     if(!u.tglsk)errors.push(`User ${n}: Tanggal SK wajib diisi`);
+    else if(!/^\d{2}\/\d{2}\/\d{4}$/.test(u.tglsk))errors.push(`User ${n}: Tanggal SK harus format dd/mm/yyyy`);
     if(!u.peranList.length)errors.push(`User ${n}: Pilih minimal satu peran`);
     if(u.email&&!u.email.toLowerCase().endsWith('.go.id'))errors.push(`User ${n}: Email harus berakhiran .go.id`);
     u.peranList.forEach((kode,idx)=>{const r=checkPeranConflict(kode,u.peranList.slice(0,idx));if(r.conflict&&r.block)errors.push(`User ${n} (${u.nama}): ${r.warn}`);});
@@ -1020,14 +1396,26 @@ function copyRefKode(){
 function s(v){return{v:String(v==null?'':v),t:'s'};}
 function esc(str){return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function formatTgl(d){
+  // d can be dd/mm/yyyy (text input) or ISO yyyy-mm-dd
   if(!d)return'';
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(d)){
+    // already dd/mm/yyyy → return as dd-mm-yyyy for display
+    return d.replace(/\//g,'-');
+  }
   const dt=new Date(d);
+  if(isNaN(dt))return d;
   return`${String(dt.getDate()).padStart(2,'0')}-${String(dt.getMonth()+1).padStart(2,'0')}-${dt.getFullYear()}`;
 }
 function formatTglIndo(d){
+  // d can be dd/mm/yyyy (text input), ISO yyyy-mm-dd, or Date object
   if(!d)return'';
   const B=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-  const dt=new Date(d);return`${dt.getDate()} ${B[dt.getMonth()]} ${dt.getFullYear()}`;
+  let dt;
+  if(d instanceof Date){dt=d;}
+  else if(/^\d{2}\/\d{2}\/\d{4}$/.test(d)){dt=parseDMY(d);}
+  else{dt=new Date(d);}
+  if(!dt||isNaN(dt))return d;
+  return`${dt.getDate()} ${B[dt.getMonth()]} ${dt.getFullYear()}`;
 }
 let toastT;
 function showToast(msg,isErr=false){
@@ -1037,7 +1425,7 @@ function showToast(msg,isErr=false){
 function resetForm(){
   if(!confirm('Reset semua data? Data yang belum diunduh akan hilang.'))return;
   ['kodeSatker','namaSatker','levelSatker','namaKPA','nipKPA','kotaTTD'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-  document.getElementById('tanggalSurat').value=new Date().toISOString().split('T')[0];
+  document.getElementById('tanggalSurat').value=todayDMY();
   users.length=0;document.getElementById('userList').innerHTML='';
   document.getElementById('errPanel').style.display='none';
   addUser();showToast('Form telah direset');
@@ -1104,8 +1492,9 @@ async function doPanggilRekaman(){
 }
 
 window.onload=()=>{
-  document.getElementById('tanggalSurat').value=new Date().toISOString().split('T')[0];
+  document.getElementById('tanggalSurat').value=todayDMY();
   addUser();
+  loadSatkerRef();
 };
 </script>
 </body>

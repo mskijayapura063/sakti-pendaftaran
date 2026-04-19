@@ -383,6 +383,34 @@ input[type=checkbox]{accent-color:var(--blue);width:15px;height:15px;cursor:poin
             </div>
           </div>
         </div>
+        <!-- Kelola Satker -->
+        <div class="card" style="max-width:800px">
+          <div class="card-title">🏢 Kelola Referensi Satker</div>
+          <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">Tambah, ubah, atau hapus kode dan nama satker yang tersedia dalam formulir pendaftaran.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+            <div class="form-group" style="min-width:130px;flex:0 0 auto;margin-bottom:0">
+              <label>Kode Satker (6 digit)</label>
+              <input type="text" id="sk-kode" placeholder="000000" maxlength="6" style="font-family:monospace;letter-spacing:1px"
+                oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)"/>
+            </div>
+            <div class="form-group" style="min-width:260px;flex:1;margin-bottom:0">
+              <label>Nama Satker</label>
+              <input type="text" id="sk-nama" placeholder="Nama lengkap satker"/>
+            </div>
+            <div style="display:flex;gap:8px;align-self:flex-end">
+              <button class="btn btn-primary" onclick="doAddSatker()" style="height:38px;white-space:nowrap">+ Tambah</button>
+              <button class="btn btn-secondary" onclick="clearSatkerForm()" style="height:38px">Reset</button>
+            </div>
+          </div>
+          <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center">
+            <input type="text" id="sk-cari" placeholder="🔍 Cari kode atau nama satker..." oninput="renderSatkerTable()"
+              style="flex:1;padding:7px 12px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px"/>
+            <button class="btn btn-secondary" onclick="loadSatkerAdmin()" style="white-space:nowrap;font-size:12px">↻ Refresh</button>
+          </div>
+          <div id="satkerTableWrap" style="overflow-x:auto">
+            <p style="color:var(--gray-400);font-size:13px">Memuat daftar satker...</p>
+          </div>
+        </div>
         <div class="card" style="max-width:460px">
           <div class="card-title">ℹ️ Info Sistem</div>
           <p style="font-size:13px;color:var(--gray-600);margin-bottom:8px">Data disimpan di <strong>Google Sheets</strong> dan file di <strong>Google Drive</strong>. Aman dan tidak bisa dimanipulasi dari browser.</p>
@@ -526,7 +554,7 @@ function showPanel(name){
   if(name==='dashboard')renderDashboard();
   if(name==='submissions'){fetchSubmissions().then(()=>renderTable());}
   if(name==='otp')renderOTPList();
-  if(name==='settings')renderUserList();
+  if(name==='settings'){renderUserList();loadSatkerAdmin();}
 }
 
 // ─── MODAL ────────────────────────────────────────────────
@@ -1119,6 +1147,123 @@ async function initApp(){
   setInterval(()=>{
     if(document.getElementById('panel-dashboard')?.classList.contains('active'))renderDashboard();
   },60000);
+}
+
+// ═══════════════════════════════════════════════════════════
+// KELOLA REFERENSI SATKER
+// ═══════════════════════════════════════════════════════════
+let satkerList = [];   // cache dari server
+
+async function loadSatkerAdmin(){
+  const wrap = document.getElementById('satkerTableWrap');
+  if(!wrap) return;
+  wrap.innerHTML = '<p style="color:var(--gray-400);font-size:13px">Memuat...</p>';
+  try{
+    const res = await apiPost({action:'getSatkerList'});
+    satkerList = (res.success && res.list) ? res.list : [];
+  }catch(e){ satkerList = []; }
+  renderSatkerTable();
+}
+
+function renderSatkerTable(){
+  const wrap = document.getElementById('satkerTableWrap');
+  if(!wrap) return;
+  const q = (document.getElementById('sk-cari')?.value||'').toLowerCase();
+  const filtered = satkerList.filter(s=>
+    s.kode.includes(q) || s.nama.toLowerCase().includes(q)
+  );
+  if(!satkerList.length){
+    wrap.innerHTML='<p style="color:var(--gray-500);font-size:13px">Belum ada data satker di server. Tambahkan lewat form di atas.<br><small style="color:var(--gray-400)">Catatan: daftar satker bawaan sudah tersedia di formulir pendaftaran secara lokal.</small></p>';
+    return;
+  }
+  if(!filtered.length){
+    wrap.innerHTML='<p style="color:var(--gray-500);font-size:13px">Tidak ada satker yang cocok.</p>';
+    return;
+  }
+  const isAdmin = currentUser?.role === 'Admin';
+  wrap.innerHTML=`
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:var(--blue-pale);text-align:left">
+          <th style="padding:8px 12px;border:1px solid var(--gray-200);width:100px">Kode</th>
+          <th style="padding:8px 12px;border:1px solid var(--gray-200)">Nama Satker</th>
+          <th style="padding:8px 12px;border:1px solid var(--gray-200);width:180px;text-align:center">Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filtered.map(s=>`
+          <tr onmouseover="this.style.background='#F8FBFF'" onmouseout="this.style.background=''">
+            <td style="padding:7px 12px;border:1px solid var(--gray-200);font-family:monospace;font-weight:600;color:var(--blue)">${esc(s.kode)}</td>
+            <td style="padding:7px 12px;border:1px solid var(--gray-200)">${esc(s.nama)}</td>
+            <td style="padding:7px 12px;border:1px solid var(--gray-200);text-align:center">
+              <button class="btn btn-secondary" onclick="editSatker('${esc(s.kode)}','${s.nama.replace(/'/g,"\\'")}')"
+                style="font-size:11px;padding:3px 10px;margin-right:4px">✏️ Ubah</button>
+              ${isAdmin?`<button class="btn btn-danger" onclick="hapusSatker('${esc(s.kode)}','${s.nama.replace(/'/g,"\\'")}')"
+                style="font-size:11px;padding:3px 10px">🗑️</button>`:''}
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+    <p style="font-size:12px;color:var(--gray-500);margin-top:8px">Total: ${satkerList.length} satker (menampilkan ${filtered.length})</p>
+  `;
+}
+
+function editSatker(kode, nama){
+  document.getElementById('sk-kode').value = kode;
+  document.getElementById('sk-nama').value = nama;
+  document.getElementById('sk-kode').readOnly = true;
+  document.getElementById('sk-kode').style.background = '#F5F5F5';
+  showToast(`Mode edit: kode ${kode}. Ubah nama lalu klik "Simpan".`);
+  // Ganti tombol Tambah → Simpan
+  const btn = document.querySelector('[onclick="doAddSatker()"]');
+  if(btn){btn.textContent='💾 Simpan Perubahan';btn.setAttribute('onclick','doUpdateSatker()');}
+}
+
+function clearSatkerForm(){
+  document.getElementById('sk-kode').value='';
+  document.getElementById('sk-nama').value='';
+  document.getElementById('sk-kode').readOnly=false;
+  document.getElementById('sk-kode').style.background='';
+  const btn = document.querySelector('[onclick="doUpdateSatker()"]');
+  if(btn){btn.textContent='+ Tambah';btn.setAttribute('onclick','doAddSatker()');}
+}
+
+async function doAddSatker(){
+  const kode = (document.getElementById('sk-kode')?.value||'').trim();
+  const nama  = (document.getElementById('sk-nama')?.value||'').trim();
+  if(!kode||!nama){showToast('❌ Kode dan nama satker wajib diisi',true);return;}
+  if(!/^\d{6}$/.test(kode)){showToast('❌ Kode satker harus tepat 6 digit angka',true);return;}
+  try{
+    const res = await apiPost({action:'addSatker',kode,nama});
+    if(!res.success){showToast('❌ '+res.message,true);return;}
+    showToast('✅ '+res.message);
+    clearSatkerForm();
+    await loadSatkerAdmin();
+  }catch(e){showToast('❌ Gagal terhubung ke server',true);}
+}
+
+async function doUpdateSatker(){
+  const kode = (document.getElementById('sk-kode')?.value||'').trim();
+  const nama  = (document.getElementById('sk-nama')?.value||'').trim();
+  if(!kode||!nama){showToast('❌ Kode dan nama satker wajib diisi',true);return;}
+  if(!confirm(`Ubah nama satker ${kode} menjadi:\n"${nama}"?`))return;
+  try{
+    const res = await apiPost({action:'updateSatker',kode,nama});
+    if(!res.success){showToast('❌ '+res.message,true);return;}
+    showToast('✅ '+res.message);
+    clearSatkerForm();
+    await loadSatkerAdmin();
+  }catch(e){showToast('❌ Gagal terhubung ke server',true);}
+}
+
+async function hapusSatker(kode, nama){
+  if(!confirm(`Hapus satker:\n${kode} — ${nama}\n\nTindakan ini tidak dapat dibatalkan.`))return;
+  try{
+    const res = await apiPost({action:'deleteSatker',kode});
+    if(!res.success){showToast('❌ '+res.message,true);return;}
+    showToast('✅ '+res.message);
+    await loadSatkerAdmin();
+  }catch(e){showToast('❌ Gagal terhubung ke server',true);}
 }
 
 // ─── AUTO-LOGIN dari sessionStorage ──────────────────────

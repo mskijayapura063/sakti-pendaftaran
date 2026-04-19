@@ -17,6 +17,7 @@ const SHEET = {
   PENDAFTARAN:  'Pendaftaran',
   SESSIONS:     'Sessions',
   PENGGUNA:     'PenggunaTerdaftar',   // NIK + NIP semua user yang pernah didaftarkan
+  REF_SATKER:   'RefSatker',           // Referensi kode + nama satker
 };
 
 // ================================================================
@@ -33,6 +34,7 @@ function doPost(e) {
     if (action === 'submitDaftar')   return handleSubmitDaftar(data);
     if (action === 'cekRef')         return handleCekRef(data);
     if (action === 'getRekamanByRef') return handleGetRekamanByRef(data);
+    if (action === 'getSatkerList')  return handleGetSatkerList();
 
     // Routes yang butuh auth
     const auth = checkSession(data.token);
@@ -52,6 +54,10 @@ function doPost(e) {
     if (action === 'aktivasiOTP')      return handleAktivasiOTP(data, auth);
     if (action === 'tandaiTerdaftar')  return handleTandaiTerdaftar(data, auth);
     if (action === 'getRekamanByRef')  return handleGetRekamanByRef(data);
+    if (action === 'getSatkerList')    return handleGetSatkerList();
+    if (action === 'addSatker')        return handleAddSatker(data, auth);
+    if (action === 'updateSatker')     return handleUpdateSatker(data, auth);
+    if (action === 'deleteSatker')     return handleDeleteSatker(data, auth);
 
     return jsonErr('Action tidak dikenal: ' + action);
   } catch (err) {
@@ -106,6 +112,13 @@ function initSpreadsheet() {
   if (!shPengguna) {
     shPengguna = ss.insertSheet(SHEET.PENGGUNA);
     shPengguna.appendRow(['refKode','namaSatker','nama','nipnrp','nik','peran','terdaftarAt']);
+  }
+
+  // Sheet RefSatker — referensi kode dan nama satker
+  let shRef = ss.getSheetByName(SHEET.REF_SATKER);
+  if (!shRef) {
+    shRef = ss.insertSheet(SHEET.REF_SATKER);
+    shRef.appendRow(['kode','nama','createdAt','updatedAt']);
   }
 
   return jsonOk({ message: 'Spreadsheet berhasil diinisialisasi' });
@@ -675,6 +688,101 @@ function handleGetDashboard(auth) {
   }
 
   return jsonOk({ total, menunggu, aktif, ditolak });
+}
+
+// ================================================================
+// REFERENSI SATKER — CRUD
+// ================================================================
+
+/**
+ * Public: Kembalikan seluruh daftar satker dari sheet RefSatker.
+ * Jika sheet kosong, kembalikan list kosong (frontend akan pakai local SATKER_REF).
+ */
+function handleGetSatkerList() {
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  let sh = ss.getSheetByName(SHEET.REF_SATKER);
+  if (!sh) return jsonOk({ list: [] });
+
+  const rows = sh.getDataRange().getValues();
+  const list = [];
+  for (let i = 1; i < rows.length; i++) {
+    if (!rows[i][0]) continue; // skip baris kosong
+    list.push({ kode: String(rows[i][0]), nama: String(rows[i][1]) });
+  }
+  return jsonOk({ list });
+}
+
+/**
+ * Admin/Petugas: Tambah satker baru ke RefSatker.
+ */
+function handleAddSatker(data, auth) {
+  const kode = (data.kode || '').trim();
+  const nama = (data.nama || '').trim();
+
+  if (!kode || !nama)       return jsonErr('Kode dan nama satker wajib diisi');
+  if (!/^\d{6}$/.test(kode)) return jsonErr('Kode satker harus tepat 6 digit angka');
+
+  const ss  = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  let sh = ss.getSheetByName(SHEET.REF_SATKER);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET.REF_SATKER);
+    sh.appendRow(['kode','nama','createdAt','updatedAt']);
+  }
+
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === kode) return jsonErr(`Kode ${kode} sudah ada dalam daftar`);
+  }
+
+  sh.appendRow([kode, nama, new Date().toISOString(), new Date().toISOString()]);
+  return jsonOk({ message: `Satker ${kode} — ${nama} berhasil ditambahkan` });
+}
+
+/**
+ * Admin/Petugas: Ubah nama satker (kode tidak boleh diubah karena jadi identifier).
+ */
+function handleUpdateSatker(data, auth) {
+  const kode    = (data.kode || '').trim();
+  const namaBaru = (data.nama || '').trim();
+
+  if (!kode || !namaBaru) return jsonErr('Kode dan nama baru wajib diisi');
+
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.REF_SATKER);
+  if (!sh) return jsonErr('Sheet RefSatker belum ada');
+
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === kode) {
+      sh.getRange(i + 1, 2).setValue(namaBaru);
+      sh.getRange(i + 1, 4).setValue(new Date().toISOString());
+      return jsonOk({ message: `Satker ${kode} berhasil diperbarui` });
+    }
+  }
+  return jsonErr(`Kode ${kode} tidak ditemukan`);
+}
+
+/**
+ * Admin saja: Hapus satker dari RefSatker.
+ */
+function handleDeleteSatker(data, auth) {
+  if (auth.role !== 'Admin') return jsonErr('Hanya Admin yang bisa menghapus satker');
+
+  const kode = (data.kode || '').trim();
+  if (!kode) return jsonErr('Kode satker wajib diisi');
+
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(SHEET.REF_SATKER);
+  if (!sh) return jsonErr('Sheet RefSatker belum ada');
+
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === kode) {
+      sh.deleteRow(i + 1);
+      return jsonOk({ message: `Satker ${kode} berhasil dihapus` });
+    }
+  }
+  return jsonErr(`Kode ${kode} tidak ditemukan`);
 }
 
 // ================================================================
