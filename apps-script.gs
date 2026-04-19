@@ -86,7 +86,8 @@ function initSpreadsheet() {
     shDaftar.appendRow([
       'refKode','namaSatker','kodeSatker','namaKpa','nip',
       'noHp','email','alamat','tanggalDaftar','status',
-      'otpCode','otpAktif','driveFolder','filesJson','catatanAdmin'
+      'otpCode','otpAktif','driveFolder','filesJson','catatanAdmin',
+      'levelSatker','usersJson'  // kolom 16 & 17
     ]);
   }
 
@@ -251,12 +252,14 @@ function handleSubmitDaftar(data) {
     data.email   || '',
     data.alamat  || '',
     new Date().toISOString(),
-    'Menunggu',   // status
-    otp,          // otpCode
-    'false',      // otpAktif
-    '',           // driveFolder
-    '{}',         // filesJson
-    '',           // catatanAdmin
+    'Menunggu',         // status
+    otp,                // otpCode
+    'false',            // otpAktif
+    '',                 // driveFolder
+    '{}',               // filesJson
+    '',                 // catatanAdmin
+    data.levelSatker || '',  // levelSatker (kolom 16)
+    data.usersJson   || '[]', // usersJson  (kolom 17)
   ]);
 
   // Simpan daftar pengguna ke sheet PenggunaTerdaftar
@@ -325,6 +328,28 @@ function handleGetDetail(data, auth) {
   let filesJson = {};
   try { filesJson = JSON.parse(row[13] || '{}'); } catch(e) {}
 
+  let usersArr = [];
+  try { usersArr = JSON.parse(row[16] || '[]'); } catch(e) {}
+
+  // Fallback: ambil dari PenggunaTerdaftar jika kolom usersJson kosong (data lama)
+  if (!usersArr.length) {
+    const shP = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID).getSheetByName(SHEET.PENGGUNA);
+    if (shP) {
+      const pRows = shP.getDataRange().getValues();
+      const byRef = {};
+      for (let i = 1; i < pRows.length; i++) {
+        if (pRows[i][0] === row[0]) {
+          usersArr.push({
+            nama:     pRows[i][2],
+            nipnrp:   pRows[i][3],
+            nik:      pRows[i][4],
+            peranList: pRows[i][5] ? pRows[i][5].split(', ') : [],
+          });
+        }
+      }
+    }
+  }
+
   return jsonOk({
     refKode:      row[0],
     namaSatker:   row[1],
@@ -341,6 +366,8 @@ function handleGetDetail(data, auth) {
     driveFolder:  row[12],
     files:        filesJson,
     catatanAdmin: row[14],
+    levelSatker:  row[15] || '',
+    users:        usersArr,
   });
 }
 

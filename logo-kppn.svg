@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 200" width="520" height="200">
+  <!-- Swoosh kuning -->
+  <path d="M 310 10 Q 480 0 510 80 Q 490 20 320 35 Z" fill="#F9A825" opacity="0.95"/>
+  <path d="M 315 15 Q 505 5 515 90 Q 510 30 325 42 Z" fill="#F9A825"/>
+  <!-- Arc kuning besar -->
+  <path d="M 295 8 C 420 -5 520 50 515 130 C 510 70 415 20 300 30 Z" fill="#F9A825"/>
+  <path d="M 300 5 C 440 -8 525 55 520 140" stroke="#F9A825" stroke-width="18" fill="none" stroke-linecap="round"/>
+
+  <!-- Huruf K - biru -->
+  <text x="18" y="148" font-family="Arial Black, Impact, sans-serif" font-size="138" font-weight="900"
+    fill="#29B6F6" font-style="italic" letter-spacing="-2">K</text>
+
+  <!-- Huruf P pertama - biru -->
+  <text x="108" y="148" font-family="Arial Black, Impact, sans-serif" font-size="138" font-weight="900"
+    fill="#29B6F6" font-style="italic" letter-spacing="-2">P</text>
+
+  <!-- Huruf P kedua - kuning (overlap) -->
+  <text x="198" y="148" font-family="Arial Black, Impact, sans-serif" font-size="138" font-weight="900"
+    fill="#F9A825" font-style="italic" letter-spacing="-2">P</text>
+
+  <!-- Huruf N - biru -->
+  <text x="288" y="148" font-family="Arial Black, Impact, sans-serif" font-size="138" font-weight="900"
+    fill="#29B6F6" font-style="italic" letter-spacing="-2">N</text>
+
+  <!-- Teks JAYAPURA -->
+  <text x="210" y="188" font-family="Arial Black, Impact, sans-serif" font-size="32" font-weight="900"
+    fill="#29B6F6" font-style="italic" letter-spacing="4">JAYAPURA</text>
+</svg>
