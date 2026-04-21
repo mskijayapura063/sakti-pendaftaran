@@ -803,6 +803,7 @@ function addUser(data={}){
   const id=++userIdSeq;
   users.push({id,nama:data.nama||'',nipnrp:data.nipnrp||'',nik:data.nik||'',email:data.email||'',hp:data.hp||'',sk:data.sk||'',tglsk:data.tglsk||'',peranList:data.peranList||[]});
   renderUserCard(id);reindexUsers();
+  return id;
 }
 function removeUser(id){
   const idx=users.findIndex(u=>u.id===id);
@@ -1198,14 +1199,12 @@ async function doPanggilRekaman(){
     document.getElementById('errPanel').style.display='none';
 
     (res.users||[]).forEach(u=>{
-      const id=addUser(); // returns new user id
-      const usr=getUserById(id);
-      if(usr){
-        usr.nama=u.nama||''; usr.nipnrp=u.nipnrp||''; usr.nik=u.nik||'';
-        usr.email=u.email||''; usr.hp=u.hp||''; usr.sk=u.sk||''; usr.tglsk=u.tglsk||'';
-        usr.peranList=u.peranList||[];
-        renderUserSummary(id);
-      }
+      const id=addUser({
+        nama:u.nama||'', nipnrp:u.nipnrp||'', nik:u.nik||'',
+        email:u.email||'', hp:u.hp||'', sk:u.sk||'',
+        tglsk:u.tglsk||'', peranList:u.peranList||[]
+      });
+      renderUserSummary(id);
     });
 
     closeModal('modalPanggilRekaman');
