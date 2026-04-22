@@ -986,7 +986,7 @@ function trySubmit(){
     if(!u.nipnrp)errors.push(`User ${n}: NIP/NRP wajib diisi`);
     if(!u.sk)errors.push(`User ${n}: Nomor SK wajib diisi`);
     if(!u.tglsk)errors.push(`User ${n}: Tanggal SK wajib diisi`);
-    else if(!/^\d{2}\/\d{2}\/\d{4}$/.test(u.tglsk))errors.push(`User ${n}: Tanggal SK harus format dd/mm/yyyy`);
+    else if(!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(u.tglsk))errors.push(`User ${n}: Tanggal SK harus format dd/mm/yyyy`);
     if(!u.peranList.length)errors.push(`User ${n}: Pilih minimal satu peran`);
     if(u.email&&!u.email.toLowerCase().endsWith('.go.id'))errors.push(`User ${n}: Email harus berakhiran .go.id`);
     u.peranList.forEach((kode,idx)=>{const r=checkPeranConflict(kode,u.peranList.slice(0,idx));if(r.conflict&&r.block)errors.push(`User ${n} (${u.nama}): ${r.warn}`);});
@@ -1125,12 +1125,13 @@ function copyRefKode(){
 function s(v){return{v:String(v==null?'':v),t:'s'};}
 function esc(str){return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function formatTgl(d){
-  // d can be dd/mm/yyyy (text input) or ISO yyyy-mm-dd
+  // d can be d/m/yyyy or dd/mm/yyyy (flatpickr) → return dd-mm-yyyy
   if(!d)return'';
-  if(/^\d{2}\/\d{2}\/\d{4}$/.test(d)){
-    // already dd/mm/yyyy → return as dd-mm-yyyy for display
-    return d.replace(/\//g,'-');
+  if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(d)){
+    const p=d.split('/');
+    return`${p[0].padStart(2,'0')}-${p[1].padStart(2,'0')}-${p[2]}`;
   }
+  // ISO yyyy-mm-dd fallback
   const dt=new Date(d);
   if(isNaN(dt))return d;
   return`${String(dt.getDate()).padStart(2,'0')}-${String(dt.getMonth()+1).padStart(2,'0')}-${dt.getFullYear()}`;
