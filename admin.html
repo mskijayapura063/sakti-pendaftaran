@@ -363,19 +363,23 @@ input[type=checkbox]{accent-color:var(--blue);width:15px;height:15px;cursor:poin
           <div style="border-top:1px solid var(--gray-200);padding-top:16px;margin-top:8px">
             <div style="font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">+ Tambah User Baru</div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-              <div class="form-group" style="min-width:140px;flex:1">
-                <label>Username</label>
-                <input type="text" id="nu-user" placeholder="username"/>
+              <div class="form-group" style="min-width:160px;flex:1.5">
+                <label>Nama Lengkap <span style="color:var(--red)">*</span></label>
+                <input type="text" id="nu-nama" placeholder="Nama lengkap petugas"/>
               </div>
-              <div class="form-group" style="min-width:140px;flex:1">
+              <div class="form-group" style="min-width:130px;flex:1">
+                <label>Username</label>
+                <input type="text" id="nu-user" placeholder="username (tanpa spasi)"/>
+              </div>
+              <div class="form-group" style="min-width:130px;flex:1">
                 <label>Password (min. 6 karakter)</label>
                 <input type="password" id="nu-pass" placeholder="password"/>
               </div>
-              <div class="form-group" style="min-width:120px">
+              <div class="form-group" style="min-width:120px" id="nuRoleWrap">
                 <label>Role</label>
                 <select id="nu-role">
                   <option value="Petugas">Petugas</option>
-                  <option value="Admin">Admin</option>
+                  <!-- Option Admin hanya muncul untuk SuperAdmin, via JS -->
                 </select>
               </div>
               <button class="btn btn-primary" onclick="tambahUser()" style="height:38px;align-self:flex-end;margin-bottom:0">+ Tambah</button>
@@ -426,9 +430,11 @@ input[type=checkbox]{accent-color:var(--blue);width:15px;height:15px;cursor:poin
   <div class="modal-box wide">
     <div class="modal-title">📋 Detail Pendaftaran</div>
     <div id="detailBody"></div>
-    <div class="modal-actions">
+    <div class="modal-actions" style="flex-wrap:wrap;gap:6px">
       <button class="btn btn-secondary" onclick="closeModal('modalDetail')">Tutup</button>
       <button class="btn btn-secondary" id="btnUnduhExcel" onclick="adminDownloadExcel()" style="background:#217346;color:#fff;border-color:#217346">📥 Unduh Excel</button>
+      <button class="btn btn-danger" id="btnTolak" onclick="openModalTolak()" style="display:none">❌ Tolak</button>
+      <button class="btn btn-primary" id="btnProses" onclick="openModalProses()" style="display:none">⚙️ Proses Lanjut</button>
       <button class="btn btn-primary" id="btnTandaiTerdaftar" onclick="tandaiTerdaftar()">📋 Tandai Terdaftar di SAKTI</button>
       <button class="btn btn-success" id="btnMarkDone" onclick="openModalOTP()">🔐 Tandai Aktivasi OTP</button>
     </div>
@@ -454,6 +460,42 @@ input[type=checkbox]{accent-color:var(--blue);width:15px;height:15px;cursor:poin
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modalHapus');pendingDeleteRefs=[]">Batal</button>
       <button class="btn btn-danger" onclick="confirmDelete()">🗑️ Hapus Sekarang</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ MODAL TOLAK ══════════════ -->
+<div class="modal-overlay" id="modalTolak">
+  <div class="modal-box">
+    <div class="modal-title">❌ Tolak Pendaftaran</div>
+    <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">
+      Pendaftaran akan ditolak dan satker dapat memperbaiki isian/dokumen. Revisi ke berapa akan tercatat otomatis.
+    </p>
+    <div class="form-group">
+      <label>Catatan untuk Satker <span style="color:var(--red)">*</span></label>
+      <textarea id="tolakCatatan" rows="4" placeholder="Jelaskan alasan penolakan dan apa yang perlu diperbaiki..." style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:10px;font-size:13px;font-family:'Inter',sans-serif;resize:vertical"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalTolak')">Batal</button>
+      <button class="btn btn-danger" onclick="confirmTolak()">❌ Tolak & Kirim Catatan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ MODAL PROSES ══════════════ -->
+<div class="modal-overlay" id="modalProses">
+  <div class="modal-box">
+    <div class="modal-title">⚙️ Proses Lanjut Pendaftaran</div>
+    <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">
+      Tandai pendaftaran ini sedang diproses/diverifikasi oleh Anda.
+    </p>
+    <div class="form-group">
+      <label>Catatan (opsional)</label>
+      <textarea id="prosesCatatan" rows="3" placeholder="Catatan proses verifikasi..." style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:10px;font-size:13px;font-family:'Inter',sans-serif;resize:vertical"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalProses')">Batal</button>
+      <button class="btn btn-primary" onclick="confirmProses()">⚙️ Proses Lanjut</button>
     </div>
   </div>
 </div>
@@ -574,7 +616,7 @@ function showPanel(name){
 function openModal(id){document.getElementById(id)?.classList.add('on');}
 function closeModal(id){document.getElementById(id)?.classList.remove('on');}
 document.addEventListener('click',e=>{
-  ['modalDetail','modalHapus','modalOTP'].forEach(mid=>{
+  ['modalDetail','modalHapus','modalOTP','modalTolak','modalProses'].forEach(mid=>{
     const m=document.getElementById(mid);if(m&&e.target===m)closeModal(mid);
   });
 });
@@ -793,9 +835,14 @@ async function openDetail(refKode){
     if(!res.success){showToast(res.message||'Gagal memuat',true);closeModal('modalDetail');return;}
     detailData=res; // simpan untuk download Excel
     const s=res;
-    // Tombol "Tandai Terdaftar" — sembunyikan kalau sudah terdaftar
+    // Tombol aksi — logika berdasarkan status
     const btnTandai=document.getElementById('btnTandaiTerdaftar');
+    const btnTolak=document.getElementById('btnTolak');
+    const btnProses=document.getElementById('btnProses');
+    const canAct=!s.sudahTerdaftar&&s.status!=='Ditolak'&&s.status!=='Terdaftar';
     if(btnTandai) btnTandai.style.display=s.sudahTerdaftar?'none':'';
+    if(btnTolak)  btnTolak.style.display=canAct?'':'none';
+    if(btnProses) btnProses.style.display=(canAct&&s.status!=='Diproses')?'':'none';
     // Tombol "Aktivasi OTP" — hanya muncul jika sudah terdaftar, ada role OTP, dan OTP belum aktif
     const OTP_ROLES_CHECK=['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
     const hasOTPRole=(s.users||[]).some(u=>(u.peranList||[]).some(k=>OTP_ROLES_CHECK.includes(k)));
@@ -814,7 +861,8 @@ async function openDetail(refKode){
           <div class="detail-row"><span class="detail-lbl">Kode Ref.</span><span class="detail-val" style="font-family:monospace">${esc(s.refKode)}</span></div>
           <div class="detail-row"><span class="detail-lbl">Kode Satker</span><span class="detail-val">${esc(s.kodeSatker)}</span></div>
           <div class="detail-row"><span class="detail-lbl">Nama Satker</span><span class="detail-val">${esc(s.namaSatker)}</span></div>
-          <div class="detail-row"><span class="detail-lbl">Status</span><span class="detail-val"><span class="badge badge-${s.status==='Aktif'?'done':'submitted'}">${esc(s.status)}</span></span></div>
+          <div class="detail-row"><span class="detail-lbl">Status</span><span class="detail-val"><span class="badge badge-${s.status==='Terdaftar'||s.status==='Aktif'?'done':s.status==='Ditolak'?'draft':s.status==='Diproses'?'otp':'submitted'}">${esc(s.status)}</span>${s.revisiKe>0?`<span style="margin-left:6px;background:#FFF3E0;color:#E65100;border:1px solid #FFB74D;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700">Revisi ke-${s.revisiKe}</span>`:''}</span></div>
+          ${s.diprosesoleh?`<div class="detail-row"><span class="detail-lbl">Diproses oleh</span><span class="detail-val" style="font-weight:600;color:var(--blue)">${esc(s.diprosesoleh)}</span></div>`:''}
         </div>
         <div>
           <div class="detail-row"><span class="detail-lbl">Nama KPA</span><span class="detail-val">${esc(s.namaKpa||s.namaKPA||'-')}</span></div>
@@ -828,6 +876,42 @@ async function openDetail(refKode){
   }catch(err){
     document.getElementById('detailBody').innerHTML=`<p style="color:var(--red);text-align:center;padding:20px">${esc(err.message)}</p>`;
   }
+}
+
+function openModalTolak(){
+  if(!detailRef){showToast('Tidak ada data yang dipilih',true);return;}
+  document.getElementById('tolakCatatan').value='';
+  openModal('modalTolak');
+}
+
+function openModalProses(){
+  if(!detailRef){showToast('Tidak ada data yang dipilih',true);return;}
+  document.getElementById('prosesCatatan').value='';
+  openModal('modalProses');
+}
+
+async function confirmTolak(){
+  const catatan=document.getElementById('tolakCatatan').value.trim();
+  if(!catatan){showToast('Catatan penolakan wajib diisi',true);return;}
+  try{
+    const res=await apiPost({action:'tolakDaftar',refKode:detailRef,catatan});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    showToast(`✅ Pendaftaran ditolak (${res.revisiKe?'revisi ke-'+res.revisiKe:''}). Satker dapat memperbaiki.`);
+    closeModal('modalTolak');closeModal('modalDetail');
+    await fetchSubmissions();renderTable();renderDashboard();
+  }catch(err){showToast(err.message||'Terjadi kesalahan',true);}
+}
+
+async function confirmProses(){
+  const catatan=document.getElementById('prosesCatatan').value.trim();
+  try{
+    const res=await apiPost({action:'prosesDaftar',refKode:detailRef,catatan});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    showToast('✅ Pendaftaran diproses lanjut.');
+    closeModal('modalProses');closeModal('modalDetail');
+    await fetchSubmissions();renderTable();renderDashboard();
+    setTimeout(()=>openDetail(detailRef),400);
+  }catch(err){showToast(err.message||'Terjadi kesalahan',true);}
 }
 
 async function tandaiTerdaftar(){
@@ -988,25 +1072,27 @@ async function renderUserList(){
     el.innerHTML=res.users.map(u=>`
       <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--gray-100);flex-wrap:wrap">
         <div style="flex:1;min-width:140px">
-          <div style="font-size:13px;font-weight:700">👤 ${esc(u.username)}</div>
-          <div style="font-size:11px;color:var(--gray-500)">Role: ${esc(u.role)} — Dibuat: ${fmtTgl(u.createdAt)}</div>
+          <div style="font-size:13px;font-weight:700">👤 ${esc(u.namaLengkap||u.username)}</div>
+          <div style="font-size:11px;color:var(--gray-500)">@${esc(u.username)} · ${esc(u.role)} · Dibuat: ${fmtTgl(u.createdAt)}</div>
         </div>
-        <span class="badge ${u.role==='Admin'?'badge-otp':'badge-submitted'}">${esc(u.role)}</span>
+        <span class="badge ${u.role==='SuperAdmin'?'badge-otp':u.role==='Admin'?'badge-done':'badge-submitted'}">${esc(u.role)}</span>
         ${u.username!==currentUser?.user?`<button class="btn btn-danger btn-sm" onclick="hapusUser('${esc(u.username)}')">🗑️ Hapus</button>`:'<span style="font-size:11px;color:var(--gray-400)">(akun ini)</span>'}
       </div>`).join('');
   }catch(err){el.innerHTML=`<p style="color:var(--red)">${esc(err.message)}</p>`;}
 }
 
 async function tambahUser(){
+  const namaLengkap=(document.getElementById('nu-nama')?.value||'').trim();
   const username=(document.getElementById('nu-user')?.value||'').trim();
   const password=document.getElementById('nu-pass')?.value||'';
   const role=document.getElementById('nu-role')?.value||'Petugas';
-  if(!username||!password){showToast('Username dan password wajib diisi',true);return;}
+  if(!namaLengkap||!username||!password){showToast('Nama lengkap, username, dan password wajib diisi',true);return;}
   try{
-    const res=await apiPost({action:'addUser',username,password,role});
+    const res=await apiPost({action:'addUser',namaLengkap,username,password,role});
     if(!res.success){showToast(res.message||'Gagal',true);return;}
+    document.getElementById('nu-nama').value='';
     document.getElementById('nu-user').value='';document.getElementById('nu-pass').value='';
-    showToast(`✅ User '${username}' berhasil ditambahkan`);
+    showToast(`✅ ${res.message}`);
     renderUserList();
   }catch(err){showToast(err.message||'Terjadi kesalahan',true);}
 }
@@ -1035,11 +1121,19 @@ function showToast(msg,isErr=false){
 
 async function initApp(){
   await renderDashboard();
+  const role=currentUser?.role||'';
   // Tampilkan/sembunyikan fitur Admin-only
-  if(currentUser?.role==='Admin'){
+  if(['Admin','SuperAdmin'].includes(role)){
     document.querySelectorAll('.admin-only').forEach(el=>el.style.display='');
   }else{
     document.querySelectorAll('.admin-only').forEach(el=>el.style.display='none');
+  }
+  // SuperAdmin: tambah opsi Admin di dropdown tambah user
+  if(role==='SuperAdmin'){
+    const sel=document.getElementById('nu-role');
+    if(sel){
+      sel.innerHTML='<option value="Petugas">Petugas</option><option value="Admin">Admin</option>';
+    }
   }
   // auto refresh setiap 60 detik
   setInterval(()=>{

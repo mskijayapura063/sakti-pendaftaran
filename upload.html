@@ -260,7 +260,7 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
     <div class="card-title">🪪 Scan / Foto KTP Masing-Masing User</div>
     <div class="info-box" style="margin-bottom:16px">
       Upload scan atau foto KTP untuk setiap user yang didaftarkan.
-      Format yang diterima: JPG, PNG, atau PDF. Maksimal 5 MB per file.
+      Format yang diterima: JPG, PNG, atau PDF. Maksimal 2 MB per file.
     </div>
     <div class="ktp-grid" id="ktpGrid"></div>
   </div>
@@ -270,7 +270,7 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
     <div class="card-title">📁 Dokumen Pendukung (Seluruh Pendaftaran)</div>
     <div class="info-box" style="margin-bottom:16px">
       Upload dokumen-dokumen berikut yang berlaku untuk seluruh pendaftaran.
-      Format: PDF kecuali dinyatakan lain. Maksimal 10 MB per file.
+      Format: PDF kecuali dinyatakan lain. Maksimal 2 MB per file.
     </div>
     <div id="dokGlobalContainer"></div>
   </div>
@@ -372,6 +372,7 @@ function getLabel(k){return(PERAN_DATA.find(p=>p.kode===k)||{}).label||k;}
 // ─── STATE ────────────────────────────────────────────────
 let currentDraft=null,currentRefKode='';
 const uploadedFiles={};
+const uploadedFileUrls={}; // key → Drive URL setelah upload berhasil
 
 // ─── CARI DATA ────────────────────────────────────────────
 async function cariData(){
@@ -382,24 +383,31 @@ async function cariData(){
 
   // Cari dari server Apps Script dulu
   let draft=null;
+  let serverRes=null;
   try{
-    const res=await apiPost({action:'cekRef',refKode:raw});
-    if(res.success){
+    serverRes=await apiPost({action:'cekRef',refKode:raw});
+    if(serverRes.success){
       // Ambil detail lengkap dari localStorage (data user dll)
       let localDraft=null;
       try{localDraft=JSON.parse(localStorage.getItem(`sakti_draft_${raw}`)||'null');}catch(e){}
       draft={
         refKode:raw,
-        namaSatker:res.namaSatker,
-        kodeSatker:localDraft?.kodeSatker||'',
+        namaSatker:serverRes.namaSatker,
+        kodeSatker:serverRes.kodeSatker||localDraft?.kodeSatker||'',
         namaKPA:localDraft?.namaKPA||'',
         nipKPA:localDraft?.nipKPA||'',
         levelSatker:localDraft?.levelSatker||'Satker',
         users:localDraft?.users||[],
         hasOTP:localDraft?.hasOTP||false,
         timestamp:localDraft?.timestamp||new Date().toISOString(),
-        status:res.otpAktif?'submitted':'draft',
+        status:serverRes.sudahUpload?'submitted':serverRes.sudahTerdaftar?'terdaftar':'draft',
         fromServer:true,
+        bisaUpload:serverRes.bisaUpload,
+        bisaEdit:serverRes.bisaEdit,
+        sudahUpload:serverRes.sudahUpload,
+        revisiKe:serverRes.revisiKe||0,
+        catatanAdmin:serverRes.catatanAdmin||'',
+        tanggalUpload:serverRes.tanggalUpload||'',
       };
     }
   }catch(e){
@@ -408,9 +416,40 @@ async function cariData(){
   }
 
   if(!draft){document.getElementById('refNotFound').style.display='block';return;}
-  if(draft.status==='submitted') document.getElementById('refAlreadyDone').style.display='block';
+
   currentDraft=draft;currentRefKode=raw;
-  renderDraftInfo(draft);renderKTPSection(draft);renderDokGlobalSection(draft);
+  renderDraftInfo(draft);
+
+  // ── Blokir jika sudah diupload & tidak bisa upload ulang ──
+  if(draft.sudahUpload && !draft.bisaUpload){
+    // Tampilkan info satker tapi sembunyikan form upload
+    ['cardSatkerInfo'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
+    document.getElementById('refAlreadyDone').style.display='block';
+    // Tambahkan info tanggal upload jika ada
+    {
+      document.getElementById('refAlreadyDone').innerHTML=
+        `<strong>✅ Dokumen sudah diupload.</strong><br/>
+         Menunggu proses verifikasi dari KPPN Jayapura. Tidak perlu melakukan apapun lagi.<br/>
+         Jika ada pertanyaan, hubungi KPPN Jayapura dengan menyebut kode referensi <strong>${esc(raw)}</strong>.`;
+    }
+    setTimeout(()=>document.getElementById('cardSatkerInfo').scrollIntoView({behavior:'smooth',block:'start'}),100);
+    return;
+  }
+
+  // ── Tampilkan notif revisi jika data dikembalikan admin ──
+  if(draft.revisiKe>0 && draft.bisaUpload){
+    const revisiBox=document.getElementById('refAlreadyDone');
+    revisiBox.style.display='block';
+    revisiBox.style.background='var(--gold-light)';
+    revisiBox.style.borderColor='#FFE082';
+    revisiBox.style.color='#5D4037';
+    revisiBox.innerHTML=
+      `<strong>⚠️ Pendaftaran dikembalikan untuk perbaikan (Revisi ke-${draft.revisiKe})</strong><br/>
+       ${draft.catatanAdmin?`<em>Catatan admin: ${esc(draft.catatanAdmin)}</em><br/>`:''}
+       Silakan upload ulang dokumen yang diperlukan.`;
+  }
+
+  renderKTPSection(draft);renderDokGlobalSection(draft);
   ['cardSatkerInfo','cardKTP','cardDokGlobal','cardSubmit'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
   setTimeout(()=>document.getElementById('cardSatkerInfo').scrollIntoView({behavior:'smooth',block:'start'}),100);
 }
@@ -461,16 +500,22 @@ function renderKTPSection(draft){
         <span class="fsize" id="fsz-${key}"></span>
         <span class="fremove" onclick="removeFile('${key}')">×</span>
       </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+        <button id="btn-up-${key}" class="btn btn-primary" onclick="uploadSingleFile('${key}')" style="display:none;padding:6px 14px;font-size:12px">⬆️ Upload</button>
+        <div id="upst-${key}" style="font-size:11px;line-height:1.4"></div>
+      </div>
     </div>`;
   }).join('');
 }
 
 // ─── DOK GLOBAL ───────────────────────────────────────────
 // Mapping peran → jenis sertifikat BNT/PNT yang dibutuhkan
+// Peran yang wajib sertifikat pelatihan nasional teknis
 const BNT_MAP = {
-  'SATKER_BENDAHARA_PENGELUARAN': 'BNT Pengeluaran',
-  'SATKER_BENDAHARA_PENERIMAAN':  'BNT Penerimaan',
-  'SATKER_BENDAHARA_PENGELUARAN_PEMBANTU': 'BNT Pengeluaran Pembantu',
+  'SATKER_BENDAHARA_PENGELUARAN':         'BNT Pengeluaran',
+  'SATKER_BENDAHARA_PENERIMAAN':          'BNT Penerimaan',
+  'SATKER_BENDAHARA_PENGELUARAN_PEMBANTU':'BNT Pengeluaran Pembantu',
+  'SATKER_PPSPM':                         'SNT PPSPM',
 };
 
 function getDokList(draft){
@@ -535,6 +580,10 @@ function renderDokGlobalSection(draft){
         <span class="fsize" id="fsz-${d.key}"></span>
         <span class="fremove" onclick="removeFile('${d.key}')">×</span>
       </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+        <button id="btn-up-${d.key}" class="btn btn-primary" onclick="uploadSingleFile('${d.key}')" style="display:none;padding:6px 14px;font-size:12px">⬆️ Upload</button>
+        <div id="upst-${d.key}" style="font-size:11px;line-height:1.4"></div>
+      </div>
     </div>`).join('');
 }
 
@@ -549,22 +598,61 @@ async function apiPost(payload){
 
 // ─── FILE HANDLERS ────────────────────────────────────────
 const MAX_FILE=2*1024*1024; // 2 MB untuk semua file
+const uploadedStatus={}; // key → 'pending'|'uploading'|'done'|'error'
+
 function triggerFile(key){document.getElementById(`fi-${key}`)?.click();}
+
 function onFile(key,input){
   const file=input.files[0];if(!file)return;
   if(file.size>MAX_FILE){showToast(`File terlalu besar. Maksimum 2 MB per file.`,true);input.value='';return;}
   uploadedFiles[key]=file;
+  uploadedStatus[key]='pending';
   document.getElementById(`fn-${key}`).textContent=file.name;
   document.getElementById(`fsz-${key}`).textContent=fmtSize(file.size);
   document.getElementById(`fc-${key}`).style.display='flex';
   document.getElementById(`dz-${key}`).style.display='none';
+  // Tampilkan tombol upload per file
+  const btnUp=document.getElementById(`btn-up-${key}`);
+  if(btnUp){btnUp.style.display='inline-flex';btnUp.disabled=false;btnUp.textContent='⬆️ Upload';}
+  const statusEl=document.getElementById(`upst-${key}`);
+  if(statusEl){statusEl.textContent='';statusEl.className='';}
 }
+
 function removeFile(key){
   delete uploadedFiles[key];
+  delete uploadedStatus[key];
+  delete uploadedFileUrls[key];
   const fi=document.getElementById(`fi-${key}`);if(fi)fi.value='';
   document.getElementById(`fc-${key}`).style.display='none';
   document.getElementById(`dz-${key}`).style.display='block';
+  const btnUp=document.getElementById(`btn-up-${key}`);
+  if(btnUp){btnUp.style.display='none';btnUp.style.background='';btnUp.style.color='';btnUp.style.borderColor='';btnUp.textContent='⬆️ Upload';}
+  const statusEl=document.getElementById(`upst-${key}`);
+  if(statusEl){statusEl.textContent='';statusEl.style.color='';statusEl.style.fontWeight='';}
 }
+
+async function uploadSingleFile(key){
+  const file=uploadedFiles[key];
+  if(!file){showToast('Pilih file terlebih dahulu',true);return;}
+  if(!currentRefKode){showToast('Kode referensi tidak ditemukan',true);return;}
+  const btnUp=document.getElementById(`btn-up-${key}`);
+  const statusEl=document.getElementById(`upst-${key}`);
+  if(btnUp){btnUp.disabled=true;btnUp.textContent='⏳ Mengupload...';}
+  if(statusEl){statusEl.textContent='Mengupload...';statusEl.className='';}
+  try{
+    const result=await uploadFileToDrive(key, file);
+    uploadedStatus[key]='done';
+    uploadedFileUrls[key]=result.fileUrl||'';
+    if(btnUp){btnUp.textContent='✅ Terupload';btnUp.style.background='var(--green)';btnUp.style.color='#fff';btnUp.style.borderColor='var(--green)';}
+    if(statusEl){statusEl.textContent='✅ Berhasil diupload';statusEl.style.color='var(--green)';statusEl.style.fontWeight='600';}
+  }catch(err){
+    uploadedStatus[key]='error';
+    if(btnUp){btnUp.disabled=false;btnUp.textContent='⬆️ Coba Lagi';btnUp.style.background='';btnUp.style.borderColor='';}
+    if(statusEl){statusEl.textContent='❌ Gagal: '+err.message;statusEl.style.color='var(--red)';}
+    showToast(`Gagal upload: ${err.message}`,true);
+  }
+}
+
 function dzOver(e,key){e.preventDefault();document.getElementById(`dz-${key}`)?.classList.add('dragover');}
 function dzLeave(key){document.getElementById(`dz-${key}`)?.classList.remove('dragover');}
 function dzDrop(e,key){
@@ -605,8 +693,15 @@ async function uploadFileToDrive(key, file){
 function trySubmit(){
   if(!currentDraft){showToast('Cari data terlebih dahulu',true);return;}
   const errors=[];
-  currentDraft.users.forEach((u,i)=>{const key=`ktp_${i}`;if(!uploadedFiles[key])errors.push(`KTP ${esc(u.nama)} belum diupload`);});
-  getDokList(currentDraft).forEach(d=>{if(d.req&&!uploadedFiles[d.key])errors.push(`Dokumen wajib belum diupload: ${d.name}`);});
+  // Cek KTP tiap user sudah diupload (status done)
+  currentDraft.users.forEach((u,i)=>{
+    const key=`ktp_${i}`;
+    if(uploadedStatus[key]!=='done') errors.push(`KTP ${esc(u.nama)} belum diupload — pilih file lalu tekan tombol ⬆️ Upload`);
+  });
+  // Cek dokumen global wajib sudah diupload (status done)
+  getDokList(currentDraft).forEach(d=>{
+    if(d.req && uploadedStatus[d.key]!=='done') errors.push(`Dokumen wajib belum diupload: ${d.name} — pilih file lalu tekan tombol ⬆️ Upload`);
+  });
   const panel=document.getElementById('errPanel');const list=document.getElementById('errList');
   if(errors.length){panel.style.display='block';list.innerHTML=errors.map(e=>`<li>${e}</li>`).join('');panel.scrollIntoView({behavior:'smooth',block:'center'});return;}
   panel.style.display='none';openModal('modalPernyataan');
@@ -615,40 +710,34 @@ function trySubmit(){
 async function doSubmit(){
   closeModal('modalPernyataan');if(!currentDraft)return;
 
-  // Tampilkan progress
   const btnSubmit=document.querySelector('#cardSubmit .btn-success');
-  if(btnSubmit){btnSubmit.disabled=true;btnSubmit.textContent='⏳ Mengupload file...';}
+  if(btnSubmit){btnSubmit.disabled=true;btnSubmit.textContent='⏳ Menyimpan data...';}
 
+  // Semua file sudah diupload satu per satu — kumpulkan URL yang tersimpan
   const fileLinks={};
-  const allKeys=Object.keys(uploadedFiles);
-  let uploaded=0;
+  Object.keys(uploadedFileUrls).forEach(k=>{ fileLinks[k]=uploadedFileUrls[k]; });
 
-  // Upload semua file ke Drive via Apps Script
-  for(const key of allKeys){
-    try{
-      if(btnSubmit) btnSubmit.textContent=`⏳ Upload ${uploaded+1}/${allKeys.length}...`;
-      const result=await uploadFileToDrive(key, uploadedFiles[key]);
-      fileLinks[key]=result.fileUrl||'';
-      uploaded++;
-    }catch(err){
-      if(btnSubmit){btnSubmit.disabled=false;btnSubmit.textContent='📤 Kirim ke KPPN Jayapura';}
-      showToast(`Gagal upload ${uploadedFiles[key].name}: ${err.message}`,true);
-      return;
-    }
+  // Konfirmasi ke server bahwa semua file sudah terupload
+  try{
+    await apiPost({
+      action:'finalizeUpload',
+      refKode:currentRefKode,
+    });
+  }catch(err){
+    if(btnSubmit){btnSubmit.disabled=false;btnSubmit.textContent='📤 Kirim ke KPPN Jayapura';}
+    showToast('Gagal konfirmasi: '+err.message,true);
+    return;
   }
 
-  // Update status di server
-  if(btnSubmit) btnSubmit.textContent='⏳ Menyimpan data...';
-  // Simpan juga ke localStorage sebagai backup
+  // Simpan ke localStorage sebagai backup
   try{
     const submission={
       refKode:currentRefKode,kodeSatker:currentDraft.kodeSatker,namaSatker:currentDraft.namaSatker,
       namaKPA:currentDraft.namaKPA,nipKPA:currentDraft.nipKPA,userCount:currentDraft.users.length,
       users:currentDraft.users,hasOTP:currentDraft.hasOTP,
       submittedAt:new Date().toISOString(),status:'submitted',gdriveConnected:true,
-      filesUploaded:Object.keys(uploadedFiles).map(k=>({
-        key:k,name:uploadedFiles[k].name,size:uploadedFiles[k].size,
-        type:uploadedFiles[k].type,driveUrl:fileLinks[k]||null,
+      filesUploaded:Object.keys(uploadedFileUrls).map(k=>({
+        key:k,driveUrl:uploadedFileUrls[k]||null,
       })),
     };
     localStorage.setItem(`sakti_draft_${currentRefKode}`,JSON.stringify({...currentDraft,status:'submitted',submittedAt:submission.submittedAt}));
