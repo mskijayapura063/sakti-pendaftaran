@@ -285,7 +285,7 @@ input[type=checkbox]{accent-color:var(--blue);width:15px;height:15px;cursor:poin
 
         <div class="card" style="padding:16px 20px">
           <div class="table-toolbar">
-            <input class="table-search" type="text" id="searchInput" placeholder="🔍 Cari nama satker, KPA, kode..." oninput="renderTable()"/>
+            <input class="table-search" type="text" id="searchInput" placeholder="🔍 Cari nama satker, KPA, kode satker, NIP, NIK, peran, nomor SK..." oninput="renderTable()"/>
             <div class="table-filter">
               <select id="filterStatus" onchange="renderTable()">
                 <option value="">Semua Status</option>
@@ -661,7 +661,9 @@ function renderTable(){
   const q=(document.getElementById('searchInput')?.value||'').toLowerCase();
   const fStatus=document.getElementById('filterStatus')?.value||'';
   const filtered=subs.filter(s=>{
-    const match=!q||(s.namaSatker||'').toLowerCase().includes(q)||(s.namaKPA||'').toLowerCase().includes(q)||(s.refKode||'').toLowerCase().includes(q)||(s.kodeSatker||'').toLowerCase().includes(q);
+    // Cari di semua field: namaSatker, KPA, kode, refKode + NIP/NIK/role/SK dari users via searchText
+    const haystack=(s.searchText||[s.namaSatker,s.namaKpa,s.namaKPA,s.refKode,s.kodeSatker,s.nip].join(' ')).toLowerCase();
+    const match=!q||haystack.includes(q);
     const statusOK=!fStatus||s.status===fStatus;
     return match&&statusOK;
   });

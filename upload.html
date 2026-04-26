@@ -466,16 +466,44 @@ function renderKTPSection(draft){
 }
 
 // ─── DOK GLOBAL ───────────────────────────────────────────
+// Mapping peran → jenis sertifikat BNT/PNT yang dibutuhkan
+const BNT_MAP = {
+  'SATKER_BENDAHARA_PENGELUARAN': 'BNT Pengeluaran',
+  'SATKER_BENDAHARA_PENERIMAAN':  'BNT Penerimaan',
+  'SATKER_BENDAHARA_PENGELUARAN_PEMBANTU': 'BNT Pengeluaran Pembantu',
+};
+
 function getDokList(draft){
   const allPeran=draft.users.flatMap(u=>u.peranList);
-  const hasPejabat=allPeran.some(k=>['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM','SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENERIMAAN'].includes(k));
+  const hasPejabat=allPeran.some(k=>['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM','SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENERIMAAN','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU'].includes(k));
   const hasOTP=allPeran.some(k=>['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'].includes(k));
+
+  // Buat daftar dokumen sertifikat BNT per bendahara yang ada
+  const bntDoks=[];
+  draft.users.forEach(u=>{
+    (u.peranList||[]).forEach(peran=>{
+      if(BNT_MAP[peran]){
+        const jenis=BNT_MAP[peran];
+        const key=`bnt_${peran.toLowerCase()}_${(u.nipnrp||u.nama||'').replace(/\W/g,'_')}`;
+        bntDoks.push({
+          key,
+          name:`Sertifikat ${jenis}`,
+          desc:`Sertifikat ${jenis} atas nama ${u.nama||'(nama kosong)'} (NIP: ${u.nipnrp||'-'})`,
+          accept:'.pdf,.jpg,.jpeg,.png',
+          req:true,
+          icon:'🎓',
+          note:`Wajib — ${u.nama||'user ini'} didaftarkan sebagai Bendahara (${jenis})`
+        });
+      }
+    });
+  });
+
   return [
     {key:'sk_pengguna',name:'SK Penetapan Pengguna SAKTI',desc:'SK Penetapan Pengguna SAKTI yang ditandatangani KPA',accept:'.pdf',req:true,icon:'📄'},
     {key:'form_ttd_kpa',name:'Formulir Pendaftaran Bertandatangan KPA (PDF)',desc:'File Excel yang sudah dicetak, ditandatangani KPA, dan discan ke PDF',accept:'.pdf',req:true,icon:'📝'},
     {key:'sk_pejabat',name:'SK Pejabat Perbendaharaan',desc:'SK pengangkatan KPA, PPK, PPSPM, dan/atau Bendahara',accept:'.pdf',req:hasPejabat,show:hasPejabat,icon:'📜',note:hasPejabat?'Wajib — ada pejabat perbendaharaan dalam daftar':null},
     {key:'specimen_ttd',name:'Specimen Tanda Tangan Pejabat',desc:'Lembar specimen tanda tangan pejabat perbendaharaan yang dilegalisir',accept:'.pdf,.jpg,.jpeg,.png',req:hasPejabat,show:hasPejabat,icon:'✍️',note:hasPejabat?'Wajib — ada pejabat perbendaharaan dalam daftar':null},
-    {key:'sertifikat_bnt',name:'Sertifikat BNT / PNT / SNT (opsional)',desc:'Sertifikat Bimbingan/Pelatihan Nasional Teknis jika ada',accept:'.pdf,.jpg,.jpeg,.png',req:false,icon:'🎓'},
+    ...bntDoks,
     {key:'formulir_otp',name:'Formulir Permohonan Aktivasi OTP',desc:'Formulir permohonan aktivasi token OTP untuk KPA/PPK/PPSPM',accept:'.pdf',req:hasOTP,show:hasOTP,icon:'🔐',note:hasOTP?'Wajib — ada user KPA/PPK/PPSPM yang memerlukan OTP':null},
   ].filter(d=>d.show!==false);
 }
@@ -520,12 +548,11 @@ async function apiPost(payload){
 }
 
 // ─── FILE HANDLERS ────────────────────────────────────────
-const MAX_KTP=5*1024*1024, MAX_GLOBAL=10*1024*1024;
+const MAX_FILE=2*1024*1024; // 2 MB untuk semua file
 function triggerFile(key){document.getElementById(`fi-${key}`)?.click();}
 function onFile(key,input){
   const file=input.files[0];if(!file)return;
-  const max=key.startsWith('ktp_')?MAX_KTP:MAX_GLOBAL;
-  if(file.size>max){showToast(`File terlalu besar. Maks ${key.startsWith('ktp_')?'5':'10'} MB.`,true);input.value='';return;}
+  if(file.size>MAX_FILE){showToast(`File terlalu besar. Maksimum 2 MB per file.`,true);input.value='';return;}
   uploadedFiles[key]=file;
   document.getElementById(`fn-${key}`).textContent=file.name;
   document.getElementById(`fsz-${key}`).textContent=fmtSize(file.size);
