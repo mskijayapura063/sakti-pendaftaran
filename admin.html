@@ -405,10 +405,11 @@ input[type=checkbox]{accent-color:var(--blue);width:15px;height:15px;cursor:poin
               <button class="btn btn-secondary" onclick="clearSatkerForm()" style="height:38px">Reset</button>
             </div>
           </div>
-          <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center">
+          <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <input type="text" id="sk-cari" placeholder="🔍 Cari kode atau nama satker..." oninput="renderSatkerTable()"
-              style="flex:1;padding:7px 12px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px"/>
+              style="flex:1;min-width:200px;padding:7px 12px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px"/>
             <button class="btn btn-secondary" onclick="loadSatkerAdmin()" style="white-space:nowrap;font-size:12px">↻ Refresh</button>
+            <button class="btn btn-outline" onclick="provisionSatkerUsers()" style="white-space:nowrap;font-size:12px;border:1.5px solid var(--blue-light);color:var(--blue-light)">⚙️ Buat Semua User Satker</button>
           </div>
           <div id="satkerTableWrap" style="overflow-x:auto">
             <p style="color:var(--gray-400);font-size:13px">Memuat daftar satker...</p>
@@ -1062,7 +1063,7 @@ async function gantiPassword(){
 
 // ─── MANAJEMEN USER ───────────────────────────────────────
 async function renderUserList(){
-  if(currentUser?.role!=='Admin')return;
+  if(!['Admin','SuperAdmin'].includes(currentUser?.role))return;
   const el=document.getElementById('userListAdmin');
   if(!el)return;
   el.innerHTML='<p style="color:var(--gray-400);text-align:center;padding:16px">⏳ Memuat...</p>';
@@ -1075,7 +1076,7 @@ async function renderUserList(){
           <div style="font-size:13px;font-weight:700">👤 ${esc(u.namaLengkap||u.username)}</div>
           <div style="font-size:11px;color:var(--gray-500)">@${esc(u.username)} · ${esc(u.role)} · Dibuat: ${fmtTgl(u.createdAt)}</div>
         </div>
-        <span class="badge ${u.role==='SuperAdmin'?'badge-otp':u.role==='Admin'?'badge-done':'badge-submitted'}">${esc(u.role)}</span>
+        <span class="badge ${u.role==='SuperAdmin'?'badge-otp':u.role==='Admin'?'badge-done':u.role==='Satker'?'badge-draft':'badge-submitted'}">${esc(u.role)}</span>
         ${u.username!==currentUser?.user?`<button class="btn btn-danger btn-sm" onclick="hapusUser('${esc(u.username)}')">🗑️ Hapus</button>`:'<span style="font-size:11px;color:var(--gray-400)">(akun ini)</span>'}
       </div>`).join('');
   }catch(err){el.innerHTML=`<p style="color:var(--red)">${esc(err.message)}</p>`;}
@@ -1228,7 +1229,12 @@ async function doAddSatker(){
   try{
     const res = await apiPost({action:'addSatker',kode,nama});
     if(!res.success){showToast('❌ '+res.message,true);return;}
-    showToast('✅ '+res.message);
+    // Tampilkan info user yang otomatis dibuat
+    const userMsg = res.userCreated
+      ? `\n\n👤 ${res.userInfo}`
+      : `\n\n👤 ${res.userInfo}`;
+    showToast('✅ '+res.message+(res.userCreated?' (user dibuat otomatis)':''));
+    if(res.userCreated) setTimeout(()=>showToast(`👤 User '${kode}' dibuat — password default: ${kode}`),1500);
     clearSatkerForm();
     await loadSatkerAdmin();
   }catch(e){showToast('❌ Gagal terhubung ke server',true);}
@@ -1256,6 +1262,20 @@ async function hapusSatker(kode, nama){
     showToast('✅ '+res.message);
     await loadSatkerAdmin();
   }catch(e){showToast('❌ Gagal terhubung ke server',true);}
+}
+
+async function provisionSatkerUsers(){
+  if(!confirm('Buat user untuk semua satker yang belum punya akun?\n\nUsername = kode satker\nPassword = kode satker (default)\n\nLanjut?')) return;
+  try{
+    const res=await apiPost({action:'provisionSatkerUsers',token:currentUser.token});
+    if(!res.success){showToast('❌ '+res.message,true);return;}
+    // Tampilkan hasil detail
+    const msg=`✅ ${res.message}\n\n${(res.details||[]).slice(0,20).join('\n')}${res.details?.length>20?`\n...dan ${res.details.length-20} lainnya`:''}`;
+    alert(msg);
+    showToast(`✅ Provision selesai: ${res.created} user baru dibuat`);
+    // Refresh user list jika tab settings aktif
+    renderUserList();
+  }catch(e){showToast('❌ Gagal: '+e.message,true);}
 }
 
 // ─── AUTO-LOGIN dari sessionStorage ──────────────────────
