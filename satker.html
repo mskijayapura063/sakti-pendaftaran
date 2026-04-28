@@ -112,6 +112,8 @@ main{flex:1;padding:28px 32px;max-width:900px}
 .form-row{display:flex;gap:14px;flex-wrap:wrap}
 .form-row .form-group{flex:1;min-width:180px}
 .hint{font-size:11px;color:var(--gray-500);margin-top:4px}
+.inline-input{width:100%;border:1px solid var(--gray-300);border-radius:4px;padding:5px 8px;font-size:13px;font-family:inherit;background:#fff;color:var(--gray-900)}
+.inline-input:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 2px rgba(25,118,210,.15)}
 
 /* ── UPLOAD ITEM ── */
 .upload-item{border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;background:var(--gray-50)}
@@ -261,6 +263,9 @@ main{flex:1;padding:28px 32px;max-width:900px}
       </div>
       <div class="nav-item" onclick="switchTab('edit')" id="nav-edit">
         <span class="nav-icon">✏️</span> Edit Data
+      </div>
+      <div class="nav-item" onclick="switchTab('email')" id="nav-email">
+        <span class="nav-icon">📧</span> Form Email SAKTI
       </div>
     </div>
 
@@ -420,10 +425,12 @@ function renderTab(name) {
   else if (name === 'riwayat')  main.innerHTML = renderRiwayatTab();
   else if (name === 'excel')    main.innerHTML = renderExcelTab();
   else if (name === 'edit')     main.innerHTML = renderEditTab();
+  else if (name === 'email')    main.innerHTML = renderEmailTab();
 
   // Re-bind upload area setelah render
   if (name === 'upload') initUploadArea();
   if (name === 'edit')   initEditForm();
+  if (name === 'email')  initEmailTab();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1057,6 +1064,157 @@ function showToast(msg, isErr=false) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.className = 'on' + (isErr?' err':' ok');
   clearTimeout(toastT); toastT = setTimeout(()=>{ t.className=''; }, 3500);
+}
+
+// ══════════════════════════════════════════════════════════
+// TAB EMAIL SAKTI
+// ══════════════════════════════════════════════════════════
+function renderEmailTab() {
+  const kodeSatker = currentUser.kodeSatker || currentUser.username || '';
+  return `
+  <div class="card">
+    <div class="card-title">📧 Form Email SAKTI</div>
+    <div class="info-box" style="margin-bottom:16px">
+      Isi data pegawai untuk pendaftaran email SAKTI. Kode KPPN sudah terisi otomatis (<strong>063</strong>).
+      Setelah selesai, download file Excel untuk dikirimkan ke KPPN Jayapura.
+    </div>
+
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="tambahBarisSatker()">➕ Tambah Baris</button>
+      <button class="btn btn-success" onclick="downloadEmailExcel()">📥 Download Excel</button>
+      <button class="btn btn-secondary" onclick="resetTableEmail()">🗑️ Reset Tabel</button>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table class="user-table" id="tblEmail">
+        <thead>
+          <tr>
+            <th style="width:40px">No</th>
+            <th style="width:90px">Kode KPPN</th>
+            <th style="width:110px">Kode Satker</th>
+            <th style="min-width:200px">Nama Pegawai</th>
+            <th style="width:170px">NIP / NRP</th>
+            <th style="width:160px">NIK</th>
+            <th style="width:120px">Status</th>
+            <th style="width:60px">Hapus</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyEmail"></tbody>
+      </table>
+    </div>
+    <p class="hint" style="margin-top:10px">Status: 1=TNI, 2=POLRI, 3=PNS, 4=PPNPN, 5=P3K</p>
+  </div>`;
+}
+
+let emailRows = [];
+
+function initEmailTab() {
+  emailRows = emailRows.length ? emailRows : [emptyEmailRow()];
+  renderEmailRows();
+}
+
+function emptyEmailRow() {
+  return { nama:'', nipnrp:'', nik:'', status:'' };
+}
+
+function renderEmailRows() {
+  const kodeSatker = currentUser.kodeSatker || currentUser.username || '';
+  const tbody = document.getElementById('tbodyEmail');
+  if (!tbody) return;
+  tbody.innerHTML = emailRows.map((r, i) => `
+    <tr>
+      <td style="text-align:center;color:var(--gray-500)">${i+1}</td>
+      <td style="text-align:center;font-family:monospace;font-weight:600">063</td>
+      <td style="text-align:center;font-family:monospace">${esc(kodeSatker)}</td>
+      <td><input type="text" class="inline-input" placeholder="Nama lengkap" value="${esc(r.nama)}" oninput="emailRows[${i}].nama=this.value"/></td>
+      <td><input type="text" class="inline-input" placeholder="NIP/NRP" value="${esc(r.nipnrp)}" oninput="emailRows[${i}].nipnrp=this.value" style="font-family:monospace"/></td>
+      <td><input type="text" class="inline-input" placeholder="NIK (16 digit)" value="${esc(r.nik)}" oninput="emailRows[${i}].nik=this.value" style="font-family:monospace"/></td>
+      <td>
+        <select class="inline-input" oninput="emailRows[${i}].status=this.value" style="cursor:pointer">
+          <option value="">-- Pilih --</option>
+          ${[1,2,3,4,5].map(n=>`<option value="${n}" ${r.status==n?'selected':''}>${n} – ${{1:'TNI',2:'POLRI',3:'PNS',4:'PPNPN',5:'P3K'}[n]}</option>`).join('')}
+        </select>
+      </td>
+      <td style="text-align:center">
+        <button onclick="hapusBarisSatker(${i})" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--red)">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function tambahBarisSatker() {
+  emailRows.push(emptyEmailRow());
+  renderEmailRows();
+}
+
+function hapusBarisSatker(i) {
+  if (emailRows.length === 1) { emailRows[0] = emptyEmailRow(); }
+  else { emailRows.splice(i, 1); }
+  renderEmailRows();
+}
+
+function resetTableEmail() {
+  if (!confirm('Reset semua data tabel?')) return;
+  emailRows = [emptyEmailRow()];
+  renderEmailRows();
+}
+
+async function downloadEmailExcel() {
+  const kodeSatker = currentUser.kodeSatker || currentUser.username || '';
+  const rows = emailRows.filter(r => r.nama || r.nipnrp || r.nik);
+  if (!rows.length) { showToast('Isi minimal 1 baris data dulu!', true); return; }
+
+  // Buat XLSX secara client-side dengan SheetJS
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  script.onload = () => {
+    const wb = XLSX.utils.book_new();
+    // Header
+    const wsData = [
+      ['Kode KPPN', 'Kode Satker', 'Nama Pegawai', 'NIP / NRP', 'NIK', 'Status (1=TNI; 2=POLRI; 3=PNS; 4=PPNPN; 5=P3K)']
+    ];
+    rows.forEach(r => {
+      wsData.push([
+        '063',
+        kodeSatker,
+        r.nama || '',
+        r.nipnrp || '',
+        r.nik || '',
+        r.status ? String(r.status) : ''
+      ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Format semua sel sebagai TEXT (@)
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let R = range.s.r; R <= range.e.r; R++) {
+      for (let C = range.s.c; C <= range.e.c; C++) {
+        const addr = XLSX.utils.encode_cell({r:R, c:C});
+        if (!ws[addr]) continue;
+        if (!ws[addr].z) ws[addr].z = '@';
+        ws[addr].t = 's'; // force string
+      }
+    }
+
+    // Lebar kolom
+    ws['!cols'] = [
+      {wch:12},{wch:14},{wch:30},{wch:22},{wch:20},{wch:20}
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Form Email SAKTI');
+
+    // Sheet keterangan
+    const wsKet = XLSX.utils.aoa_to_sheet([
+      ['Kode','Keterangan'],
+      ['1','TNI'],['2','POLRI'],['3','PNS'],['4','PPNPN'],['5','P3K']
+    ]);
+    XLSX.utils.book_append_sheet(wb, wsKet, 'Keterangan');
+
+    XLSX.writeFile(wb, \`Form_Email_SAKTI_\${kodeSatker}.xlsx\`);
+    showToast('✅ File Excel berhasil didownload!');
+  };
+  document.head.appendChild(script);
 }
 
 // ── AUTO-LOGIN ────────────────────────────────────────────
