@@ -55,13 +55,33 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
 
 /* ── LAYOUT ── */
 .app-body{display:flex;min-height:calc(100vh - 71px)}
-.sidebar{width:230px;background:#fff;border-right:1px solid var(--gray-200);padding:16px 0;flex-shrink:0;overflow-y:auto}
-.nav-sep{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gray-400);padding:14px 20px 5px;margin-top:6px}
-.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;font-weight:500;color:var(--gray-700);cursor:pointer;border-left:3px solid transparent;transition:.12s}
-.nav-item:hover{background:var(--blue-pale);color:var(--blue)}
-.nav-item.active{background:var(--blue-pale);color:var(--blue);font-weight:700;border-left-color:var(--blue)}
-.nav-sub{padding-left:36px;font-size:12px}
+.sidebar{width:236px;background:#fff;border-right:1px solid var(--gray-200);padding:10px 0 24px;flex-shrink:0;overflow-y:auto}
+
+/* ── ACCORDION NAV ── */
+.nav-single{display:flex;align-items:center;gap:10px;padding:10px 18px;font-size:13px;font-weight:600;color:var(--gray-700);cursor:pointer;border-left:3px solid transparent;transition:.12s;white-space:nowrap}
+.nav-single:hover{background:var(--blue-pale);color:var(--blue)}
+.nav-single.active{background:var(--blue-pale);color:var(--blue);font-weight:700;border-left-color:var(--blue)}
+.nav-single .nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+
+.nav-group{margin-bottom:2px}
+.nav-group-hdr{display:flex;align-items:center;gap:10px;padding:10px 18px;font-size:12px;font-weight:700;color:var(--gray-600);cursor:pointer;text-transform:uppercase;letter-spacing:.5px;user-select:none;transition:background .12s,color .12s;position:relative}
+.nav-group-hdr:hover{background:var(--gray-100);color:var(--gray-800)}
+.nav-group-hdr.open{color:var(--blue)}
+.nav-group-hdr .nav-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.nav-group-hdr .nav-arrow{margin-left:auto;font-size:10px;transition:transform .22s;color:var(--gray-400)}
+.nav-group-hdr.open .nav-arrow{transform:rotate(180deg);color:var(--blue)}
+.nav-group-hdr .nav-badge{background:var(--orange-pale);color:var(--orange);border:1px solid #FFCC80;border-radius:20px;font-size:10px;font-weight:700;padding:1px 7px;margin-left:4px;text-transform:none;letter-spacing:0}
+
+.nav-children{max-height:0;overflow:hidden;transition:max-height .28s cubic-bezier(.4,0,.2,1)}
+.nav-children.open{max-height:400px}
+
+.nav-sub{display:flex;align-items:center;gap:9px;padding:8px 18px 8px 36px;font-size:12.5px;font-weight:500;color:var(--gray-600);cursor:pointer;border-left:3px solid transparent;transition:.1s;white-space:nowrap}
+.nav-sub:hover{background:var(--blue-pale);color:var(--blue)}
 .nav-sub.active{background:var(--blue-pale);color:var(--blue);font-weight:700;border-left-color:var(--blue)}
+.nav-sub .sub-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.nav-sub.new-badge .sub-label::after{content:'BARU';background:var(--blue);color:#fff;font-size:9px;font-weight:800;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle}
+.nav-sub.dev .sub-label::after{content:'🚧';margin-left:5px}
+
 .main-content{flex:1;padding:28px 32px 60px;overflow-x:auto;min-width:0}
 
 /* ── CARDS ── */
@@ -238,37 +258,73 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
 
   <div class="app-body">
     <nav class="sidebar" id="sidebar">
-      <div class="nav-sep">Menu Utama</div>
-      <div class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')">
-        📊 Dashboard
+
+      <!-- Dashboard (single, no accordion) -->
+      <div class="nav-single active" id="nav-dashboard" onclick="switchTab('dashboard')">
+        <span class="nav-icon">🏠</span> Dashboard
       </div>
 
-      <div class="nav-sep">Pendaftaran Email SAKTI</div>
-      <div class="nav-item nav-sub" id="nav-email-baru" onclick="switchTab('email-baru')">
-        ✉️ Pendaftaran Baru
-      </div>
-      <div class="nav-item nav-sub" id="nav-email-riwayat" onclick="switchTab('email-riwayat')">
-        🗂️ Riwayat Email SAKTI
+      <!-- Group: Email SAKTI -->
+      <div class="nav-group" id="grp-email">
+        <div class="nav-group-hdr" id="grp-email-hdr" onclick="toggleGroup('email')">
+          <span class="nav-icon">✉️</span>
+          <span>Email SAKTI</span>
+          <span class="nav-arrow">▼</span>
+        </div>
+        <div class="nav-children" id="grp-email-children">
+          <div class="nav-sub" id="nav-email-baru" onclick="switchTab('email-baru')">
+            <span class="sub-icon">📝</span>
+            <span class="sub-label">Pendaftaran Baru</span>
+          </div>
+          <div class="nav-sub" id="nav-email-riwayat" onclick="switchTab('email-riwayat')">
+            <span class="sub-icon">📂</span>
+            <span class="sub-label">Riwayat Pengajuan</span>
+          </div>
+        </div>
       </div>
 
-      <div class="nav-sep">Pendaftaran User SAKTI</div>
-      <div class="nav-item nav-sub" id="nav-user-baru" onclick="switchTab('user-baru')" style="font-weight:700">
-        🆕 <strong>USER SAKTI BARU</strong>
-      </div>
-      <div class="nav-item nav-sub" id="nav-user-ganti" onclick="switchTab('user-ganti')">
-        🔄 Pergantian User
-      </div>
-      <div class="nav-item nav-sub" id="nav-user-riwayat" onclick="switchTab('user-riwayat')">
-        📋 Riwayat Pendaftaran
+      <!-- Group: User SAKTI -->
+      <div class="nav-group" id="grp-user">
+        <div class="nav-group-hdr" id="grp-user-hdr" onclick="toggleGroup('user')">
+          <span class="nav-icon">👤</span>
+          <span>User SAKTI</span>
+          <span class="nav-arrow">▼</span>
+        </div>
+        <div class="nav-children" id="grp-user-children">
+          <div class="nav-sub new-badge" id="nav-user-baru" onclick="switchTab('user-baru')">
+            <span class="sub-icon">🆕</span>
+            <span class="sub-label">User SAKTI Baru</span>
+          </div>
+          <div class="nav-sub" id="nav-user-ganti" onclick="switchTab('user-ganti')">
+            <span class="sub-icon">🔄</span>
+            <span class="sub-label">Pergantian User</span>
+          </div>
+          <div class="nav-sub" id="nav-user-riwayat" onclick="switchTab('user-riwayat')">
+            <span class="sub-icon">📋</span>
+            <span class="sub-label">Riwayat Pendaftaran</span>
+          </div>
+        </div>
       </div>
 
-      <div class="nav-sep">Lainnya</div>
-      <div class="nav-item nav-sub" id="nav-role" onclick="switchTab('role')">
-        🎭 Perubahan Role <span class="dev-badge">Dev</span>
+      <!-- Group: Lainnya -->
+      <div class="nav-group" id="grp-lain">
+        <div class="nav-group-hdr" id="grp-lain-hdr" onclick="toggleGroup('lain')">
+          <span class="nav-icon">⚙️</span>
+          <span>Lainnya</span>
+          <span class="nav-arrow">▼</span>
+        </div>
+        <div class="nav-children" id="grp-lain-children">
+          <div class="nav-sub dev" id="nav-role" onclick="switchTab('role')">
+            <span class="sub-icon">🎭</span>
+            <span class="sub-label">Perubahan Role</span>
+          </div>
+          <div class="nav-sub dev" id="nav-data-user" onclick="switchTab('data-user')">
+            <span class="sub-icon">📝</span>
+            <span class="sub-label">Perubahan Data</span>
+          </div>
+        </div>
       </div>
-      <div class="nav-item nav-sub" id="nav-data-user" onclick="switchTab('data-user')">
-        👤 Perubahan Data <span class="dev-badge">Dev</span>
-      </div>
+
     </nav>
 
     <main class="main-content" id="mainContent">
@@ -431,11 +487,35 @@ function togglePwd(id, btn) {
 // ════════════════════════════════════════════════════════
 // NAVIGATION
 // ════════════════════════════════════════════════════════
+// Map tab → group id
+const TAB_GROUP = {
+  'email-baru':'email','email-riwayat':'email',
+  'user-baru':'user','user-ganti':'user','user-riwayat':'user',
+  'role':'lain','data-user':'lain'
+};
+function toggleGroup(grp) {
+  const hdr = document.getElementById('grp-'+grp+'-hdr');
+  const children = document.getElementById('grp-'+grp+'-children');
+  if (!hdr || !children) return;
+  const isOpen = hdr.classList.contains('open');
+  hdr.classList.toggle('open', !isOpen);
+  children.classList.toggle('open', !isOpen);
+}
+function openGroup(grp) {
+  const hdr = document.getElementById('grp-'+grp+'-hdr');
+  const children = document.getElementById('grp-'+grp+'-children');
+  if (hdr) hdr.classList.add('open');
+  if (children) children.classList.add('open');
+}
+
 function switchTab(name) {
   activeTab = name;
-  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  // Remove active from all nav items
+  document.querySelectorAll('.nav-single,.nav-sub').forEach(el => el.classList.remove('active'));
   const navEl = document.getElementById('nav-' + name);
   if (navEl) navEl.classList.add('active');
+  // Auto-open the parent group
+  if (TAB_GROUP[name]) openGroup(TAB_GROUP[name]);
   const main = document.getElementById('mainContent');
 
   if (name === 'dashboard')      { main.innerHTML = renderDashboard();     initDashboard(); }
