@@ -1355,11 +1355,11 @@ function admRenderRows(){
   const satkerDefault = (document.getElementById('adm-email-satker')?.value||'').trim();
   if(!tbody) return;
   const statusOpts = `<option value="">—</option>
-    <option value="1">1 – Aktif</option>
-    <option value="2">2 – Pensiun</option>
-    <option value="3">3 – Non-Aktif</option>
-    <option value="4">4 – Meninggal</option>
-    <option value="5">5 – Lainnya</option>`;
+    <option value="1">1 – TNI</option>
+    <option value="2">2 – POLRI</option>
+    <option value="3">3 – PNS</option>
+    <option value="4">4 – PPNPN</option>
+    <option value="5">5 – PPPK</option>`;
   tbody.innerHTML = admEmailRows.map((r,i)=>`
     <tr>
       <td style="padding:5px 8px;border:1px solid var(--gray-200);text-align:center;color:var(--gray-400);font-size:12px">${i+1}</td>
@@ -1472,11 +1472,11 @@ async function admDownloadExcel(){
   // Sheet keterangan status
   const wsKet = XLSX.utils.aoa_to_sheet([
     ['Kode Status','Keterangan'],
-    ['1','Aktif'],
-    ['2','Pensiun'],
-    ['3','Non-Aktif'],
-    ['4','Meninggal'],
-    ['5','Lainnya']
+    ['1','TNI'],
+    ['2','POLRI'],
+    ['3','PNS'],
+    ['4','PPNPN'],
+    ['5','PPPK']
   ]);
   wsKet['!cols']=[{wch:14},{wch:25}];
   XLSX.utils.book_append_sheet(wb,'Keterangan Status',wsKet);
