@@ -863,50 +863,256 @@ function ajukanUlangEmail(id) {
 // ════════════════════════════════════════════════════════
 // USER SAKTI — BARU
 // ════════════════════════════════════════════════════════
+// ── State form user baru ──
+let ubRows = []; // daftar user di tabel
+let ubLocked = false;
+
+function ubEmptyRow() {
+  return { nama:'', nipnrp:'', nik:'', jabatan:'', status:'3' };
+}
+
 function renderUserBaru() {
   return `<div class="page-title"><strong style="font-size:22px">USER SAKTI BARU</strong></div>
   <div class="page-sub">Pendaftaran pengguna baru aplikasi SAKTI</div>
-  <div class="info-box blue">
-    ℹ️ Gunakan form di bawah untuk mendaftarkan pengguna SAKTI baru. Setelah submit dan upload dokumen, data <strong>tidak dapat diubah</strong> sampai ada keputusan dari KPPN. Pastikan data sudah benar sebelum submit.
-  </div>
-  <div class="card">
-    <div class="card-title">Form Pendaftaran User SAKTI</div>
-    <div id="userBaruBody">
-      <p style="color:var(--gray-400);font-style:italic;font-size:13px">Memuat data pendaftaran...</p>
-    </div>
+  <div id="userBaruBody"><p style="color:var(--gray-400);font-style:italic;text-align:center;padding:40px">⏳ Memuat...</p></div>`;
+}
+
+function ubRenderStatusInfo(d) {
+  const status = d.status || 'draft';
+  const locked = ['submitted','diproses','terdaftar'].includes(status.toLowerCase());
+  ubLocked = locked;
+  const clr = status.toLowerCase()==='ditolak'?'red':locked?'orange':'green';
+  const icon = status.toLowerCase()==='ditolak'?'❌':locked?'🔒':'✅';
+  return `<div class="info-box ${clr}" style="margin-bottom:18px">
+    ${icon} Pendaftaran sudah ada — status: <strong>${esc(status)}</strong>.
+    ${locked ? 'Data <strong>tidak dapat diubah</strong> selama sedang diproses KPPN.' : ''}
+    ${status.toLowerCase()==='ditolak' ? '<br/>Perbaiki data lalu submit ulang.' : ''}
   </div>`;
+}
+
+function ubRenderForm(d, kode, nama) {
+  // d = existing data (atau null jika baru)
+  const ro = ubLocked ? 'readonly' : '';
+  const roSel = ubLocked ? 'disabled' : '';
+  const refKode = d ? (d.refKode||'') : ('REF-' + kode + '-' + Date.now().toString(36).toUpperCase());
+
+  return `
+  ${d ? ubRenderStatusInfo(d) : ''}
+  <div class="info-box blue" style="margin-bottom:18px">
+    ℹ️ Isi data dengan lengkap dan benar. Setelah submit, data <strong>tidak dapat diubah</strong> sampai ada keputusan dari KPPN.
+  </div>
+
+  <!-- Identitas Satker -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">🏢 Identitas Satker</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-group" style="margin:0">
+        <label>Kode Satker</label>
+        <input type="text" value="${esc(kode)}" readonly style="background:var(--gray-100);font-family:monospace;font-weight:700"/>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Nama Satker</label>
+        <input type="text" id="ub_namaSatker" value="${esc(d?d.namaSatker:nama)}" ${ro} placeholder="Nama lengkap satker"/>
+      </div>
+      <div class="form-group" style="margin:0;grid-column:1/-1">
+        <label>Level Satker</label>
+        <select id="ub_levelSatker" ${roSel}>
+          <option value="">— Pilih Level —</option>
+          ${['Pusat','Wilayah','Daerah'].map(l=>`<option value="${l}" ${(d&&d.levelSatker===l)?'selected':''}>${l}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data KPA -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">👤 Data Kuasa Pengguna Anggaran (KPA)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-group" style="margin:0">
+        <label>Nama KPA <span style="color:var(--red)">*</span></label>
+        <input type="text" id="ub_namaKpa" value="${esc(d?d.namaKpa:'')}" ${ro} placeholder="Nama lengkap KPA"/>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>NIP KPA <span style="color:var(--red)">*</span></label>
+        <input type="text" id="ub_nip" value="${esc(d?d.nip:'')}" ${ro} placeholder="18 digit NIP" maxlength="18" style="font-family:monospace"/>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>No. HP / WA <span style="color:var(--red)">*</span></label>
+        <input type="text" id="ub_noHp" value="${esc(d?d.noHp:'')}" ${ro} placeholder="08xx-xxxx-xxxx"/>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Email KPA</label>
+        <input type="text" id="ub_email" value="${esc(d?d.email:'')}" ${ro} placeholder="email@satker.go.id"/>
+      </div>
+      <div class="form-group" style="margin:0;grid-column:1/-1">
+        <label>Alamat Kantor</label>
+        <textarea id="ub_alamat" rows="2" ${ro} placeholder="Alamat lengkap kantor satker" style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:8px 12px;font-size:13px;font-family:'Inter',sans-serif;resize:vertical">${esc(d?d.alamat:'')}</textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Daftar User -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>👥 Daftar Pengguna yang Didaftarkan</span>
+      ${!ubLocked?`<button class="btn btn-outline btn-sm" onclick="ubTambahBaris()">+ Tambah Baris</button>`:''}
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl" style="min-width:700px">
+        <thead><tr>
+          <th style="width:36px">#</th>
+          <th>Nama Lengkap <span style="color:var(--red)">*</span></th>
+          <th>NIP / NRP <span style="color:var(--red)">*</span></th>
+          <th>NIK (16 digit)</th>
+          <th>Jabatan</th>
+          <th>Status Kepegawaian</th>
+          ${!ubLocked?'<th style="width:36px"></th>':''}
+        </tr></thead>
+        <tbody id="ubTbody"></tbody>
+      </table>
+    </div>
+    <div style="font-size:11px;color:var(--gray-500);margin-top:8px">
+      Status: 1=TNI · 2=POLRI · 3=PNS · 4=PPNPN · 5=PPPK
+    </div>
+  </div>
+
+  <!-- Aksi -->
+  ${!ubLocked ? `
+  <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+    <button class="btn btn-secondary" onclick="ubReset()">↺ Reset Form</button>
+    <button class="btn btn-primary" onclick="ubSubmit()" id="btnUbSubmit">📤 Submit Pendaftaran</button>
+  </div>
+  <input type="hidden" id="ub_refKode" value="${esc(refKode)}"/>
+  ` : `
+  <div style="display:flex;gap:10px;margin-top:4px">
+    <button class="btn btn-outline btn-sm" onclick="switchTab('user-riwayat')">📋 Lihat Riwayat</button>
+  </div>
+  `}
+  `;
+}
+
+function ubRenderTbody() {
+  const statusOpts = [1,2,3,4,5].map(v=>
+    `<option value="${v}">${v} – ${{1:'TNI',2:'POLRI',3:'PNS',4:'PPNPN',5:'PPPK'}[v]}</option>`
+  ).join('');
+
+  const tbody = document.getElementById('ubTbody');
+  if (!tbody) return;
+  if (ubLocked) {
+    tbody.innerHTML = ubRows.map((r,i)=>`<tr>
+      <td style="text-align:center;color:var(--gray-400);font-size:12px">${i+1}</td>
+      <td>${esc(r.nama)}</td>
+      <td style="font-family:monospace">${esc(r.nipnrp)}</td>
+      <td style="font-family:monospace">${esc(r.nik)}</td>
+      <td>${esc(r.jabatan)}</td>
+      <td>${{1:'TNI',2:'POLRI',3:'PNS',4:'PPNPN',5:'PPPK'}[r.status]||r.status}</td>
+    </tr>`).join('') || `<tr class="tbl-empty"><td colspan="6">Tidak ada data</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = ubRows.map((r,i)=>`<tr>
+    <td style="text-align:center;color:var(--gray-400);font-size:12px;padding:4px 6px">${i+1}</td>
+    <td style="padding:4px 6px"><input class="inline-input" placeholder="Nama lengkap" value="${esc(r.nama)}"
+      oninput="ubRows[${i}].nama=this.value"/></td>
+    <td style="padding:4px 6px"><input class="inline-input" placeholder="NIP/NRP" maxlength="20" value="${esc(r.nipnrp)}"
+      style="font-family:monospace" oninput="ubRows[${i}].nipnrp=this.value"/></td>
+    <td style="padding:4px 6px"><input class="inline-input" placeholder="16 digit" maxlength="16" value="${esc(r.nik)}"
+      style="font-family:monospace" oninput="ubRows[${i}].nik=this.value"/></td>
+    <td style="padding:4px 6px"><input class="inline-input" placeholder="Jabatan" value="${esc(r.jabatan)}"
+      oninput="ubRows[${i}].jabatan=this.value"/></td>
+    <td style="padding:4px 6px">
+      <select class="inline-select" onchange="ubRows[${i}].status=this.value">
+        ${statusOpts.replace(`value="${r.status||'3'}"`,`value="${r.status||'3'}" selected`)}
+      </select>
+    </td>
+    <td style="padding:4px 6px;text-align:center">
+      <button onclick="ubHapusBaris(${i})" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:17px">✕</button>
+    </td>
+  </tr>`).join('') || `<tr class="tbl-empty"><td colspan="7">Klik "+ Tambah Baris" untuk menambah pengguna</td></tr>`;
+}
+
+function ubTambahBaris() { ubRows.push(ubEmptyRow()); ubRenderTbody(); }
+function ubHapusBaris(i) {
+  if (ubRows.length <= 1) { showToast('Minimal 1 baris user', true); return; }
+  ubRows.splice(i,1); ubRenderTbody();
+}
+function ubReset() {
+  if (!confirm('Reset semua data form?')) return;
+  ubRows = [ubEmptyRow()];
+  initUserBaru();
+}
+
+async function ubSubmit() {
+  const btn = document.getElementById('btnUbSubmit');
+  // Validasi
+  const namaSatker = document.getElementById('ub_namaSatker')?.value.trim();
+  const namaKpa    = document.getElementById('ub_namaKpa')?.value.trim();
+  const nip        = document.getElementById('ub_nip')?.value.trim();
+  const noHp       = document.getElementById('ub_noHp')?.value.trim();
+  const email      = document.getElementById('ub_email')?.value.trim();
+  const alamat     = document.getElementById('ub_alamat')?.value.trim();
+  const levelSatker= document.getElementById('ub_levelSatker')?.value;
+  const refKode    = document.getElementById('ub_refKode')?.value;
+
+  if (!namaSatker) { showToast('Nama satker wajib diisi', true); return; }
+  if (!namaKpa)    { showToast('Nama KPA wajib diisi', true); return; }
+  if (!nip)        { showToast('NIP KPA wajib diisi', true); return; }
+  if (!noHp)       { showToast('No. HP wajib diisi', true); return; }
+
+  const filled = ubRows.filter(r => r.nama && r.nipnrp);
+  if (!filled.length) { showToast('Minimal 1 data pengguna (nama & NIP wajib)', true); return; }
+
+  if (!confirm(`Submit pendaftaran ${filled.length} pengguna ke KPPN Jayapura?\n\nSetelah submit, data TIDAK dapat diubah sampai ada keputusan dari KPPN.`)) return;
+
+  btn.disabled = true; btn.textContent = '⏳ Mengirim...';
+  try {
+    const res = await apiPost({
+      action: 'submitDaftar',
+      refKode, namaSatker,
+      kodeSatker: currentUser.username,
+      namaKpa, nip, noHp, email, alamat, levelSatker,
+      usersJson: JSON.stringify(filled)
+    });
+    if (!res.success) {
+      showToast(res.message || 'Gagal submit', true);
+      btn.disabled=false; btn.textContent='📤 Submit Pendaftaran';
+      return;
+    }
+    showToast('✅ Pendaftaran berhasil dikirim ke KPPN!', false, true);
+    setTimeout(() => switchTab('user-riwayat'), 1500);
+  } catch(e) {
+    showToast('❌ Gagal terhubung ke server', true);
+    btn.disabled=false; btn.textContent='📤 Submit Pendaftaran';
+  }
 }
 
 async function initUserBaru() {
   const body = document.getElementById('userBaruBody');
   if (!body) return;
-  // Cek apakah sudah ada pendaftaran aktif
+  ubRows = [ubEmptyRow()];
+  ubLocked = false;
   try {
     const res = await apiPost({ action:'getSatkerDashboard' });
+    const kode = currentUser?.username || '';
+    const namaUser = currentUser?.namaLengkap || '';
     if (res.success && res.data && res.data.refKode) {
       const d = res.data;
-      const status = d.status || 'submitted';
-      const locked = ['submitted','diproses','terdaftar'].includes(status.toLowerCase());
-      body.innerHTML = `<div class="info-box ${locked?'orange':'green'}" style="margin-bottom:16px">
-        ${locked?'🔒':'✅'} Pendaftaran user SAKTI Anda <strong>${locked?'sedang dalam proses':'sudah selesai'}</strong> (Status: <strong>${esc(status)}</strong>).
-        ${locked?'Data tidak dapat diubah selama proses berlangsung.':''}
-      </div>
-      <div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
-        <div><span style="color:var(--gray-500)">Kode Referensi:</span><br/><strong style="font-family:monospace">${esc(d.refKode||'—')}</strong></div>
-        <div><span style="color:var(--gray-500)">Nama Satker:</span><br/><strong>${esc(d.namaSatker||'—')}</strong></div>
-        <div><span style="color:var(--gray-500)">Nama KPA:</span><br/><strong>${esc(d.namaKpa||'—')}</strong></div>
-        <div><span style="color:var(--gray-500)">Email:</span><br/><strong>${esc(d.email||'—')}</strong></div>
-      </div>
-      <div style="margin-top:16px">
-        <button class="btn btn-outline btn-sm" onclick="switchTab('user-riwayat')">📋 Lihat Riwayat Pendaftaran</button>
-      </div>`;
-      return;
+      ubLocked = ['submitted','diproses','terdaftar'].includes((d.status||'').toLowerCase());
+      // Load existing users into table
+      try {
+        const users = JSON.parse(d.usersJson || '[]');
+        if (users.length) ubRows = users.map(u=>({
+          nama: u.nama||'', nipnrp: u.nipnrp||u.nip||'',
+          nik: u.nik||'', jabatan: u.jabatan||'', status: String(u.status||'3')
+        }));
+      } catch(e) {}
+      body.innerHTML = ubRenderForm(d, kode, namaUser);
+    } else {
+      body.innerHTML = ubRenderForm(null, kode, namaUser);
     }
-  } catch(e) {}
-  // Tampilkan link ke form pendaftaran
-  body.innerHTML = `<p style="font-size:13px;color:var(--gray-700);margin-bottom:16px">Belum ada pendaftaran user SAKTI. Klik tombol di bawah untuk memulai pendaftaran.</p>
-  <a href="index.html" class="btn btn-primary" target="_blank">📝 Mulai Pendaftaran User SAKTI</a>
-  <p style="font-size:12px;color:var(--gray-500);margin-top:10px">Anda akan diarahkan ke halaman formulir pendaftaran.</p>`;
+    ubRenderTbody();
+  } catch(e) {
+    body.innerHTML = `<div class="info-box red">❌ Gagal memuat data. <button class="btn btn-secondary btn-sm" onclick="initUserBaru()">Coba Lagi</button></div>`;
+  }
 }
 
 // ════════════════════════════════════════════════════════
@@ -932,7 +1138,7 @@ async function initUserRiwayat() {
     const res = await apiPost({ action:'getSatkerDashboard' });
     if (!res.success || !res.data || !res.data.refKode) {
       body.innerHTML = `<div class="card"><p style="color:var(--gray-400);font-style:italic;text-align:center;padding:24px">Belum ada pendaftaran User SAKTI yang diajukan.</p>
-      <div style="text-align:center;margin-top:8px"><a href="index.html" class="btn btn-primary btn-sm" target="_blank">📝 Mulai Pendaftaran</a></div></div>`;
+      <div style="text-align:center;margin-top:8px"><button class="btn btn-primary btn-sm" onclick="switchTab('user-baru')">📝 Mulai Pendaftaran</button></div></div>`;
       return;
     }
     const d = res.data;
@@ -969,7 +1175,7 @@ async function initUserRiwayat() {
         <div><span style="color:var(--gray-500)">Nama KPA:</span><br/><strong>${esc(d.namaKpa||'—')}</strong></div>
         ${d.catatanAdmin?`<div style="grid-column:1/-1"><span style="color:var(--red)">Catatan KPPN:</span><br/><strong style="color:var(--red)">${esc(d.catatanAdmin)}</strong></div>`:''}
       </div>
-      ${!locked?`<a href="index.html" class="btn btn-primary btn-sm" target="_blank">✏️ Lengkapi / Edit Data</a>`:''}
+      ${!locked?`<button class="btn btn-primary btn-sm" onclick="switchTab('user-baru')">✏️ Lengkapi / Edit Data</button>`:''}
       ${status.toLowerCase()==='ditolak'?`<div class="info-box red" style="margin-top:12px">❌ Pendaftaran ditolak. Perbaiki data dan ajukan kembali.</div>`:''}
     </div>`;
   } catch(e) {
