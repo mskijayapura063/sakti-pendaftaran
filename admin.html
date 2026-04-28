@@ -3,1271 +3,1026 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Admin KPPN Jayapura — SAKTI</title>
+<title>Admin KPPN Jayapura — Portal SAKTI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
-  --blue:       #0D47A1;
-  --blue-mid:   #1565C0;
-  --blue-light: #1976D2;
-  --blue-pale:  #E3F2FD;
-  --blue-pale2: #BBDEFB;
-  --gold:       #F9A825;
-  --gold-light: #FFF8E1;
-  --green:      #2E7D32;
-  --green-pale: #E8F5E9;
-  --red:        #C62828;
-  --red-pale:   #FFEBEE;
-  --orange:     #E65100;
-  --orange-pale:#FFF3E0;
-  --gray-50:    #FAFAFA;
-  --gray-100:   #F5F5F5;
-  --gray-200:   #EEEEEE;
-  --gray-300:   #E0E0E0;
-  --gray-400:   #BDBDBD;
-  --gray-500:   #9E9E9E;
-  --gray-600:   #757575;
-  --gray-700:   #616161;
-  --gray-800:   #424242;
-  --gray-900:   #212121;
-  --radius:     8px;
-  --shadow:     0 1px 4px rgba(0,0,0,.10),0 2px 12px rgba(0,0,0,.06);
-  --shadow-lg:  0 4px 24px rgba(0,0,0,.13);
+  --blue:#0D47A1;--blue-mid:#1565C0;--blue-light:#1976D2;--blue-pale:#E3F2FD;--blue-pale2:#BBDEFB;
+  --gold:#F9A825;--green:#2E7D32;--green-pale:#E8F5E9;--green-mid:#388E3C;
+  --red:#C62828;--red-pale:#FFEBEE;--orange:#E65100;--orange-pale:#FFF3E0;
+  --purple:#6A1B9A;--purple-pale:#F3E5F5;--teal:#00695C;--teal-pale:#E0F2F1;
+  --gray-50:#FAFAFA;--gray-100:#F5F5F5;--gray-200:#EEEEEE;--gray-300:#E0E0E0;
+  --gray-400:#BDBDBD;--gray-500:#9E9E9E;--gray-600:#757575;--gray-700:#616161;
+  --gray-800:#424242;--gray-900:#212121;
+  --radius:8px;--radius-lg:12px;
+  --shadow:0 1px 4px rgba(0,0,0,.10),0 2px 12px rgba(0,0,0,.06);
+  --shadow-lg:0 4px 24px rgba(0,0,0,.13);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',sans-serif;background:var(--gray-100);color:var(--gray-900);min-height:100vh;font-size:14px;line-height:1.5}
-a{color:var(--blue-light);text-decoration:none}
-
-/* HEADER */
-header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
-.header-top{display:flex;align-items:center;gap:16px;padding:14px 32px;border-bottom:3px solid var(--gold)}
-.header-logo{width:56px;height:56px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.header-logo img{width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
-.header-titles{flex:1}
-.header-inst{font-size:11px;font-weight:500;opacity:.75;text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px}
-.header-main{font-size:18px;font-weight:800;line-height:1.25}
-.header-sub{font-size:11px;opacity:.7;margin-top:2px}
-.header-nav{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0}
-.btn-nav{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:var(--radius);padding:7px 14px;font-size:12px;font-weight:500;cursor:pointer;text-decoration:none;transition:background .15s;white-space:nowrap;font-family:'Inter',sans-serif}
-.btn-nav:hover{background:rgba(255,255,255,.22);text-decoration:none}
-.header-user{font-size:12px;opacity:.8;display:flex;align-items:center;gap:6px}
-
-/* LAYOUT */
-.app-body{display:flex;min-height:calc(100vh - 80px)}
-.sidebar{width:220px;background:#fff;border-right:1px solid var(--gray-200);padding:20px 0;flex-shrink:0}
-.sidebar-nav{list-style:none}
-.sidebar-nav li a,.sidebar-nav li button{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;font-weight:500;color:var(--gray-700);text-decoration:none;border:none;background:none;width:100%;cursor:pointer;font-family:'Inter',sans-serif;transition:background .12s,color .12s;border-left:3px solid transparent}
-.sidebar-nav li a:hover,.sidebar-nav li button:hover{background:var(--blue-pale);color:var(--blue)}
-.sidebar-nav li.active a,.sidebar-nav li.active button{background:var(--blue-pale);color:var(--blue);font-weight:700;border-left-color:var(--blue)}
-.sidebar-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gray-400);padding:16px 20px 6px;margin-top:8px}
-.main-content{flex:1;padding:28px 32px 60px;overflow-x:auto}
-
-/* PANEL */
-.panel{display:none}
-.panel.active{display:block}
-
-/* CARD */
-.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:22px 26px;margin-bottom:20px;border:1px solid var(--gray-200)}
-.card-title{font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.6px;padding-bottom:12px;margin-bottom:18px;border-bottom:2px solid var(--blue-pale)}
-.page-title{font-size:20px;font-weight:800;color:var(--gray-900);margin-bottom:4px}
-.page-sub{font-size:13px;color:var(--gray-500);margin-bottom:24px}
-
-/* STATS */
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:24px}
-.stat-card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px 20px;box-shadow:var(--shadow)}
-.stat-num{font-size:28px;font-weight:800;line-height:1}
-.stat-label{font-size:11px;color:var(--gray-500);font-weight:500;margin-top:4px;text-transform:uppercase;letter-spacing:.4px}
-.stat-card.c-blue .stat-num{color:var(--blue)}
-.stat-card.c-green .stat-num{color:var(--green)}
-.stat-card.c-orange .stat-num{color:var(--orange)}
-.stat-card.c-red .stat-num{color:var(--red)}
-
-/* TABLE */
-.table-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
-.table-search{flex:1;min-width:180px;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:8px 12px;font-size:13px;font-family:'Inter',sans-serif}
-.table-search:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(25,118,210,.1)}
-.table-filter select{border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:13px;font-family:'Inter',sans-serif;background:#fff;cursor:pointer}
-table{width:100%;border-collapse:collapse;font-size:13px}
-thead th{text-align:left;padding:10px 12px;background:var(--gray-50);border-bottom:2px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
-thead th.th-check{width:36px}
-tbody tr{border-bottom:1px solid var(--gray-100);transition:background .1s}
-tbody tr:hover{background:var(--gray-50)}
-tbody td{padding:10px 12px;vertical-align:middle}
-tbody td.td-check{text-align:center}
-.empty-row td{text-align:center;color:var(--gray-400);padding:28px;font-style:italic}
-
-/* BADGES */
-.badge{display:inline-block;font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;white-space:nowrap}
-.badge-submitted{background:var(--blue-pale);color:var(--blue)}
-.badge-draft{background:var(--orange-pale);color:var(--orange)}
-.badge-done{background:var(--green-pale);color:var(--green)}
-.badge-otp{background:#F3E5F5;color:#6A1B9A}
-
-/* BUTTONS */
-.btn{cursor:pointer;border:none;border-radius:var(--radius);padding:8px 16px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:background .15s,transform .1s;font-family:'Inter',sans-serif;white-space:nowrap}
-.btn:active{transform:scale(.97)}
-.btn-primary{background:var(--blue-light);color:#fff}
-.btn-primary:hover{background:var(--blue-mid)}
-.btn-success{background:var(--green);color:#fff}
-.btn-success:hover{background:#1B5E20}
-.btn-danger{background:var(--red);color:#fff}
-.btn-danger:hover{background:#7f1d1d}
-.btn-danger-outline{background:#fff;color:var(--red);border:1.5px solid var(--red)}
-.btn-danger-outline:hover{background:var(--red-pale)}
-.btn-secondary{background:var(--gray-600);color:#fff}
-.btn-secondary:hover{background:var(--gray-800)}
-.btn-outline{background:#fff;color:var(--blue-light);border:1.5px solid var(--blue-light)}
-.btn-outline:hover{background:var(--blue-pale)}
-.btn-sm{padding:5px 10px;font-size:11px}
-.btn-icon{background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:4px;font-size:16px;line-height:1;transition:background .1s;font-family:'Inter',sans-serif}
-.btn-icon:hover{background:var(--gray-200)}
-
-/* BULK DELETE TOOLBAR */
-.bulk-bar{background:var(--blue-pale);border:1px solid var(--blue-pale2);border-radius:var(--radius);padding:10px 16px;display:none;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
-.bulk-bar.on{display:flex}
-.bulk-count{font-size:13px;font-weight:600;color:var(--blue)}
-
-/* FORM */
-.form-group{display:flex;flex-direction:column;margin-bottom:14px}
-.form-group label{font-size:11px;font-weight:600;color:var(--gray-700);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
-.form-group input,.form-group select,.form-group textarea{border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 12px;font-size:13px;color:var(--gray-900);background:#fff;font-family:'Inter',sans-serif;transition:border-color .15s}
-.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(25,118,210,.12)}
-.form-group input.err{border-color:var(--red)!important}
-.form-row{display:flex;gap:14px;flex-wrap:wrap}
-.form-row .form-group{flex:1;min-width:160px;margin-bottom:0}
-
-/* DETAIL */
-.detail-row{display:flex;gap:8px;font-size:13px;margin-bottom:8px;flex-wrap:wrap}
-.detail-lbl{font-size:11px;font-weight:600;color:var(--gray-500);text-transform:uppercase;min-width:120px;flex-shrink:0;margin-top:2px}
-.detail-val{color:var(--gray-900)}
-.user-list-item{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;padding:10px 14px;margin-bottom:8px}
-.user-list-item .uname{font-size:13px;font-weight:700;color:var(--gray-900)}
-.user-list-item .urole{font-size:11px;color:var(--gray-500);margin-top:2px}
-
-/* MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9000;opacity:0;pointer-events:none;transition:opacity .2s}
-.modal-overlay.on{opacity:1;pointer-events:all}
-.modal-box{background:#fff;border-radius:12px;padding:28px 28px 24px;max-width:520px;width:92%;box-shadow:var(--shadow-lg);transform:translateY(18px);transition:transform .2s;max-height:92vh;overflow-y:auto}
-.modal-overlay.on .modal-box{transform:translateY(0)}
-.modal-box.wide{max-width:720px}
-.modal-title{font-size:16px;font-weight:700;color:var(--blue);margin-bottom:14px}
-.modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:20px}
-
-/* PASSWORD FIELD */
-.pwd-wrap{position:relative}
-.pwd-wrap input{width:100%;padding-right:44px}
-.pwd-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;padding:2px;line-height:1}
 
 /* LOGIN */
-.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--gray-100);padding:20px}
-.login-box{background:#fff;border-radius:14px;box-shadow:var(--shadow-lg);padding:36px 32px;width:100%;max-width:380px;border:1px solid var(--gray-200)}
-.login-logo{text-align:center;margin-bottom:20px}
-.login-logo .logo-circle{width:72px;height:72px;display:inline-flex;align-items:center;justify-content:center}
-.login-logo .logo-circle img{width:72px;height:72px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35))}
-.login-title{font-size:18px;font-weight:800;color:var(--gray-900);text-align:center;margin-bottom:4px}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0D47A1 0%,#1565C0 60%,#1976D2 100%);padding:20px}
+.login-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:40px 36px;width:100%;max-width:400px}
+.login-logo{text-align:center;margin-bottom:18px}
+.login-logo img{width:60px;height:60px;object-fit:contain}
+.login-title{font-size:20px;font-weight:800;color:var(--blue);text-align:center;margin-bottom:4px}
 .login-sub{font-size:12px;color:var(--gray-500);text-align:center;margin-bottom:24px}
-.login-err{background:var(--red-pale);border:1px solid #EF9A9A;border-radius:6px;padding:8px 12px;font-size:12px;color:#7f1d1d;margin-bottom:12px;display:none}
+.login-err{background:var(--red-pale);color:var(--red);border:1px solid #FFCDD2;border-radius:6px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
+.login-err.show{display:block}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:11px;font-weight:700;color:var(--gray-600);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;transition:.15s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(25,118,210,.12)}
+.pwd-wrap{position:relative}
+.pwd-wrap input{padding-right:40px}
+.pwd-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px;padding:2px}
 
-/* BOXES */
-.info-box{background:var(--blue-pale);border:1px solid var(--blue-pale2);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--blue);margin-bottom:14px;line-height:1.65}
-.warn-box{background:var(--gold-light);border:1px solid #FFE082;border-radius:var(--radius);padding:10px 14px;font-size:12px;color:#5D4037;margin-bottom:14px;line-height:1.65}
+/* HEADER */
+header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);position:sticky;top:0;z-index:100}
+.header-top{display:flex;align-items:center;gap:14px;padding:11px 26px;border-bottom:3px solid var(--gold)}
+.header-logo img{width:42px;height:42px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+.header-titles{flex:1}
+.header-main{font-size:15px;font-weight:800;line-height:1.2}
+.header-sub{font-size:11px;opacity:.7}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.role-chip{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;letter-spacing:.3px}
+.user-chip{font-size:12px;opacity:.85}
+.btn-logout{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:5px 13px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;transition:.15s}
+.btn-logout:hover{background:rgba(255,255,255,.25)}
+
+/* LAYOUT */
+.app-body{display:flex;min-height:calc(100vh - 68px)}
+.sidebar{width:235px;background:#fff;border-right:1px solid var(--gray-200);padding:14px 0;flex-shrink:0;overflow-y:auto}
+.nav-sep{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gray-400);padding:12px 18px 4px;margin-top:4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 18px;font-size:13px;font-weight:500;color:var(--gray-700);cursor:pointer;border-left:3px solid transparent;transition:.12s;white-space:nowrap}
+.nav-item:hover{background:var(--blue-pale);color:var(--blue)}
+.nav-item.active{background:var(--blue-pale);color:var(--blue);font-weight:700;border-left-color:var(--blue)}
+.main-content{flex:1;padding:26px 30px 60px;overflow-x:auto;min-width:0}
+
+/* CARDS */
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 24px;margin-bottom:18px;border:1px solid var(--gray-200)}
+.card-title{font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.6px;padding-bottom:10px;margin-bottom:14px;border-bottom:2px solid var(--blue-pale)}
+.page-title{font-size:19px;font-weight:800;color:var(--gray-900);margin-bottom:3px}
+.page-sub{font-size:13px;color:var(--gray-500);margin-bottom:20px}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);border-top:3px solid transparent;transition:.15s;cursor:default}
+.stat-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+.stat-icon{font-size:22px;margin-bottom:6px}
+.stat-num{font-size:28px;font-weight:800;line-height:1}
+.stat-label{font-size:10px;color:var(--gray-500);font-weight:700;margin-top:4px;text-transform:uppercase;letter-spacing:.4px}
+.stat-card.blue{border-top-color:var(--blue)}.stat-card.blue .stat-num{color:var(--blue)}
+.stat-card.green{border-top-color:var(--green)}.stat-card.green .stat-num{color:var(--green)}
+.stat-card.orange{border-top-color:var(--orange)}.stat-card.orange .stat-num{color:var(--orange)}
+.stat-card.red{border-top-color:var(--red)}.stat-card.red .stat-num{color:var(--red)}
+.stat-card.purple{border-top-color:var(--purple)}.stat-card.purple .stat-num{color:var(--purple)}
+.stat-card.teal{border-top-color:var(--teal)}.stat-card.teal .stat-num{color:var(--teal)}
+.stat-card.gold{border-top-color:var(--gold)}.stat-card.gold .stat-num{color:#c17f00}
+
+/* EARLY WARNING */
+.ew-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:20px}
+.ew-card{border-radius:var(--radius);padding:14px 16px;border:1px solid;display:flex;align-items:center;gap:12px}
+.ew-card.warn{background:var(--orange-pale);border-color:#FFCC80;color:var(--orange)}
+.ew-card.danger{background:var(--red-pale);border-color:#EF9A9A;color:var(--red)}
+.ew-card.ok{background:var(--green-pale);border-color:#C8E6C9;color:var(--green)}
+.ew-icon{font-size:26px;flex-shrink:0}
+.ew-num{font-size:22px;font-weight:800;line-height:1}
+.ew-label{font-size:11px;font-weight:600;margin-top:2px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;border-radius:var(--radius);padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid transparent;font-family:'Inter',sans-serif;transition:.15s;text-decoration:none;white-space:nowrap}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}.btn-primary:hover{background:var(--blue-mid)}
+.btn-success{background:var(--green);color:#fff;border-color:var(--green)}.btn-success:hover{background:var(--green-mid)}
+.btn-danger{background:var(--red);color:#fff;border-color:var(--red)}.btn-danger:hover{opacity:.85}
+.btn-outline{background:#fff;color:var(--blue);border-color:var(--blue-pale2)}.btn-outline:hover{background:var(--blue-pale)}
+.btn-secondary{background:var(--gray-100);color:var(--gray-700);border-color:var(--gray-300)}.btn-secondary:hover{background:var(--gray-200)}
+.btn-warning{background:var(--orange);color:#fff;border-color:var(--orange)}.btn-warning:hover{opacity:.85}
+.btn-sm{padding:4px 11px;font-size:11px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* BADGE */
+.badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.badge-menunggu{background:#FFF3E0;color:#E65100;border:1px solid #FFCC80}
+.badge-proses{background:var(--blue-pale);color:var(--blue-mid);border:1px solid var(--blue-pale2)}
+.badge-selesai{background:var(--green-pale);color:var(--green);border:1px solid #A5D6A7}
+.badge-ditolak{background:var(--red-pale);color:var(--red);border:1px solid #EF9A9A}
+.badge-draft{background:var(--gray-100);color:var(--gray-600);border:1px solid var(--gray-300)}
+.badge-otp{background:var(--purple-pale);color:var(--purple);border:1px solid #CE93D8}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl thead th{text-align:left;padding:9px 11px;background:var(--gray-50);border-bottom:2px solid var(--gray-200);font-size:10px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.tbl tbody tr{border-bottom:1px solid var(--gray-100);transition:.1s}
+.tbl tbody tr:hover{background:var(--gray-50)}
+.tbl tbody td{padding:9px 11px;vertical-align:middle}
+.tbl-empty td{text-align:center;color:var(--gray-400);padding:28px;font-style:italic}
+
+/* INLINE INPUT */
+.inline-input{width:100%;border:1px solid var(--gray-300);border-radius:4px;padding:5px 8px;font-size:12px;font-family:'Inter',sans-serif;background:#fff;transition:.15s}
+.inline-input:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 2px rgba(25,118,210,.12)}
+.inline-select{width:100%;border:1px solid var(--gray-300);border-radius:4px;padding:5px 8px;font-size:12px;font-family:'Inter',sans-serif;background:#fff;cursor:pointer}
+
+/* SEARCH */
+.table-search{width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:7px 12px;font-size:13px;font-family:'Inter',sans-serif}
+.table-search:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(25,118,210,.1)}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.on{display:flex}
+.modal-box{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:26px 28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;animation:fadeUp .2s ease}
+.modal-box.wide{max-width:760px}
+.modal-box.narrow{max-width:400px}
+.modal-title{font-size:15px;font-weight:800;color:var(--blue);margin-bottom:18px;padding-bottom:10px;border-bottom:2px solid var(--blue-pale)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--gray-200)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+/* INFO BOX */
+.info-box{border-radius:var(--radius);padding:12px 14px;font-size:13px;margin-bottom:14px;border:1px solid}
+.info-box.blue{background:var(--blue-pale);color:#1a3f6f;border-color:var(--blue-pale2)}
+.info-box.orange{background:var(--orange-pale);color:var(--orange);border-color:#FFCC80}
+.info-box.green{background:var(--green-pale);color:var(--green);border-color:#C8E6C9}
+.info-box.red{background:var(--red-pale);color:var(--red);border-color:#FFCDD2}
 
 /* TOAST */
-#toast{position:fixed;bottom:24px;right:24px;background:var(--green);color:#fff;padding:11px 20px;border-radius:var(--radius);font-size:13px;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(14px);transition:opacity .3s,transform .3s;z-index:9999;max-width:320px;font-family:'Inter',sans-serif}
-#toast.on{opacity:1;transform:translateY(0)}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(18px);background:var(--gray-900);color:#fff;padding:9px 20px;border-radius:22px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:.3s;z-index:9999;white-space:nowrap;max-width:90vw}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 #toast.err{background:var(--red)}
+#toast.ok{background:var(--green)}
 
-/* CHECKBOX STYLE */
-input[type=checkbox]{accent-color:var(--blue);width:15px;height:15px;cursor:pointer}
-.inline-input{width:100%;border:1px solid var(--gray-300);border-radius:4px;padding:5px 8px;font-size:13px;font-family:'Inter',sans-serif;background:#fff;transition:border-color .15s}
-.inline-input:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 2px rgba(25,118,210,.12)}
-.inline-select{width:100%;border:1px solid var(--gray-300);border-radius:4px;padding:5px 8px;font-size:13px;font-family:'Inter',sans-serif;background:#fff;cursor:pointer}
+/* ADMIN-ONLY hidden by default */
+.admin-only{display:none}
 
 @media(max-width:768px){
   .app-body{flex-direction:column}
-  .sidebar{width:100%;border-right:none;border-bottom:1px solid var(--gray-200);padding:10px 0}
-  .sidebar-nav{display:flex;flex-wrap:wrap;gap:2px;padding:0 10px}
-  .sidebar-nav li a,.sidebar-nav li button{padding:6px 12px;border-left:none;border-radius:var(--radius);font-size:12px}
-  .sidebar-nav li.active a,.sidebar-nav li.active button{border-left:none}
-  .sidebar-section{display:none}
-  .main-content{padding:16px}
+  .sidebar{width:100%;border-right:none;border-bottom:1px solid var(--gray-200)}
+  .main-content{padding:14px}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
 }
 </style>
 </head>
 <body>
 
-<!-- ══════════════ LOGIN SCREEN ══════════════ -->
-<div id="loginScreen" class="login-wrap">
-  <div class="login-box">
-    <div class="login-logo">
-      <div class="logo-circle"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MjAgMjAwIiB3aWR0aD0iNTIwIiBoZWlnaHQ9IjIwMCI+CiAgPCEtLSBTd29vc2gga3VuaW5nIC0tPgogIDxwYXRoIGQ9Ik0gMzEwIDEwIFEgNDgwIDAgNTEwIDgwIFEgNDkwIDIwIDMyMCAzNSBaIiBmaWxsPSIjRjlBODI1IiBvcGFjaXR5PSIwLjk1Ii8+CiAgPHBhdGggZD0iTSAzMTUgMTUgUSA1MDUgNSA1MTUgOTAgUSA1MTAgMzAgMzI1IDQyIFoiIGZpbGw9IiNGOUE4MjUiLz4KICA8IS0tIEFyYyBrdW5pbmcgYmVzYXIgLS0+CiAgPHBhdGggZD0iTSAyOTUgOCBDIDQyMCAtNSA1MjAgNTAgNTE1IDEzMCBDIDUxMCA3MCA0MTUgMjAgMzAwIDMwIFoiIGZpbGw9IiNGOUE4MjUiLz4KICA8cGF0aCBkPSJNIDMwMCA1IEMgNDQwIC04IDUyNSA1NSA1MjAgMTQwIiBzdHJva2U9IiNGOUE4MjUiIHN0cm9rZS13aWR0aD0iMTgiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgoKICA8IS0tIEh1cnVmIEsgLSBiaXJ1IC0tPgogIDx0ZXh0IHg9IjE4IiB5PSIxNDgiIGZvbnQtZmFtaWx5PSJBcmlhbCBCbGFjaywgSW1wYWN0LCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEzOCIgZm9udC13ZWlnaHQ9IjkwMCIKICAgIGZpbGw9IiMyOUI2RjYiIGZvbnQtc3R5bGU9Iml0YWxpYyIgbGV0dGVyLXNwYWNpbmc9Ii0yIj5LPC90ZXh0PgoKICA8IS0tIEh1cnVmIFAgcGVydGFtYSAtIGJpcnUgLS0+CiAgPHRleHQgeD0iMTA4IiB5PSIxNDgiIGZvbnQtZmFtaWx5PSJBcmlhbCBCbGFjaywgSW1wYWN0LCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEzOCIgZm9udC13ZWlnaHQ9IjkwMCIKICAgIGZpbGw9IiMyOUI2RjYiIGZvbnQtc3R5bGU9Iml0YWxpYyIgbGV0dGVyLXNwYWNpbmc9Ii0yIj5QPC90ZXh0PgoKICA8IS0tIEh1cnVmIFAga2VkdWEgLSBrdW5pbmcgKG92ZXJsYXApIC0tPgogIDx0ZXh0IHg9IjE5OCIgeT0iMTQ4IiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssIEltcGFjdCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMzgiIGZvbnQtd2VpZ2h0PSI5MDAiCiAgICBmaWxsPSIjRjlBODI1IiBmb250LXN0eWxlPSJpdGFsaWMiIGxldHRlci1zcGFjaW5nPSItMiI+UDwvdGV4dD4KCiAgPCEtLSBIdXJ1ZiBOIC0gYmlydSAtLT4KICA8dGV4dCB4PSIyODgiIHk9IjE0OCIgZm9udC1mYW1pbHk9IkFyaWFsIEJsYWNrLCBJbXBhY3QsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTM4IiBmb250LXdlaWdodD0iOTAwIgogICAgZmlsbD0iIzI5QjZGNiIgZm9udC1zdHlsZT0iaXRhbGljIiBsZXR0ZXItc3BhY2luZz0iLTIiPk48L3RleHQ+CgogIDwhLS0gVGVrcyBKQVlBUFVSQSAtLT4KICA8dGV4dCB4PSIyMTAiIHk9IjE4OCIgZm9udC1mYW1pbHk9IkFyaWFsIEJsYWNrLCBJbXBhY3QsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMzIiIGZvbnQtd2VpZ2h0PSI5MDAiCiAgICBmaWxsPSIjMjlCNkY2IiBmb250LXN0eWxlPSJpdGFsaWMiIGxldHRlci1zcGFjaW5nPSI0Ij5KQVlBUFVSQTwvdGV4dD4KPC9zdmc+Cg==" alt="Logo KPPN Jayapura"/></div>
-    </div>
-    <div class="login-title">KPPN Jayapura</div>
-    <div class="login-sub">Panel Admin — Pendaftaran Pengguna SAKTI</div>
-    <div class="login-err" id="loginErr">Username atau password salah.</div>
-    <div class="form-group">
-      <label>Username</label>
-      <input type="text" id="loginUser" placeholder="Username" onkeydown="if(event.key==='Enter')doLogin()"/>
-    </div>
-    <div class="form-group">
-      <label>Password</label>
-      <div class="pwd-wrap">
-        <input type="password" id="loginPass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"/>
-        <button class="pwd-toggle" onclick="togglePwd('loginPass',this)" type="button">👁️</button>
+<!-- ══ LOGIN ══ -->
+<div id="loginScreen">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Lambang_Garuda_Pancasila.svg/200px-Lambang_Garuda_Pancasila.svg.png"
+             alt="Logo" onerror="this.style.display='none'"/>
       </div>
+      <div class="login-title">Admin Portal SAKTI</div>
+      <div class="login-sub">KPPN Jayapura — Khusus Petugas &amp; Admin</div>
+      <div id="loginErr" class="login-err"></div>
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="loginUser" placeholder="Username petugas / admin"
+          onkeydown="if(event.key==='Enter')doLogin()"/>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <div class="pwd-wrap">
+          <input type="password" id="loginPass" placeholder="Password"
+            onkeydown="if(event.key==='Enter')doLogin()"/>
+          <button class="pwd-toggle" onclick="togglePwd('loginPass',this)" type="button">👁️</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="doLogin()" id="btnLogin"
+        style="width:100%;justify-content:center;padding:10px;font-size:14px">
+        🔐 Masuk
+      </button>
     </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px" onclick="doLogin()">Masuk →</button>
-    <p style="font-size:11px;color:var(--gray-400);text-align:center;margin-top:14px">
-      Akses terbatas untuk petugas KPPN Jayapura
-    </p>
   </div>
 </div>
 
-<!-- ══════════════ APP ══════════════ -->
+<!-- ══ APP ══ -->
 <div id="appScreen" style="display:none">
   <header>
     <div class="header-top">
-      <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
-        <div class="header-logo"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MjAgMjAwIiB3aWR0aD0iNTIwIiBoZWlnaHQ9IjIwMCI+CiAgPCEtLSBTd29vc2gga3VuaW5nIC0tPgogIDxwYXRoIGQ9Ik0gMzEwIDEwIFEgNDgwIDAgNTEwIDgwIFEgNDkwIDIwIDMyMCAzNSBaIiBmaWxsPSIjRjlBODI1IiBvcGFjaXR5PSIwLjk1Ii8+CiAgPHBhdGggZD0iTSAzMTUgMTUgUSA1MDUgNSA1MTUgOTAgUSA1MTAgMzAgMzI1IDQyIFoiIGZpbGw9IiNGOUE4MjUiLz4KICA8IS0tIEFyYyBrdW5pbmcgYmVzYXIgLS0+CiAgPHBhdGggZD0iTSAyOTUgOCBDIDQyMCAtNSA1MjAgNTAgNTE1IDEzMCBDIDUxMCA3MCA0MTUgMjAgMzAwIDMwIFoiIGZpbGw9IiNGOUE4MjUiLz4KICA8cGF0aCBkPSJNIDMwMCA1IEMgNDQwIC04IDUyNSA1NSA1MjAgMTQwIiBzdHJva2U9IiNGOUE4MjUiIHN0cm9rZS13aWR0aD0iMTgiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgoKICA8IS0tIEh1cnVmIEsgLSBiaXJ1IC0tPgogIDx0ZXh0IHg9IjE4IiB5PSIxNDgiIGZvbnQtZmFtaWx5PSJBcmlhbCBCbGFjaywgSW1wYWN0LCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEzOCIgZm9udC13ZWlnaHQ9IjkwMCIKICAgIGZpbGw9IiMyOUI2RjYiIGZvbnQtc3R5bGU9Iml0YWxpYyIgbGV0dGVyLXNwYWNpbmc9Ii0yIj5LPC90ZXh0PgoKICA8IS0tIEh1cnVmIFAgcGVydGFtYSAtIGJpcnUgLS0+CiAgPHRleHQgeD0iMTA4IiB5PSIxNDgiIGZvbnQtZmFtaWx5PSJBcmlhbCBCbGFjaywgSW1wYWN0LCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEzOCIgZm9udC13ZWlnaHQ9IjkwMCIKICAgIGZpbGw9IiMyOUI2RjYiIGZvbnQtc3R5bGU9Iml0YWxpYyIgbGV0dGVyLXNwYWNpbmc9Ii0yIj5QPC90ZXh0PgoKICA8IS0tIEh1cnVmIFAga2VkdWEgLSBrdW5pbmcgKG92ZXJsYXApIC0tPgogIDx0ZXh0IHg9IjE5OCIgeT0iMTQ4IiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssIEltcGFjdCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMzgiIGZvbnQtd2VpZ2h0PSI5MDAiCiAgICBmaWxsPSIjRjlBODI1IiBmb250LXN0eWxlPSJpdGFsaWMiIGxldHRlci1zcGFjaW5nPSItMiI+UDwvdGV4dD4KCiAgPCEtLSBIdXJ1ZiBOIC0gYmlydSAtLT4KICA8dGV4dCB4PSIyODgiIHk9IjE0OCIgZm9udC1mYW1pbHk9IkFyaWFsIEJsYWNrLCBJbXBhY3QsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTM4IiBmb250LXdlaWdodD0iOTAwIgogICAgZmlsbD0iIzI5QjZGNiIgZm9udC1zdHlsZT0iaXRhbGljIiBsZXR0ZXItc3BhY2luZz0iLTIiPk48L3RleHQ+CgogIDwhLS0gVGVrcyBKQVlBUFVSQSAtLT4KICA8dGV4dCB4PSIyMTAiIHk9IjE4OCIgZm9udC1mYW1pbHk9IkFyaWFsIEJsYWNrLCBJbXBhY3QsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMzIiIGZvbnQtd2VpZ2h0PSI5MDAiCiAgICBmaWxsPSIjMjlCNkY2IiBmb250LXN0eWxlPSJpdGFsaWMiIGxldHRlci1zcGFjaW5nPSI0Ij5KQVlBUFVSQTwvdGV4dD4KPC9zdmc+Cg==" alt="Logo KPPN Jayapura"/></div>
-        <div class="header-titles">
-          <div class="header-inst">Kantor Pelayanan Perbendaharaan Negara</div>
-          <div class="header-main">KPPN Jayapura — Admin Panel</div>
-          <div class="header-sub">Manajemen Pendaftaran Pengguna SAKTI</div>
-        </div>
+      <div class="header-logo">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Lambang_Garuda_Pancasila.svg/200px-Lambang_Garuda_Pancasila.svg.png"
+             alt="Logo" onerror="this.style.display='none'"/>
       </div>
-      <div class="header-nav">
-        <span class="header-user" id="headerUser">👤</span>
-        <a href="index.html" class="btn-nav" target="_blank">🌐 Halaman Satker</a>
-        <button class="btn-nav" onclick="doLogout()">Keluar →</button>
+      <div class="header-titles">
+        <div class="header-main">Portal Pendaftaran User SAKTI</div>
+        <div class="header-sub">KPPN Jayapura — Panel Admin &amp; Petugas</div>
+      </div>
+      <div class="header-right">
+        <span class="role-chip" id="headerRole">—</span>
+        <span class="user-chip">👤 <span id="headerUser">—</span></span>
+        <button class="btn-logout" onclick="doLogout()">⬡ Keluar</button>
       </div>
     </div>
   </header>
 
   <div class="app-body">
     <!-- SIDEBAR -->
-    <nav class="sidebar">
-      <div class="sidebar-section">Menu Utama</div>
-      <ul class="sidebar-nav">
-        <li id="nav-dashboard" class="active"><a href="#" onclick="showPanel('dashboard');return false">📊 Dashboard</a></li>
-        <li id="nav-submissions"><a href="#" onclick="showPanel('submissions');return false">📋 Daftar Pendaftaran</a></li>
-        <li id="nav-otp"><a href="#" onclick="showPanel('otp');return false">🔐 Aktivasi OTP</a></li>
-      </ul>
-      <div class="sidebar-section">Layanan</div>
-      <ul class="sidebar-nav">
-        <li id="nav-email"><a href="#" onclick="showPanel('email');return false">📧 Form Email SAKTI</a></li>
-      </ul>
-      <div class="sidebar-section">Pengaturan</div>
-      <ul class="sidebar-nav">
-        <li id="nav-settings"><a href="#" onclick="showPanel('settings');return false">⚙️ Pengaturan</a></li>
-      </ul>
+    <nav class="sidebar" id="sidebar">
+      <div class="nav-sep">Utama</div>
+      <div class="nav-item active" id="nav-dashboard" onclick="showPanel('dashboard')">📊 Dashboard</div>
+
+      <div class="nav-sep">Email SAKTI</div>
+      <div class="nav-item" id="nav-email-daftar" onclick="showPanel('email-daftar')">📧 Daftar Pengajuan</div>
+
+      <div class="nav-sep">User SAKTI</div>
+      <div class="nav-item" id="nav-submissions" onclick="showPanel('submissions')">📋 Daftar Pendaftaran</div>
+      <div class="nav-item" id="nav-otp" onclick="showPanel('otp')">🔐 Monitoring OTP</div>
+
+      <div class="nav-sep">Referensi</div>
+      <div class="nav-item" id="nav-satker" onclick="showPanel('satker')">🏢 Kelola Satker</div>
+      <div class="nav-item admin-only" id="nav-users" onclick="showPanel('users')">👥 Manajemen User</div>
+
+      <div class="nav-sep">Akun</div>
+      <div class="nav-item" id="nav-settings" onclick="showPanel('settings')">⚙️ Pengaturan</div>
     </nav>
 
     <!-- MAIN -->
-    <main class="main-content">
-
-      <!-- ── DASHBOARD ── -->
-      <div class="panel active" id="panel-dashboard">
-        <div class="page-title">Dashboard</div>
-        <div class="page-sub" id="dashDate"></div>
-        <div class="stats-grid" id="statsGrid"></div>
-        <div class="card">
-          <div class="card-title">Pendaftaran Terbaru</div>
-          <div id="recentList"></div>
-        </div>
-      </div>
-
-      <!-- ── DAFTAR PENDAFTARAN ── -->
-      <div class="panel" id="panel-submissions">
-        <div class="page-title">Daftar Pendaftaran</div>
-        <div class="page-sub">Kelola semua pendaftaran pengguna SAKTI yang masuk</div>
-
-        <!-- Bulk delete bar -->
-        <div class="bulk-bar" id="bulkBar">
-          <span class="bulk-count" id="bulkCount">0 dipilih</span>
-          <button class="btn btn-danger-outline btn-sm" onclick="openBulkDelete()">🗑️ Hapus yang Dipilih</button>
-          <button class="btn btn-secondary btn-sm" onclick="clearSelection()">✕ Batal Pilih</button>
-        </div>
-
-        <div class="card" style="padding:16px 20px">
-          <div class="table-toolbar">
-            <input class="table-search" type="text" id="searchInput" placeholder="🔍 Cari nama satker, KPA, kode satker, NIP, NIK, peran, nomor SK..." oninput="renderTable()"/>
-            <div class="table-filter">
-              <select id="filterStatus" onchange="renderTable()">
-                <option value="">Semua Status</option>
-                <option value="submitted">Tersubmit</option>
-                <option value="draft">Draft</option>
-                <option value="done">Selesai</option>
-              </select>
-            </div>
-            <button class="btn btn-outline btn-sm" onclick="selectAll()">☑ Pilih Semua</button>
-          </div>
-          <div style="overflow-x:auto">
-            <table id="subTable">
-              <thead>
-                <tr>
-                  <th class="th-check"><input type="checkbox" id="cbSelectAll" onchange="toggleSelectAll(this)" title="Pilih semua"/></th>
-                  <th>Kode Referensi</th>
-                  <th>Satker</th>
-                  <th>KPA</th>
-                  <th>User</th>
-                  <th>Status</th>
-                  <th>Tanggal</th>
-                  <th>Aksi</th>
-                </tr>
-              </thead>
-              <tbody id="subTableBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── MONITORING OTP ── -->
-      <div class="panel" id="panel-otp">
-        <div class="page-title">Monitoring Aktivasi OTP</div>
-        <div class="page-sub">Pantau status aktivasi OTP satker di aplikasi SAKTI</div>
-        <div class="card">
-          <div class="card-title">Belum Aktivasi OTP</div>
-          <div id="otpList"></div>
-        </div>
-      </div>
-
-      <!-- ── PENGATURAN ── -->
-      <div class="panel" id="panel-settings">
-        <div class="page-title">Pengaturan</div>
-        <div class="page-sub">Konfigurasi akun dan sistem</div>
-        <div class="card" style="max-width:460px">
-          <div class="card-title">Ganti Password</div>
-          <div class="form-group">
-            <label>Password Lama</label>
-            <div class="pwd-wrap">
-              <input type="password" id="s-pwdLama" placeholder="Password saat ini"/>
-              <button class="pwd-toggle" onclick="togglePwd('s-pwdLama',this)" type="button">👁️</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Password Baru</label>
-            <div class="pwd-wrap">
-              <input type="password" id="s-pwdBaru" placeholder="Minimal 6 karakter"/>
-              <button class="pwd-toggle" onclick="togglePwd('s-pwdBaru',this)" type="button">👁️</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Konfirmasi Password Baru</label>
-            <div class="pwd-wrap">
-              <input type="password" id="s-pwdKonfirm" placeholder="Ulangi password baru"/>
-              <button class="pwd-toggle" onclick="togglePwd('s-pwdKonfirm',this)" type="button">👁️</button>
-            </div>
-          </div>
-          <button class="btn btn-primary" onclick="gantiPassword()">💾 Simpan Password Baru</button>
-        </div>
-        <!-- Manajemen User — hanya Admin -->
-        <div class="card admin-only" style="max-width:680px">
-          <div class="card-title">👥 Manajemen User Admin</div>
-          <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">Tambah, hapus, atau lihat user yang bisa login ke panel admin ini.</p>
-          <div id="userListAdmin" style="margin-bottom:18px"><p style="color:var(--gray-400)">Memuat...</p></div>
-          <div style="border-top:1px solid var(--gray-200);padding-top:16px;margin-top:8px">
-            <div style="font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">+ Tambah User Baru</div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-              <div class="form-group" style="min-width:160px;flex:1.5">
-                <label>Nama Lengkap <span style="color:var(--red)">*</span></label>
-                <input type="text" id="nu-nama" placeholder="Nama lengkap petugas"/>
-              </div>
-              <div class="form-group" style="min-width:130px;flex:1">
-                <label>Username</label>
-                <input type="text" id="nu-user" placeholder="username (tanpa spasi)"/>
-              </div>
-              <div class="form-group" style="min-width:130px;flex:1">
-                <label>Password (min. 6 karakter)</label>
-                <input type="password" id="nu-pass" placeholder="password"/>
-              </div>
-              <div class="form-group" style="min-width:120px" id="nuRoleWrap">
-                <label>Role</label>
-                <select id="nu-role">
-                  <option value="Petugas">Petugas</option>
-                  <!-- Option Admin hanya muncul untuk SuperAdmin, via JS -->
-                </select>
-              </div>
-              <button class="btn btn-primary" onclick="tambahUser()" style="height:38px;align-self:flex-end;margin-bottom:0">+ Tambah</button>
-            </div>
-          </div>
-        </div>
-        <!-- Kelola Satker -->
-        <div class="card" style="max-width:800px">
-          <div class="card-title">🏢 Kelola Referensi Satker</div>
-          <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">Tambah, ubah, atau hapus kode dan nama satker yang tersedia dalam formulir pendaftaran.</p>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
-            <div class="form-group" style="min-width:130px;flex:0 0 auto;margin-bottom:0">
-              <label>Kode Satker (6 digit)</label>
-              <input type="text" id="sk-kode" placeholder="000000" maxlength="6" style="font-family:monospace;letter-spacing:1px"
-                oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)"/>
-            </div>
-            <div class="form-group" style="min-width:260px;flex:1;margin-bottom:0">
-              <label>Nama Satker</label>
-              <input type="text" id="sk-nama" placeholder="Nama lengkap satker"/>
-            </div>
-            <div style="display:flex;gap:8px;align-self:flex-end">
-              <button class="btn btn-primary" onclick="doAddSatker()" style="height:38px;white-space:nowrap">+ Tambah</button>
-              <button class="btn btn-secondary" onclick="clearSatkerForm()" style="height:38px">Reset</button>
-            </div>
-          </div>
-          <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <input type="text" id="sk-cari" placeholder="🔍 Cari kode atau nama satker..." oninput="renderSatkerTable()"
-              style="flex:1;min-width:200px;padding:7px 12px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px"/>
-            <button class="btn btn-secondary" onclick="loadSatkerAdmin()" style="white-space:nowrap;font-size:12px">↻ Refresh</button>
-            <button class="btn btn-outline" onclick="provisionSatkerUsers()" style="white-space:nowrap;font-size:12px;border:1.5px solid var(--blue-light);color:var(--blue-light)">⚙️ Buat Semua User Satker</button>
-          </div>
-          <div id="satkerTableWrap" style="overflow-x:auto">
-            <p style="color:var(--gray-400);font-size:13px">Memuat daftar satker...</p>
-          </div>
-        </div>
-        <div class="card" style="max-width:460px">
-          <div class="card-title">ℹ️ Info Sistem</div>
-          <p style="font-size:13px;color:var(--gray-600);margin-bottom:8px">Data disimpan di <strong>Google Sheets</strong> dan file di <strong>Google Drive</strong>. Aman dan tidak bisa dimanipulasi dari browser.</p>
-          <p style="font-size:12px;color:var(--gray-500)">Sesi login berlaku <strong>8 jam</strong> dan otomatis expired.</p>
-        </div>
-      </div>
-
-      <!-- ── FORM EMAIL SAKTI ── -->
-      <div class="panel" id="panel-email">
-        <div class="page-title">Form Email SAKTI</div>
-        <div class="page-sub">Input data pegawai untuk dikirim ke SAKTI — unduh sebagai file Excel (.xlsx)</div>
-        <div class="card">
-          <div class="card-title">Informasi Dokumen</div>
-          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:0">
-            <div class="form-group" style="min-width:140px;flex:0 0 auto">
-              <label>Kode KPPN</label>
-              <input type="text" value="063" readonly style="background:#f5f5f5;font-weight:700;color:var(--blue);width:90px"/>
-            </div>
-            <div class="form-group" style="min-width:220px;flex:1">
-              <label>Kode Satker</label>
-              <input type="text" id="adm-email-satker" placeholder="Isi kode satker jika perlu (opsional)"/>
-            </div>
-          </div>
-        </div>
-        <div class="card" style="padding:0;overflow:hidden">
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--gray-200)">
-            <div class="card-title" style="margin:0;padding:0;border:none">Data Pegawai</div>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-outline btn-sm" onclick="admTambahBaris()">+ Tambah Baris</button>
-              <button class="btn btn-secondary btn-sm" onclick="admResetTable()">🔄 Reset</button>
-              <button class="btn btn-primary btn-sm" onclick="admDownloadExcel()">⬇️ Unduh Excel</button>
-            </div>
-          </div>
-          <div style="overflow-x:auto;padding:0 0 4px">
-            <table style="width:100%;border-collapse:collapse;min-width:700px">
-              <thead>
-                <tr style="background:var(--blue-pale)">
-                  <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.4px;width:38px;text-align:center">No</th>
-                  <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.4px;width:90px">Kode KPPN</th>
-                  <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.4px;width:110px">Kode Satker</th>
-                  <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.4px">Nama Pegawai</th>
-                  <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.4px;width:130px">NIP / NRP</th>
-                  <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.4px;width:130px">NIK</th>
-                  <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.4px;width:90px">Status</th>
-                  <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.4px;width:46px;text-align:center">Hapus</th>
-                </tr>
-              </thead>
-              <tbody id="adm-email-tbody"></tbody>
-            </table>
-          </div>
-          <div style="padding:10px 20px;font-size:12px;color:var(--gray-500)">
-            <span id="adm-email-count">0</span> baris data · Klik sel untuk mengedit langsung
-          </div>
-        </div>
-      </div>
-
+    <main class="main-content" id="mainContent">
+      <p style="color:var(--gray-400);font-size:13px">Memuat...</p>
     </main>
   </div>
 </div>
 
-<!-- ══════════════ MODAL DETAIL ══════════════ -->
+<!-- ══ MODAL DETAIL USER SAKTI ══ -->
 <div class="modal-overlay" id="modalDetail">
   <div class="modal-box wide">
     <div class="modal-title">📋 Detail Pendaftaran</div>
     <div id="detailBody"></div>
-    <div class="modal-actions" style="flex-wrap:wrap;gap:6px">
-      <button class="btn btn-secondary" onclick="closeModal('modalDetail')">Tutup</button>
-      <button class="btn btn-secondary" id="btnUnduhExcel" onclick="adminDownloadExcel()" style="background:#217346;color:#fff;border-color:#217346">📥 Unduh Excel</button>
-      <button class="btn btn-danger" id="btnTolak" onclick="openModalTolak()" style="display:none">❌ Tolak</button>
-      <button class="btn btn-primary" id="btnProses" onclick="openModalProses()" style="display:none">⚙️ Proses Lanjut</button>
-      <button class="btn btn-primary" id="btnTandaiTerdaftar" onclick="tandaiTerdaftar()">📋 Tandai Terdaftar di SAKTI</button>
-      <button class="btn btn-success" id="btnMarkDone" onclick="openModalOTP()">🔐 Tandai Aktivasi OTP</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════ MODAL HAPUS (password) ══════════════ -->
-<div class="modal-overlay" id="modalHapus">
-  <div class="modal-box">
-    <div class="modal-title">🗑️ Konfirmasi Hapus</div>
-    <div class="warn-box" id="hapusWarnMsg"></div>
-    <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">
-      Tindakan ini <strong>tidak dapat dibatalkan</strong>. Masukkan password admin untuk melanjutkan.
-    </p>
-    <div class="form-group">
-      <label>Password Admin</label>
-      <div class="pwd-wrap">
-        <input type="password" id="hapusPwd" placeholder="Masukkan password" onkeydown="if(event.key==='Enter')confirmDelete()"/>
-        <button class="pwd-toggle" onclick="togglePwd('hapusPwd',this)" type="button">👁️</button>
-      </div>
-      <span style="font-size:11px;color:var(--red);margin-top:4px;display:none" id="hapusPwdErr">Password salah</span>
-    </div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modalHapus');pendingDeleteRefs=[]">Batal</button>
-      <button class="btn btn-danger" onclick="confirmDelete()">🗑️ Hapus Sekarang</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalDetail')">Tutup</button>
     </div>
   </div>
 </div>
 
-<!-- ══════════════ MODAL TOLAK ══════════════ -->
+<!-- ══ MODAL TOLAK USER SAKTI ══ -->
 <div class="modal-overlay" id="modalTolak">
-  <div class="modal-box">
+  <div class="modal-box narrow">
     <div class="modal-title">❌ Tolak Pendaftaran</div>
-    <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">
-      Pendaftaran akan ditolak dan satker dapat memperbaiki isian/dokumen. Revisi ke berapa akan tercatat otomatis.
-    </p>
+    <div class="info-box orange">Berikan alasan penolakan yang jelas agar satker dapat memperbaiki datanya.</div>
     <div class="form-group">
-      <label>Catatan untuk Satker <span style="color:var(--red)">*</span></label>
-      <textarea id="tolakCatatan" rows="4" placeholder="Jelaskan alasan penolakan dan apa yang perlu diperbaiki..." style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:10px;font-size:13px;font-family:'Inter',sans-serif;resize:vertical"></textarea>
+      <label>Alasan Penolakan <span style="color:var(--red)">*</span></label>
+      <textarea id="alasanTolak" rows="4" placeholder="Contoh: NIK pegawai tidak sesuai dengan data kependudukan..."></textarea>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modalTolak')">Batal</button>
-      <button class="btn btn-danger" onclick="confirmTolak()">❌ Tolak & Kirim Catatan</button>
+      <button class="btn btn-danger" onclick="doTolak()" id="btnDoTolak">❌ Tolak</button>
     </div>
   </div>
 </div>
 
-<!-- ══════════════ MODAL PROSES ══════════════ -->
+<!-- ══ MODAL PROSES USER SAKTI ══ -->
 <div class="modal-overlay" id="modalProses">
-  <div class="modal-box">
-    <div class="modal-title">⚙️ Proses Lanjut Pendaftaran</div>
-    <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">
-      Tandai pendaftaran ini sedang diproses/diverifikasi oleh Anda.
-    </p>
-    <div class="form-group">
-      <label>Catatan (opsional)</label>
-      <textarea id="prosesCatatan" rows="3" placeholder="Catatan proses verifikasi..." style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:10px;font-size:13px;font-family:'Inter',sans-serif;resize:vertical"></textarea>
-    </div>
+  <div class="modal-box narrow">
+    <div class="modal-title">✅ Proses Pendaftaran</div>
+    <div class="info-box blue">Konfirmasi bahwa semua dokumen dan data sudah diperiksa dan sesuai.</div>
+    <p style="font-size:13px;color:var(--gray-700);margin-bottom:6px">Pendaftaran: <strong id="prosesRefKode">—</strong></p>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modalProses')">Batal</button>
-      <button class="btn btn-primary" onclick="confirmProses()">⚙️ Proses Lanjut</button>
+      <button class="btn btn-success" onclick="doProses()" id="btnDoProses">✅ Proses</button>
     </div>
   </div>
 </div>
 
-<!-- ══════════════ MODAL OTP ══════════════ -->
-<div class="modal-overlay" id="modalOTP">
-  <div class="modal-box">
-    <div class="modal-title">🔐 Tandai Aktivasi OTP</div>
-    <div class="info-box" style="margin-bottom:14px;font-size:13px">
-      Tandai bahwa satker ini sudah melakukan aktivasi OTP di aplikasi SAKTI.<br/>
-      Jika aktivasi dilakukan secara <strong>online</strong>, upload foto bukti aktivasi (opsional).<br/>
-      Jika satker <strong>datang langsung</strong>, tidak perlu upload foto.
+<!-- ══ MODAL HAPUS USER SAKTI ══ -->
+<div class="modal-overlay" id="modalHapus">
+  <div class="modal-box narrow">
+    <div class="modal-title">🗑️ Hapus Data</div>
+    <div class="info-box red">Tindakan ini tidak dapat dibatalkan.</div>
+    <p style="font-size:13px;color:var(--gray-700);margin-bottom:6px">Hapus pendaftaran: <strong id="hapusRefKode">—</strong></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalHapus')">Batal</button>
+      <button class="btn btn-danger" onclick="doHapus()" id="btnDoHapus">🗑️ Hapus</button>
     </div>
-    <div id="otpModalBody" style="margin-bottom:14px"></div>
-    <div class="form-group" style="margin-bottom:12px">
-      <label>Catatan (opsional)</label>
-      <input type="text" id="otpCatatan" placeholder="Contoh: Aktivasi via WhatsApp, 21 April 2026"/>
+  </div>
+</div>
+
+<!-- ══ MODAL PROSES EMAIL SAKTI ══ -->
+<div class="modal-overlay" id="modalProsesEmail">
+  <div class="modal-box wide">
+    <div class="modal-title">📧 Proses Email SAKTI — Isi Alamat Email</div>
+    <div class="info-box blue">Isi alamat email SAKTI yang diberikan untuk masing-masing pegawai di bawah ini.</div>
+    <div id="prosesEmailBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalProsesEmail')">Batal</button>
+      <button class="btn btn-success" onclick="doProsesEmail()" id="btnDoProsesEmail">✅ Simpan &amp; Proses</button>
     </div>
-    <div class="form-group" style="margin-bottom:4px">
-      <label>Foto Bukti Aktivasi (opsional)</label>
-      <input type="file" id="otpFotoBukti" accept="image/*" style="margin-top:4px"/>
-      <span style="font-size:11px;color:var(--gray-500)">JPG/PNG, maks 5MB. Kosongkan jika tidak ada.</span>
+  </div>
+</div>
+
+<!-- ══ MODAL TOLAK EMAIL SAKTI ══ -->
+<div class="modal-overlay" id="modalTolakEmail">
+  <div class="modal-box narrow">
+    <div class="modal-title">❌ Tolak Pengajuan Email SAKTI</div>
+    <div class="info-box orange">Berikan alasan agar satker dapat memperbaiki pengajuannya.</div>
+    <div class="form-group">
+      <label>Alasan Penolakan <span style="color:var(--red)">*</span></label>
+      <textarea id="alasanTolakEmail" rows="4" placeholder="Contoh: Data NIK tidak sesuai..."></textarea>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modalOTP')">Batal</button>
-      <button class="btn btn-success" id="btnOTPDone" onclick="markOTPDone()">✅ Tandai Sudah Aktivasi OTP</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalTolakEmail')">Batal</button>
+      <button class="btn btn-danger" onclick="doTolakEmail()" id="btnDoTolakEmail">❌ Tolak</button>
     </div>
   </div>
 </div>
 
+<!-- ══ MODAL DETAIL EMAIL SAKTI ══ -->
+<div class="modal-overlay" id="modalDetailEmail">
+  <div class="modal-box wide">
+    <div class="modal-title">📧 Detail Pengajuan Email SAKTI</div>
+    <div id="detailEmailBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalDetailEmail')">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOAST ══ -->
 <div id="toast"></div>
 
 <script>
-// ═══════════════════════════════════════════════════════════
-// APPS SCRIPT API
-// ═══════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// CONFIG & STATE
+// ════════════════════════════════════════════════════════
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-LEjXzM-3XaNNn_bR343B4b-Z4H33eU0CVHz18oQPO-dT8xCtJmPsGXs_q7oBMCjsoA/exec';
 
-async function apiPost(payload){
-  const token=sessionStorage.getItem('sakti_token');
-  if(token&&!payload.token) payload.token=token;
-  const r=await fetch(APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
-  if(!r.ok)throw new Error(`HTTP ${r.status}`);
-  const res=await r.json();
-  if(!res.success&&res.message&&res.message.includes('Sesi tidak valid')){
-    // Session expired — paksa logout
-    doLogout();
-    throw new Error('Sesi habis, silakan login ulang');
-  }
-  return res;
+let currentUser       = null;
+let cachedSubmissions = [];
+let cachedEmailDaftar = [];
+let cachedSatkerList  = [];
+let activeTolakRef    = null;
+let activeProsesRef   = null;
+let activeHapusRef    = null;
+let activeProsesEmailId = null;
+let activeTolakEmailId  = null;
+let emailHasilTemp    = [];   // buffer isi email hasil saat modal proses email
+
+// ════════════════════════════════════════════════════════
+// API
+// ════════════════════════════════════════════════════════
+async function apiPost(payload) {
+  if (currentUser?.token && !payload.token) payload.token = currentUser.token;
+  const res = await fetch(APPS_SCRIPT_URL, { method:'POST', body: JSON.stringify(payload) });
+  return res.json();
 }
 
-let currentUser=null;
-
-// ─── LOGIN ────────────────────────────────────────────────
-async function doLogin(){
-  const u=(document.getElementById('loginUser').value||'').trim();
-  const p=document.getElementById('loginPass').value||'';
-  const loginErr=document.getElementById('loginErr');
-  const btn=document.querySelector('#loginScreen button');
-  if(!u||!p){loginErr.style.display='block';loginErr.textContent='Username dan password wajib diisi';return;}
-  if(btn){btn.disabled=true;btn.textContent='⏳ Memverifikasi...';}
-  try{
-    const res=await apiPost({action:'login',username:u,password:p});
-    if(!res.success){
-      loginErr.style.display='block';
-      loginErr.textContent=res.message||'Username atau password salah';
-      if(btn){btn.disabled=false;btn.textContent='Masuk →';}
-      return;
-    }
-    sessionStorage.setItem('sakti_token',res.token);
-    sessionStorage.setItem('sakti_user',JSON.stringify({user:res.username,role:res.role}));
-    currentUser={user:res.username,role:res.role,token:res.token};
-    loginErr.style.display='none';
-    document.getElementById('loginScreen').style.display='none';
-    document.getElementById('appScreen').style.display='block';
-    document.getElementById('headerUser').textContent=`👤 ${res.username} (${res.role})`;
-    if(btn){btn.disabled=false;btn.textContent='Masuk →';}
+// ════════════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════════════
+async function doLogin() {
+  const username = (document.getElementById('loginUser').value||'').trim();
+  const password = (document.getElementById('loginPass').value||'').trim();
+  const errEl    = document.getElementById('loginErr');
+  const btn      = document.getElementById('btnLogin');
+  errEl.classList.remove('show');
+  if (!username||!password){errEl.textContent='Username dan password wajib diisi';errEl.classList.add('show');return;}
+  btn.disabled=true; btn.textContent='⏳ Memverifikasi...';
+  try {
+    const data = await apiPost({ action:'login', username, password });
+    if (!data.success){errEl.textContent=data.message||'Login gagal';errEl.classList.add('show');btn.disabled=false;btn.innerHTML='🔐 Masuk';return;}
+    if (!['Admin','SuperAdmin','Petugas'].includes(data.role)){errEl.textContent='Akses hanya untuk Admin / Petugas KPPN';errEl.classList.add('show');btn.disabled=false;btn.innerHTML='🔐 Masuk';return;}
+    currentUser = data;
+    sessionStorage.setItem('sakti_user',JSON.stringify(data));
+    sessionStorage.setItem('sakti_token',data.token);
     initApp();
-  }catch(err){
-    loginErr.style.display='block';
-    loginErr.textContent=err.message||'Gagal terhubung ke server';
-    if(btn){btn.disabled=false;btn.textContent='Masuk →';}
+  } catch(e) {
+    errEl.textContent='Gagal terhubung ke server. Periksa koneksi internet.';
+    errEl.classList.add('show'); btn.disabled=false; btn.innerHTML='🔐 Masuk';
   }
 }
-function doLogout(){
-  const token=sessionStorage.getItem('sakti_token');
-  if(token) apiPost({action:'logout'}).catch(()=>{});
-  sessionStorage.removeItem('sakti_token');
-  sessionStorage.removeItem('sakti_user');
-  currentUser=null;
-  location.reload();
-}
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('loginScreen').style.display!=='none')doLogin();});
 
-// ─── TOGGLE PWD ───────────────────────────────────────────
 function togglePwd(id,btn){
   const el=document.getElementById(id);
-  if(!el)return;
   const show=el.type==='password';
   el.type=show?'text':'password';
   btn.textContent=show?'🙈':'👁️';
 }
 
-// ─── PANEL NAV ────────────────────────────────────────────
+async function doLogout(){
+  try{ await apiPost({action:'logout'}); }catch(e){}
+  sessionStorage.clear();
+  currentUser=null;
+  document.getElementById('appScreen').style.display='none';
+  document.getElementById('loginScreen').style.display='block';
+  document.getElementById('loginPass').value='';
+  document.getElementById('loginErr').classList.remove('show');
+}
+
+// ════════════════════════════════════════════════════════
+// INIT APP
+// ════════════════════════════════════════════════════════
+function initApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appScreen').style.display='block';
+  document.getElementById('headerUser').textContent = currentUser.namaLengkap||currentUser.user||currentUser.username;
+  document.getElementById('headerRole').textContent = currentUser.role;
+  // Tampilkan menu admin-only
+  const isAdmin=['Admin','SuperAdmin'].includes(currentUser.role);
+  document.querySelectorAll('.admin-only').forEach(el=>el.style.display=isAdmin?'flex':'none');
+  showPanel('dashboard');
+  // Auto refresh dashboard tiap 60 detik
+  setInterval(()=>{ if(document.getElementById('nav-dashboard')?.classList.contains('active')) loadDashboard(); },60000);
+}
+
+// ════════════════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════════════════
 function showPanel(name){
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.sidebar-nav li').forEach(li=>li.classList.remove('active'));
-  document.getElementById(`panel-${name}`)?.classList.add('active');
-  document.getElementById(`nav-${name}`)?.classList.add('active');
-  if(name==='dashboard')renderDashboard();
-  if(name==='submissions'){fetchSubmissions().then(()=>renderTable());}
-  if(name==='otp')renderOTPList();
-  if(name==='settings'){renderUserList();loadSatkerAdmin();}
-  if(name==='email')admInitEmailTab();
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  const navEl=document.getElementById('nav-'+name);
+  if(navEl) navEl.classList.add('active');
+  const main=document.getElementById('mainContent');
+  if     (name==='dashboard')    { main.innerHTML=renderDashboard();    loadDashboard(); }
+  else if(name==='email-daftar') { main.innerHTML=renderEmailDaftar();  loadEmailDaftar(); }
+  else if(name==='submissions')  { main.innerHTML=renderSubmissions();  loadSubmissions(); }
+  else if(name==='otp')          { main.innerHTML=renderOTP();          loadOTP(); }
+  else if(name==='satker')       { main.innerHTML=renderSatker();       loadSatker(); }
+  else if(name==='users')        { main.innerHTML=renderUsers();        loadUsers(); }
+  else if(name==='settings')     { main.innerHTML=renderSettings(); }
 }
 
-// ─── MODAL ────────────────────────────────────────────────
-function openModal(id){document.getElementById(id)?.classList.add('on');}
-function closeModal(id){document.getElementById(id)?.classList.remove('on');}
-document.addEventListener('click',e=>{
-  ['modalDetail','modalHapus','modalOTP','modalTolak','modalProses'].forEach(mid=>{
-    const m=document.getElementById(mid);if(m&&e.target===m)closeModal(mid);
-  });
-});
-
-// ─── DATA (dari server) ────────────────────────────────────
-let cachedSubmissions=[];
-async function fetchSubmissions(){
-  try{
-    const res=await apiPost({action:'getDaftarList'});
-    if(res.success) cachedSubmissions=res.list||[];
-  }catch(e){cachedSubmissions=[];}
-  return cachedSubmissions;
+// ════════════════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════════════════
+function renderDashboard(){
+  return `<div class="page-title">Dashboard</div>
+  <div class="page-sub" id="dashDate"></div>
+  <div id="earlyWarning" style="margin-bottom:16px"></div>
+  <div class="stats-grid" id="statsGridUser">
+    ${sc('blue','📝','—','Total User SAKTI')}
+    ${sc('orange','⏳','—','Menunggu')}
+    ${sc('teal','🔄','—','Diproses')}
+    ${sc('green','✅','—','Terdaftar')}
+    ${sc('red','❌','—','Ditolak')}
+    ${sc('purple','🔐','—','Pending OTP')}
+  </div>
+  <div style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">Email SAKTI</div>
+  <div class="stats-grid" id="statsGridEmail">
+    ${sc('blue','📧','—','Total Email SAKTI')}
+    ${sc('orange','⏳','—','Menunggu Proses')}
+    ${sc('green','✅','—','Selesai')}
+    ${sc('red','❌','—','Ditolak')}
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px">
+    <div class="card">
+      <div class="card-title">Pendaftaran User SAKTI Terbaru</div>
+      <div id="recentUser"><p style="color:var(--gray-400);font-size:13px">Memuat...</p></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Email SAKTI Terbaru</div>
+      <div id="recentEmail"><p style="color:var(--gray-400);font-size:13px">Memuat...</p></div>
+    </div>
+  </div>`;
 }
-function getSubmissions(){return cachedSubmissions;}
 
-// ─── FORMAT TANGGAL dd-mm-yyyy ────────────────────────────
-function fmtTgl(iso){
-  if(!iso)return '—';
-  const d=new Date(iso);
-  return`${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
-}
-function fmtTglWaktu(iso){
-  if(!iso)return '—';
-  const d=new Date(iso);
-  return`${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+function sc(cls,icon,num,label){
+  const id='ds-'+label.replace(/\s/g,'-');
+  return `<div class="stat-card ${cls}"><div class="stat-icon">${icon}</div><div class="stat-num" id="${id}">${num}</div><div class="stat-label">${label}</div></div>`;
 }
 
-// ─── DASHBOARD ────────────────────────────────────────────
-async function renderDashboard(){
-  // Tampilkan loading
-  const statEls=['stat-total','stat-submitted','stat-done','stat-otp'];
-  statEls.forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='...';});
+async function loadDashboard(){
+  const now=new Date();
+  const dateEl=document.getElementById('dashDate');
+  if(dateEl) dateEl.textContent='Panel Admin & Petugas · '+now.toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' '+now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
   try{
     const res=await apiPost({action:'getDashboard'});
-    if(res.success){
-      const s=document.getElementById('stat-total');if(s)s.textContent=res.total||0;
-      const sm=document.getElementById('stat-submitted');if(sm)sm.textContent=res.menunggu||0;
-      const sd=document.getElementById('stat-done');if(sd)sd.textContent=res.aktif||0;
-      const so=document.getElementById('stat-otp');if(so)so.textContent=res.ditolak||0;
-    }
-  }catch(e){}
-  // Ambil list juga untuk tabel
-  await fetchSubmissions();
-  const subs=getSubmissions();
-  const total=subs.length;
-  const submitted=subs.filter(s=>s.status==='Menunggu').length;
-  const done=subs.filter(s=>s.status==='done').length;
-  const needOTP=subs.filter(s=>s.hasOTP&&s.status!=='done').length;
-  const now=new Date();
-  document.getElementById('dashDate').textContent=`${String(now.getDate()).padStart(2,'0')}-${String(now.getMonth()+1).padStart(2,'0')}-${now.getFullYear()}, ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  document.getElementById('statsGrid').innerHTML=`
-    <div class="stat-card c-blue"><div class="stat-num">${total}</div><div class="stat-label">Total Pendaftaran</div></div>
-    <div class="stat-card c-orange"><div class="stat-num">${submitted}</div><div class="stat-label">Menunggu Verifikasi</div></div>
-    <div class="stat-card c-green"><div class="stat-num">${done}</div><div class="stat-label">Selesai Diproses</div></div>
-    <div class="stat-card c-red"><div class="stat-num">${needOTP}</div><div class="stat-label">Perlu Aktivasi OTP</div></div>`;
-  const recent=subs.slice().sort((a,b)=>new Date(b.tanggalDaftar||0)-new Date(a.tanggalDaftar||0)).slice(0,5);
-  document.getElementById('recentList').innerHTML=recent.length?recent.map(s=>`
-    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--gray-100)">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:700">${esc(s.namaSatker)}</div>
-        <div style="font-size:11px;color:var(--gray-500)">${esc(s.refKode)}</div>
-      </div>
-      <span class="badge badge-${s.status==='Aktif'?'done':'submitted'}">${statusLabel(s.status)}</span>
-      <span style="font-size:11px;color:var(--gray-400)">${fmtTgl(s.tanggalDaftar)}</span>
-      <button class="btn btn-outline btn-sm" onclick="openDetail('${esc(s.refKode)}')">Detail</button>
-    </div>`).join(''):'<p style="color:var(--gray-400);font-size:13px;text-align:center;padding:20px">Belum ada pendaftaran</p>';
+    if(!res.success) return;
+    const d=res;
+    // User SAKTI stats
+    upd('Total-User-SAKTI', d.total||0);
+    upd('Menunggu',         d.menunggu||0);
+    upd('Diproses',         d.diproses||0);
+    upd('Terdaftar',        d.terdaftar||0);
+    upd('Ditolak',          d.ditolak||0);
+    upd('Pending-OTP',      d.pendingOTP||0);
+    // Email SAKTI stats
+    upd('Total-Email-SAKTI', d.emailTotal||0);
+    upd('Menunggu-Proses',   d.emailMenunggu||0);
+    upd('Selesai',           d.emailSelesai||0);
+    upd('Ditolak',           d.emailDitolak||0, true);
+    // Early warning
+    renderEarlyWarning(d);
+    // Recent tables
+    renderRecentUser(d.recentDaftar||[]);
+    renderRecentEmail(d.recentEmail||[]);
+  }catch(e){
+    const ew=document.getElementById('earlyWarning');
+    if(ew) ew.innerHTML='<div class="info-box orange">⚠️ Gagal memuat data dashboard. Periksa koneksi.</div>';
+  }
 }
 
-function statusLabel(s){
-  if(s==='Aktif')return'✅ OTP Aktif';
-  if(s==='Terdaftar')return'📋 Terdaftar di SAKTI';
-  if(s==='Menunggu')return'⏳ Menunggu';
-  if(s==='Ditolak')return'❌ Ditolak';
-  if(s==='done')return'✅ Selesai';
-  if(s==='submitted')return'📋 Diterima';
-  return`⏳ ${s||'Draft'}`;
+function upd(label,val,second=false){
+  const id='ds-'+label;
+  const els=document.querySelectorAll('#'+id);
+  if(second && els.length>1) els[1].textContent=val;
+  else if(els.length) els[0].textContent=val;
 }
 
-// ─── TABLE ────────────────────────────────────────────────
-let selectedRefs=new Set();
+function renderEarlyWarning(d){
+  const ew=document.getElementById('earlyWarning');
+  if(!ew) return;
+  const warnings=[];
+  if((d.pendingLama||0)>0) warnings.push({cls:'danger',icon:'🚨',num:d.pendingLama,label:`Pengajuan menunggu > 3 hari`,action:`onclick="showPanel('submissions')"`});
+  if((d.pendingOTP||0)>0) warnings.push({cls:'warn',icon:'🔐',num:d.pendingOTP,label:`Satker perlu aktivasi OTP`,action:`onclick="showPanel('otp')"`});
+  if((d.emailMenunggu||0)>0) warnings.push({cls:'warn',icon:'📧',num:d.emailMenunggu,label:`Email SAKTI menunggu proses`,action:`onclick="showPanel('email-daftar')"`});
+  if(!warnings.length){ew.innerHTML='<div class="ew-grid"><div class="ew-card ok"><div class="ew-icon">✅</div><div><div class="ew-num">Aman</div><div class="ew-label">Tidak ada pengajuan mendesak</div></div></div></div>';return;}
+  ew.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">⚠️ Early Warning System</div>
+  <div class="ew-grid">${warnings.map(w=>`<div class="ew-card ${w.cls}" style="cursor:pointer" ${w.action}>
+    <div class="ew-icon">${w.icon}</div>
+    <div><div class="ew-num">${w.num}</div><div class="ew-label">${w.label}</div></div>
+  </div>`).join('')}</div>`;
+}
 
-function renderTable(){
-  const subs=getSubmissions();
-  const q=(document.getElementById('searchInput')?.value||'').toLowerCase();
-  const fStatus=document.getElementById('filterStatus')?.value||'';
-  const filtered=subs.filter(s=>{
-    // Cari di semua field: namaSatker, KPA, kode, refKode + NIP/NIK/role/SK dari users via searchText
-    const haystack=(s.searchText||[s.namaSatker,s.namaKpa,s.namaKPA,s.refKode,s.kodeSatker,s.nip].join(' ')).toLowerCase();
-    const match=!q||haystack.includes(q);
-    const statusOK=!fStatus||s.status===fStatus;
-    return match&&statusOK;
+function renderRecentUser(list){
+  const el=document.getElementById('recentUser');
+  if(!el) return;
+  if(!list.length){el.innerHTML='<p style="color:var(--gray-400);font-size:13px;font-style:italic">Belum ada data.</p>';return;}
+  el.innerHTML=`<table class="tbl"><thead><tr><th>Satker</th><th>Tgl</th><th>Status</th></tr></thead><tbody>
+    ${list.map(r=>`<tr><td>${esc(r.namaSatker||r.kodeSatker)}</td><td style="white-space:nowrap">${fmtTgl(r.tanggal)}</td><td>${bstat(r.status)}</td></tr>`).join('')}
+  </tbody></table>`;
+}
+
+function renderRecentEmail(list){
+  const el=document.getElementById('recentEmail');
+  if(!el) return;
+  if(!list.length){el.innerHTML='<p style="color:var(--gray-400);font-size:13px;font-style:italic">Belum ada data.</p>';return;}
+  el.innerHTML=`<table class="tbl"><thead><tr><th>Satker</th><th>Pegawai</th><th>Status</th></tr></thead><tbody>
+    ${list.map(r=>`<tr><td>${esc(r.namaSatker||r.kodeSatker)}</td><td style="text-align:center">${r.jumlah}</td><td>${bstat(r.status)}</td></tr>`).join('')}
+  </tbody></table>`;
+}
+
+// ════════════════════════════════════════════════════════
+// EMAIL SAKTI — DAFTAR PENGAJUAN
+// ════════════════════════════════════════════════════════
+function renderEmailDaftar(){
+  return `<div class="page-title">Daftar Pengajuan Email SAKTI</div>
+  <div class="page-sub">Kelola semua pengajuan email SAKTI dari satker</div>
+  <div class="card" style="padding:14px 18px">
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <input class="table-search" type="text" id="emailSearch" placeholder="🔍 Cari kode satker, nama satker, ID..." oninput="filterEmailDaftar()" style="max-width:320px"/>
+      <select id="emailFilter" onchange="filterEmailDaftar()" style="border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:7px 10px;font-size:13px;font-family:'Inter',sans-serif;background:#fff">
+        <option value="">Semua Status</option>
+        <option value="Menunggu">Menunggu</option>
+        <option value="Selesai">Selesai</option>
+        <option value="Ditolak">Ditolak</option>
+      </select>
+      <button class="btn btn-outline btn-sm" onclick="loadEmailDaftar()">🔄 Refresh</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl" id="emailDaftarTable">
+        <thead><tr>
+          <th>Tgl Submit</th><th>ID</th><th>Satker</th><th>Pegawai</th><th>Status</th><th>Aksi</th>
+        </tr></thead>
+        <tbody id="emailDaftarBody"><tr class="tbl-empty"><td colspan="6">Memuat data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+async function loadEmailDaftar(){
+  const body=document.getElementById('emailDaftarBody');
+  if(!body) return;
+  body.innerHTML='<tr class="tbl-empty"><td colspan="6">Memuat...</td></tr>';
+  try{
+    const res=await apiPost({action:'getDaftarEmailSakti'});
+    if(!res.success){body.innerHTML=`<tr class="tbl-empty"><td colspan="6">❌ ${esc(res.message)}</td></tr>`;return;}
+    cachedEmailDaftar=res.list||[];
+    filterEmailDaftar();
+  }catch(e){body.innerHTML='<tr class="tbl-empty"><td colspan="6">❌ Gagal memuat data</td></tr>';}
+}
+
+function filterEmailDaftar(){
+  const q=(document.getElementById('emailSearch')?.value||'').toLowerCase();
+  const f=(document.getElementById('emailFilter')?.value||'');
+  const filtered=cachedEmailDaftar.filter(e=>{
+    const matchQ=!q||(e.id||'').toLowerCase().includes(q)||(e.kodeSatker||'').toLowerCase().includes(q)||(e.namaSatker||'').toLowerCase().includes(q);
+    const matchF=!f||e.status===f;
+    return matchQ&&matchF;
   });
-  const body=document.getElementById('subTableBody');
-  if(!filtered.length){body.innerHTML=`<tr class="empty-row"><td colspan="8">Tidak ada data yang cocok</td></tr>`;updateBulkBar();return;}
-  body.innerHTML=filtered.map(s=>`
-    <tr id="row-${esc(s.refKode)}">
-      <td class="td-check"><input type="checkbox" class="row-cb" value="${esc(s.refKode)}" ${selectedRefs.has(s.refKode)?'checked':''} onchange="onRowCheck(this)"/></td>
-      <td><code style="font-size:12px">${esc(s.refKode)}</code></td>
-      <td><strong>${esc(s.namaSatker)}</strong><br/><span style="font-size:11px;color:var(--gray-500)">${esc(s.kodeSatker)}</span></td>
-      <td>${esc(s.namaKpa||s.namaKPA||'')}<br/><span style="font-size:11px;color:var(--gray-500)">${esc(s.nip||s.nipKPA||'')}</span></td>
-      <td style="text-align:center">${s.userCount||'-'}</td>
-      <td>
-        <span class="badge badge-${s.status==='Aktif'?'done':s.status==='Terdaftar'?'submitted':s.status==='Ditolak'?'draft':'otp'}">${statusLabel(s.status)}</span>
-        ${s.sudahTerdaftar&&!s.otpAktif&&s.hasOTP?'<br/><span class="badge badge-otp" style="margin-top:3px">🔐 Perlu OTP</span>':''}
-      </td>
-      <td style="white-space:nowrap;font-size:12px">${fmtTgl(s.tanggalDaftar||s.submittedAt||'')}</td>
+  renderEmailDaftarTable(filtered);
+}
+
+function renderEmailDaftarTable(list){
+  const body=document.getElementById('emailDaftarBody');
+  if(!body) return;
+  if(!list.length){body.innerHTML='<tr class="tbl-empty"><td colspan="6">Tidak ada data ditemukan.</td></tr>';return;}
+  const isAdmin=['Admin','SuperAdmin'].includes(currentUser?.role);
+  body.innerHTML=list.map(e=>`
+    <tr>
+      <td style="white-space:nowrap">${fmtTgl(e.tanggalSubmit)}</td>
+      <td style="font-family:monospace;font-size:11px;color:var(--gray-600)">${esc(e.id)}</td>
+      <td><strong>${esc(e.namaSatker||e.kodeSatker)}</strong><br/><span style="font-size:11px;color:var(--gray-500)">${esc(e.kodeSatker)}</span></td>
+      <td style="text-align:center"><strong>${e.jumlahPegawai}</strong> org</td>
+      <td>${bstat(e.status)}</td>
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" onclick="openDetail('${esc(s.refKode)}')">Detail</button>
-          <button class="btn btn-danger-outline btn-sm admin-only" onclick="openSingleDelete('${esc(s.refKode)}')">🗑️</button>
+          <button class="btn btn-outline btn-sm" onclick="lihatDetailEmail('${esc(e.id)}')">🔍 Detail</button>
+          ${e.status==='Menunggu'?`
+            <button class="btn btn-success btn-sm" onclick="bukaModalProsesEmail('${esc(e.id)}')">✅ Proses</button>
+            <button class="btn btn-danger btn-sm" onclick="bukaModalTolakEmail('${esc(e.id)}')">❌ Tolak</button>
+          `:''}
+          ${isAdmin&&e.status==='Menunggu'?`<button class="btn btn-secondary btn-sm" onclick="hapusEmailSakti('${esc(e.id)}')">🗑️</button>`:''}
         </div>
       </td>
     </tr>`).join('');
-  updateBulkBar();
 }
 
-function onRowCheck(cb){
-  if(cb.checked)selectedRefs.add(cb.value);
-  else selectedRefs.delete(cb.value);
-  updateBulkBar();
-  document.getElementById('cbSelectAll').checked=
-    document.querySelectorAll('.row-cb').length===selectedRefs.size&&selectedRefs.size>0;
-}
-function toggleSelectAll(cb){
-  document.querySelectorAll('.row-cb').forEach(el=>{el.checked=cb.checked;if(cb.checked)selectedRefs.add(el.value);else selectedRefs.delete(el.value);});
-  updateBulkBar();
-}
-function selectAll(){
-  document.querySelectorAll('.row-cb').forEach(el=>{el.checked=true;selectedRefs.add(el.value);});
-  document.getElementById('cbSelectAll').checked=true;
-  updateBulkBar();
-}
-function clearSelection(){
-  selectedRefs.clear();
-  document.querySelectorAll('.row-cb').forEach(el=>el.checked=false);
-  document.getElementById('cbSelectAll').checked=false;
-  updateBulkBar();
-}
-function updateBulkBar(){
-  const bar=document.getElementById('bulkBar');
-  const cnt=selectedRefs.size;
-  if(cnt>0){bar.classList.add('on');document.getElementById('bulkCount').textContent=`${cnt} dipilih`;}
-  else bar.classList.remove('on');
-}
-
-// ─── DELETE (SINGLE + BULK) ───────────────────────────────
-let pendingDeleteRefs=[];
-
-function openSingleDelete(refKode){
-  pendingDeleteRefs=[refKode];
-  document.getElementById('hapusWarnMsg').innerHTML=`Anda akan menghapus pendaftaran dengan kode referensi:<br/><strong style="font-family:monospace">${esc(refKode)}</strong>`;
-  document.getElementById('hapusPwd').value='';
-  document.getElementById('hapusPwdErr').style.display='none';
-  openModal('modalHapus');
-}
-
-function openBulkDelete(){
-  if(selectedRefs.size===0)return;
-  pendingDeleteRefs=[...selectedRefs];
-  document.getElementById('hapusWarnMsg').innerHTML=`Anda akan menghapus <strong>${pendingDeleteRefs.length} pendaftaran</strong> sekaligus:<br/><span style="font-size:11px;font-family:monospace">${pendingDeleteRefs.map(r=>esc(r)).join(', ')}</span>`;
-  document.getElementById('hapusPwd').value='';
-  document.getElementById('hapusPwdErr').style.display='none';
-  openModal('modalHapus');
+function lihatDetailEmail(id){
+  const e=cachedEmailDaftar.find(x=>x.id===id);
+  if(!e) return;
+  const body=document.getElementById('detailEmailBody');
+  body.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px">
+      <div><span style="color:var(--gray-500)">ID:</span><br/><strong style="font-family:monospace;font-size:12px">${esc(e.id)}</strong></div>
+      <div><span style="color:var(--gray-500)">Status:</span><br/>${bstat(e.status)}</div>
+      <div><span style="color:var(--gray-500)">Satker:</span><br/><strong>${esc(e.namaSatker)}</strong> (${esc(e.kodeSatker)})</div>
+      <div><span style="color:var(--gray-500)">Tgl Submit:</span><br/><strong>${fmtTglWaktu(e.tanggalSubmit)}</strong></div>
+      ${e.diprosesTgl?`<div><span style="color:var(--gray-500)">Diproses:</span><br/><strong>${fmtTglWaktu(e.diprosesTgl)}</strong></div>`:''}
+      ${e.diprosesoleh?`<div><span style="color:var(--gray-500)">Oleh:</span><br/><strong>${esc(e.diprosesoleh)}</strong></div>`:''}
+    </div>
+    ${e.alasanTolak?`<div class="info-box red" style="margin-bottom:12px"><strong>Alasan Penolakan:</strong> ${esc(e.alasanTolak)}</div>`:''}
+    ${e.emailHasil&&e.emailHasil.length?`
+      <div class="card-title" style="margin-bottom:10px">Email yang Diberikan</div>
+      <table class="tbl" style="margin-bottom:14px">
+        <thead><tr><th>Nama</th><th>NIP/NRP</th><th>Email SAKTI</th></tr></thead>
+        <tbody>${e.emailHasil.map(h=>`<tr><td>${esc(h.nama||'—')}</td><td style="font-family:monospace">${esc(h.nipnrp||'—')}</td><td><a href="mailto:${esc(h.email)}">${esc(h.email||'—')}</a></td></tr>`).join('')}</tbody>
+      </table>`:''}
+    <div class="card-title" style="margin-bottom:10px">Data Pegawai (${(e.pegawai||[]).length} orang)</div>
+    <table class="tbl">
+      <thead><tr><th>No</th><th>Nama</th><th>NIP/NRP</th><th>NIK</th><th>Status</th></tr></thead>
+      <tbody>${(e.pegawai||[]).map((p,i)=>`<tr>
+        <td style="text-align:center">${i+1}</td>
+        <td>${esc(p.nama||'')}</td>
+        <td style="font-family:monospace">${esc(p.nipnrp||'')}</td>
+        <td style="font-family:monospace">${esc(p.nik||'')}</td>
+        <td>${{1:'TNI',2:'POLRI',3:'PNS',4:'PPNPN',5:'PPPK'}[p.status]||p.status||'—'}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+    ${e.status==='Menunggu'?`
+    <div class="modal-actions" style="border:none;padding:0;margin-top:14px;justify-content:flex-start;gap:8px">
+      <button class="btn btn-success btn-sm" onclick="closeModal('modalDetailEmail');bukaModalProsesEmail('${esc(e.id)}')">✅ Proses</button>
+      <button class="btn btn-danger btn-sm" onclick="closeModal('modalDetailEmail');bukaModalTolakEmail('${esc(e.id)}')">❌ Tolak</button>
+    </div>`:''}`;
+  openModal('modalDetailEmail');
 }
 
-async function confirmDelete(){
-  const pwd=document.getElementById('hapusPwd').value;
-  const errEl=document.getElementById('hapusPwdErr');
-  const btn=document.querySelector('#modalHapus .btn-danger');
-  if(!pwd){errEl.style.display='block';errEl.textContent='Password wajib diisi';return;}
-  if(btn){btn.disabled=true;btn.textContent='⏳ Memverifikasi...';}
+function bukaModalProsesEmail(id){
+  const e=cachedEmailDaftar.find(x=>x.id===id);
+  if(!e) return;
+  activeProsesEmailId=id;
+  emailHasilTemp=(e.pegawai||[]).map(p=>({nama:p.nama||'',nipnrp:p.nipnrp||'',email:''}));
+  const body=document.getElementById('prosesEmailBody');
+  body.innerHTML=`<p style="font-size:13px;color:var(--gray-700);margin-bottom:12px">
+    Satker: <strong>${esc(e.namaSatker)}</strong> · ${e.jumlahPegawai} pegawai<br/>
+    Isi alamat email SAKTI untuk setiap pegawai di bawah ini:
+  </p>
+  <table class="tbl">
+    <thead><tr><th>No</th><th>Nama Pegawai</th><th>NIP/NRP</th><th>Email SAKTI <span style="color:var(--red)">*</span></th></tr></thead>
+    <tbody>${emailHasilTemp.map((p,i)=>`<tr>
+      <td style="text-align:center">${i+1}</td>
+      <td>${esc(p.nama)}</td>
+      <td style="font-family:monospace">${esc(p.nipnrp)}</td>
+      <td><input class="inline-input" type="email" placeholder="nama@email.go.id" value="${esc(p.email)}"
+        oninput="emailHasilTemp[${i}].email=this.value"/></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+  openModal('modalProsesEmail');
+}
+
+async function doProsesEmail(){
+  const btn=document.getElementById('btnDoProsesEmail');
+  const valid=emailHasilTemp.every(p=>p.email&&p.email.includes('@'));
+  if(!valid){showToast('Semua field email wajib diisi dengan format yang benar',true);return;}
+  btn.disabled=true; btn.textContent='⏳ Menyimpan...';
   try{
-    // Verifikasi password via changePassword dengan password yang sama (tidak mengubah apapun jika benar)
-    const verif=await apiPost({action:'changePassword',passwordLama:pwd,passwordBaru:pwd});
-    if(!verif.success){
-      errEl.style.display='block';errEl.textContent='Password salah';
-      if(btn){btn.disabled=false;btn.textContent='🗑️ Hapus Sekarang';}
-      return;
-    }
-    // Password benar, lanjut hapus
-    errEl.style.display='none';
-    const res=await apiPost({action:'hapusData',refs:pendingDeleteRefs});
-    if(!res.success){showToast(res.message||'Gagal menghapus',true);if(btn){btn.disabled=false;btn.textContent='Hapus';}return;}
-    // Hapus juga dari localStorage lokal
-    pendingDeleteRefs.forEach(ref=>{
-      localStorage.removeItem(`sakti_draft_${ref}`);
-      let idx=JSON.parse(localStorage.getItem('sakti_drafts_index')||'[]');
-      idx=idx.filter(r=>r!==ref);
-      localStorage.setItem('sakti_drafts_index',JSON.stringify(idx));
-    });
-    selectedRefs.clear();
-    const count=pendingDeleteRefs.length;
-    pendingDeleteRefs=[];
-    closeModal('modalHapus');
-    await fetchSubmissions();
-    renderTable();
-    renderDashboard();
-    showToast(`✅ ${count} data berhasil dihapus`);
-  }catch(err){
-    errEl.style.display='block';errEl.textContent=err.message||'Terjadi kesalahan';
-  }
-  if(btn){btn.disabled=false;btn.textContent='Hapus';}
+    const res=await apiPost({action:'prosesEmailSakti',id:activeProsesEmailId,emailHasil:emailHasilTemp});
+    if(!res.success){showToast(res.message||'Gagal',true);btn.disabled=false;btn.innerHTML='✅ Simpan & Proses';return;}
+    showToast('✅ Email SAKTI berhasil diproses',false,true);
+    closeModal('modalProsesEmail');
+    loadEmailDaftar();
+  }catch(e){showToast('Gagal terhubung ke server',true);}
+  btn.disabled=false; btn.innerHTML='✅ Simpan & Proses';
 }
 
-// ─── DETAIL ───────────────────────────────────────────────
-let detailRef='';
-let detailData=null; // simpan data detail terakhir untuk download Excel
+function bukaModalTolakEmail(id){
+  activeTolakEmailId=id;
+  document.getElementById('alasanTolakEmail').value='';
+  openModal('modalTolakEmail');
+}
 
-async function openDetail(refKode){
-  detailRef=refKode;
-  detailData=null;
-  document.getElementById('detailBody').innerHTML='<p style="text-align:center;color:var(--gray-400);padding:20px">⏳ Memuat detail...</p>';
-  openModal('modalDetail');
+async function doTolakEmail(){
+  const alasan=(document.getElementById('alasanTolakEmail').value||'').trim();
+  if(!alasan){showToast('Alasan penolakan wajib diisi',true);return;}
+  const btn=document.getElementById('btnDoTolakEmail');
+  btn.disabled=true; btn.textContent='⏳...';
+  try{
+    const res=await apiPost({action:'tolakEmailSakti',id:activeTolakEmailId,alasan});
+    if(!res.success){showToast(res.message||'Gagal',true);btn.disabled=false;btn.innerHTML='❌ Tolak';return;}
+    showToast('✅ Pengajuan ditolak',false,true);
+    closeModal('modalTolakEmail');
+    loadEmailDaftar();
+  }catch(e){showToast('Gagal terhubung ke server',true);}
+  btn.disabled=false; btn.innerHTML='❌ Tolak';
+}
+
+async function hapusEmailSakti(id){
+  if(!confirm('Hapus pengajuan email SAKTI ini?')) return;
+  try{
+    const res=await apiPost({action:'hapusEmailSakti',id});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    showToast('✅ Data berhasil dihapus',false,true);
+    loadEmailDaftar();
+  }catch(e){showToast('Gagal terhubung ke server',true);}
+}
+
+// ════════════════════════════════════════════════════════
+// USER SAKTI — DAFTAR PENDAFTARAN
+// ════════════════════════════════════════════════════════
+function renderSubmissions(){
+  return `<div class="page-title">Daftar Pendaftaran User SAKTI</div>
+  <div class="page-sub">Kelola semua pendaftaran pengguna SAKTI dari satker</div>
+  <div class="card" style="padding:14px 18px">
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <input class="table-search" type="text" id="subSearch" placeholder="🔍 Cari nama, kode satker, referensi..." oninput="filterSubmissions()" style="max-width:340px"/>
+      <select id="subFilter" onchange="filterSubmissions()" style="border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:7px 10px;font-size:13px;font-family:'Inter',sans-serif;background:#fff">
+        <option value="">Semua Status</option>
+        <option value="submitted">Tersubmit</option>
+        <option value="Diproses">Diproses</option>
+        <option value="Terdaftar">Terdaftar</option>
+        <option value="Ditolak">Ditolak</option>
+        <option value="draft">Draft</option>
+      </select>
+      <button class="btn btn-outline btn-sm" onclick="loadSubmissions()">🔄 Refresh</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr><th>Ref</th><th>Satker</th><th>KPA</th><th>Tgl Daftar</th><th>Status</th><th>Aksi</th></tr></thead>
+        <tbody id="subBody"><tr class="tbl-empty"><td colspan="6">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+async function loadSubmissions(){
+  const body=document.getElementById('subBody');
+  if(!body) return;
+  body.innerHTML='<tr class="tbl-empty"><td colspan="6">Memuat...</td></tr>';
+  try{
+    const res=await apiPost({action:'getDaftarList'});
+    if(!res.success){body.innerHTML=`<tr class="tbl-empty"><td colspan="6">❌ ${esc(res.message)}</td></tr>`;return;}
+    cachedSubmissions=res.list||[];
+    filterSubmissions();
+  }catch(e){body.innerHTML='<tr class="tbl-empty"><td colspan="6">❌ Gagal memuat</td></tr>';}
+}
+
+function filterSubmissions(){
+  const q=(document.getElementById('subSearch')?.value||'').toLowerCase();
+  const f=(document.getElementById('subFilter')?.value||'');
+  const filtered=cachedSubmissions.filter(s=>{
+    const matchQ=!q||(s.refKode||'').toLowerCase().includes(q)||(s.namaSatker||'').toLowerCase().includes(q)||(s.kodeSatker||'').toLowerCase().includes(q)||(s.namaKpa||'').toLowerCase().includes(q);
+    const matchF=!f||s.status===f;
+    return matchQ&&matchF;
+  });
+  renderSubTable(filtered);
+}
+
+function renderSubTable(list){
+  const body=document.getElementById('subBody');
+  if(!body) return;
+  if(!list.length){body.innerHTML='<tr class="tbl-empty"><td colspan="6">Tidak ada data.</td></tr>';return;}
+  const isAdmin=['Admin','SuperAdmin'].includes(currentUser?.role);
+  body.innerHTML=list.map(s=>`
+    <tr>
+      <td style="font-family:monospace;font-size:11px">${esc(s.refKode)}</td>
+      <td><strong>${esc(s.namaSatker)}</strong><br/><span style="font-size:11px;color:var(--gray-500)">${esc(s.kodeSatker)}</span></td>
+      <td>${esc(s.namaKpa||'—')}</td>
+      <td style="white-space:nowrap">${fmtTgl(s.tanggalDaftar||s.createdAt||'')}</td>
+      <td>${bstat(s.status)}${s.revisiKe>0?`<br/><span style="font-size:10px;color:var(--orange)">Revisi ke-${s.revisiKe}</span>`:''}</td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="lihatDetail('${esc(s.refKode)}')">🔍 Detail</button>
+          ${['submitted','Menunggu'].includes(s.status)?`
+            <button class="btn btn-success btn-sm" onclick="bukaProses('${esc(s.refKode)}')">✅ Proses</button>
+            <button class="btn btn-danger btn-sm" onclick="bukaTolak('${esc(s.refKode)}')">❌ Tolak</button>
+          `:''}
+          ${isAdmin&&!s.sudahTerdaftar?`<button class="btn btn-secondary btn-sm" onclick="bukaHapus('${esc(s.refKode)}')">🗑️</button>`:''}
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+async function lihatDetail(refKode){
   try{
     const res=await apiPost({action:'getDetail',refKode});
-    if(!res.success){showToast(res.message||'Gagal memuat',true);closeModal('modalDetail');return;}
-    detailData=res; // simpan untuk download Excel
-    const s=res;
-    // Tombol aksi — logika berdasarkan status
-    const btnTandai=document.getElementById('btnTandaiTerdaftar');
-    const btnTolak=document.getElementById('btnTolak');
-    const btnProses=document.getElementById('btnProses');
-    const canAct=!s.sudahTerdaftar&&s.status!=='Ditolak'&&s.status!=='Terdaftar';
-    if(btnTandai) btnTandai.style.display=s.sudahTerdaftar?'none':'';
-    if(btnTolak)  btnTolak.style.display=canAct?'':'none';
-    if(btnProses) btnProses.style.display=(canAct&&s.status!=='Diproses')?'':'none';
-    // Tombol "Aktivasi OTP" — hanya muncul jika sudah terdaftar, ada role OTP, dan OTP belum aktif
-    const OTP_ROLES_CHECK=['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
-    const hasOTPRole=(s.users||[]).some(u=>(u.peranList||[]).some(k=>OTP_ROLES_CHECK.includes(k)));
-    const showOTP=s.sudahTerdaftar&&hasOTPRole&&!s.otpAktif;
-    document.getElementById('btnMarkDone').style.display=showOTP?'':'none';
-    let filesHtml='';
-    const files=s.files||{};
-    const fileKeys=Object.keys(files);
-    if(fileKeys.length){
-      filesHtml=`<div style="font-size:12px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.4px;margin:14px 0 8px">Dokumen Dikirim (${fileKeys.length}) <span style="background:#E8F5E9;color:#2E7D32;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700">&#x2705; Google Drive</span></div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">${fileKeys.map(k=>{const f=files[k];return f.url?`<a href="${esc(f.url)}" target="_blank" style="background:#E8F5E9;border:1px solid #A5D6A7;border-radius:6px;padding:5px 11px;font-size:11px;color:#2E7D32;text-decoration:none;display:inline-flex;align-items:center;gap:4px">&#x1F4CE; ${esc(f.name||k)} &#x2197;</a>`:`<span style="background:var(--blue-pale);border:1px solid var(--blue-pale2);border-radius:6px;padding:5px 11px;font-size:11px;color:var(--blue)">&#x1F4CE; ${esc(f.name||k)}</span>`;}).join('')}</div>`;
-    }
-    document.getElementById('detailBody').innerHTML=`
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
-        <div>
-          <div class="detail-row"><span class="detail-lbl">Kode Ref.</span><span class="detail-val" style="font-family:monospace">${esc(s.refKode)}</span></div>
-          <div class="detail-row"><span class="detail-lbl">Kode Satker</span><span class="detail-val">${esc(s.kodeSatker)}</span></div>
-          <div class="detail-row"><span class="detail-lbl">Nama Satker</span><span class="detail-val">${esc(s.namaSatker)}</span></div>
-          <div class="detail-row"><span class="detail-lbl">Status</span><span class="detail-val"><span class="badge badge-${s.status==='Terdaftar'||s.status==='Aktif'?'done':s.status==='Ditolak'?'draft':s.status==='Diproses'?'otp':'submitted'}">${esc(s.status)}</span>${s.revisiKe>0?`<span style="margin-left:6px;background:#FFF3E0;color:#E65100;border:1px solid #FFB74D;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700">Revisi ke-${s.revisiKe}</span>`:''}</span></div>
-          ${s.diprosesoleh?`<div class="detail-row"><span class="detail-lbl">Diproses oleh</span><span class="detail-val" style="font-weight:600;color:var(--blue)">${esc(s.diprosesoleh)}</span></div>`:''}
-        </div>
-        <div>
-          <div class="detail-row"><span class="detail-lbl">Nama KPA</span><span class="detail-val">${esc(s.namaKpa||s.namaKPA||'-')}</span></div>
-          <div class="detail-row"><span class="detail-lbl">NIP KPA</span><span class="detail-val">${esc(s.nip||'-')}</span></div>
-          <div class="detail-row"><span class="detail-lbl">Dikirim</span><span class="detail-val">${fmtTglWaktu(s.tanggalDaftar)}</span></div>
-          <div class="detail-row"><span class="detail-lbl">Aktivasi OTP</span><span class="detail-val">${s.otpAktif?'<span class="badge badge-done">✅ Sudah Aktivasi</span>':'<span class="badge badge-otp">⏳ Belum Aktivasi</span>'}</span></div>
-        </div>
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    const s=res.data;
+    const body=document.getElementById('detailBody');
+    body.innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px">
+        <div><span style="color:var(--gray-500)">Ref Kode:</span><br/><strong style="font-family:monospace">${esc(s.refKode)}</strong></div>
+        <div><span style="color:var(--gray-500)">Status:</span><br/>${bstat(s.status)}</div>
+        <div><span style="color:var(--gray-500)">Nama Satker:</span><br/><strong>${esc(s.namaSatker)}</strong></div>
+        <div><span style="color:var(--gray-500)">Kode Satker:</span><br/><strong>${esc(s.kodeSatker)}</strong></div>
+        <div><span style="color:var(--gray-500)">Nama KPA:</span><br/><strong>${esc(s.namaKpa||'—')}</strong></div>
+        <div><span style="color:var(--gray-500)">NIP:</span><br/><strong>${esc(s.nip||'—')}</strong></div>
+        <div><span style="color:var(--gray-500)">No HP:</span><br/><strong>${esc(s.noHp||'—')}</strong></div>
+        <div><span style="color:var(--gray-500)">Email:</span><br/><strong>${esc(s.email||'—')}</strong></div>
+        ${s.catatanAdmin?`<div style="grid-column:1/-1"><span style="color:var(--red)">Catatan KPPN:</span><br/><strong style="color:var(--red)">${esc(s.catatanAdmin)}</strong></div>`:''}
       </div>
-      ${s.catatanAdmin?`<div style="background:var(--gold-light);border:1px solid #FFE082;border-radius:var(--radius);padding:10px 14px;font-size:12px;color:#5D4037;margin-bottom:14px">📝 Catatan: ${esc(s.catatanAdmin)}</div>`:''}
-      ${filesHtml}`;
-  }catch(err){
-    document.getElementById('detailBody').innerHTML=`<p style="color:var(--red);text-align:center;padding:20px">${esc(err.message)}</p>`;
-  }
+      ${(s.usersJson||[]).length?`
+      <div class="card-title" style="margin-bottom:10px">Data Pengguna (${s.usersJson.length} orang)</div>
+      <table class="tbl" style="margin-bottom:14px">
+        <thead><tr><th>Nama</th><th>NIP/NRP</th><th>NIK</th><th>Peran</th></tr></thead>
+        <tbody>${s.usersJson.map(u=>`<tr><td>${esc(u.nama||u.namaLengkap||'')}</td><td style="font-family:monospace">${esc(u.nipnrp||u.nip||'')}</td><td style="font-family:monospace">${esc(u.nik||'')}</td><td>${esc(u.peran||u.role||'')}</td></tr>`).join('')}</tbody>
+      </table>`:''}
+      ${['submitted','Menunggu'].includes(s.status)?`
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn btn-success btn-sm" onclick="closeModal('modalDetail');bukaProses('${esc(s.refKode)}')">✅ Proses</button>
+        <button class="btn btn-danger btn-sm" onclick="closeModal('modalDetail');bukaTolak('${esc(s.refKode)}')">❌ Tolak</button>
+      </div>`:''}`;
+    openModal('modalDetail');
+  }catch(e){showToast('Gagal memuat detail',true);}
 }
 
-function openModalTolak(){
-  if(!detailRef){showToast('Tidak ada data yang dipilih',true);return;}
-  document.getElementById('tolakCatatan').value='';
-  openModal('modalTolak');
-}
-
-function openModalProses(){
-  if(!detailRef){showToast('Tidak ada data yang dipilih',true);return;}
-  document.getElementById('prosesCatatan').value='';
+function bukaProses(refKode){
+  activeProsesRef=refKode;
+  document.getElementById('prosesRefKode').textContent=refKode;
   openModal('modalProses');
 }
 
-async function confirmTolak(){
-  const catatan=document.getElementById('tolakCatatan').value.trim();
-  if(!catatan){showToast('Catatan penolakan wajib diisi',true);return;}
+async function doProses(){
+  const btn=document.getElementById('btnDoProses');
+  btn.disabled=true; btn.textContent='⏳...';
   try{
-    const res=await apiPost({action:'tolakDaftar',refKode:detailRef,catatan});
+    const res=await apiPost({action:'prosesDaftar',refKode:activeProsesRef});
+    if(!res.success){showToast(res.message||'Gagal',true);btn.disabled=false;btn.innerHTML='✅ Proses';return;}
+    showToast('✅ Pendaftaran berhasil diproses',false,true);
+    closeModal('modalProses');
+    loadSubmissions();
+  }catch(e){showToast('Gagal',true);}
+  btn.disabled=false; btn.innerHTML='✅ Proses';
+}
+
+function bukaTolak(refKode){
+  activeTolakRef=refKode;
+  document.getElementById('alasanTolak').value='';
+  openModal('modalTolak');
+}
+
+async function doTolak(){
+  const alasan=(document.getElementById('alasanTolak').value||'').trim();
+  if(!alasan){showToast('Alasan penolakan wajib diisi',true);return;}
+  const btn=document.getElementById('btnDoTolak');
+  btn.disabled=true; btn.textContent='⏳...';
+  try{
+    const res=await apiPost({action:'tolakDaftar',refKode:activeTolakRef,catatan:alasan});
+    if(!res.success){showToast(res.message||'Gagal',true);btn.disabled=false;btn.innerHTML='❌ Tolak';return;}
+    showToast('✅ Pendaftaran ditolak',false,true);
+    closeModal('modalTolak');
+    loadSubmissions();
+  }catch(e){showToast('Gagal',true);}
+  btn.disabled=false; btn.innerHTML='❌ Tolak';
+}
+
+function bukaHapus(refKode){
+  activeHapusRef=refKode;
+  document.getElementById('hapusRefKode').textContent=refKode;
+  openModal('modalHapus');
+}
+
+async function doHapus(){
+  const btn=document.getElementById('btnDoHapus');
+  btn.disabled=true; btn.textContent='⏳...';
+  try{
+    const res=await apiPost({action:'hapusData',refKode:activeHapusRef});
+    if(!res.success){showToast(res.message||'Gagal',true);btn.disabled=false;btn.innerHTML='🗑️ Hapus';return;}
+    showToast('✅ Data berhasil dihapus',false,true);
+    closeModal('modalHapus');
+    loadSubmissions();
+  }catch(e){showToast('Gagal',true);}
+  btn.disabled=false; btn.innerHTML='🗑️ Hapus';
+}
+
+// ════════════════════════════════════════════════════════
+// MONITORING OTP
+// ════════════════════════════════════════════════════════
+function renderOTP(){
+  return `<div class="page-title">Monitoring Aktivasi OTP</div>
+  <div class="page-sub">Satker yang sudah terdaftar namun belum aktivasi OTP di SAKTI</div>
+  <div class="card">
+    <div class="card-title">Belum Aktivasi OTP</div>
+    <div id="otpBody"><p style="color:var(--gray-400);font-size:13px">Memuat...</p></div>
+  </div>`;
+}
+
+async function loadOTP(){
+  const body=document.getElementById('otpBody');
+  if(!body) return;
+  try{
+    const res=await apiPost({action:'getDaftarList'});
+    if(!res.success){body.innerHTML=`<p style="color:var(--red)">❌ ${esc(res.message)}</p>`;return;}
+    const list=(res.list||[]).filter(s=>s.sudahTerdaftar&&!s.otpAktif&&s.hasOTP);
+    if(!list.length){body.innerHTML='<p style="color:var(--green);font-weight:600">✅ Semua satker yang terdaftar sudah aktivasi OTP.</p>';return;}
+    body.innerHTML=`<table class="tbl">
+      <thead><tr><th>Ref</th><th>Satker</th><th>Kode OTP</th><th>Aksi</th></tr></thead>
+      <tbody>${list.map(s=>`<tr>
+        <td style="font-family:monospace;font-size:11px">${esc(s.refKode)}</td>
+        <td><strong>${esc(s.namaSatker)}</strong></td>
+        <td style="font-family:monospace;font-weight:700;color:var(--purple)">${esc(s.otpCode||'—')}</td>
+        <td><button class="btn btn-primary btn-sm" onclick="aktivasiOTP('${esc(s.refKode)}')">✅ Tandai Aktif</button></td>
+      </tr>`).join('')}</tbody>
+    </table>
+    <p style="font-size:12px;color:var(--gray-500);margin-top:8px">${list.length} satker belum aktivasi OTP</p>`;
+  }catch(e){body.innerHTML='<p style="color:var(--red)">❌ Gagal memuat</p>';}
+}
+
+async function aktivasiOTP(refKode){
+  if(!confirm('Tandai OTP sudah diaktivasi untuk '+refKode+'?')) return;
+  try{
+    const res=await apiPost({action:'aktivasiOTP',refKode});
     if(!res.success){showToast(res.message||'Gagal',true);return;}
-    showToast(`✅ Pendaftaran ditolak (${res.revisiKe?'revisi ke-'+res.revisiKe:''}). Satker dapat memperbaiki.`);
-    closeModal('modalTolak');closeModal('modalDetail');
-    await fetchSubmissions();renderTable();renderDashboard();
-  }catch(err){showToast(err.message||'Terjadi kesalahan',true);}
+    showToast('✅ OTP berhasil ditandai aktif',false,true);
+    loadOTP();
+  }catch(e){showToast('Gagal',true);}
 }
 
-async function confirmProses(){
-  const catatan=document.getElementById('prosesCatatan').value.trim();
-  try{
-    const res=await apiPost({action:'prosesDaftar',refKode:detailRef,catatan});
-    if(!res.success){showToast(res.message||'Gagal',true);return;}
-    showToast('✅ Pendaftaran diproses lanjut.');
-    closeModal('modalProses');closeModal('modalDetail');
-    await fetchSubmissions();renderTable();renderDashboard();
-    setTimeout(()=>openDetail(detailRef),400);
-  }catch(err){showToast(err.message||'Terjadi kesalahan',true);}
-}
-
-async function tandaiTerdaftar(){
-  if(!detailRef){showToast('Tidak ada data yang dipilih',true);return;}
-  if(!confirm(`Tandai pendaftaran "${detailRef}" sebagai SUDAH TERDAFTAR di SAKTI?\n\nSetelah ini satker tidak bisa mengubah data lagi.`))return;
-  try{
-    const res=await apiPost({action:'tandaiTerdaftar',refKode:detailRef});
-    if(!res.success){showToast(res.message||'Gagal',true);return;}
-    showToast('✅ Berhasil ditandai Terdaftar di SAKTI');
-    closeModal('modalDetail');
-    await fetchSubmissions();
-    renderTable();renderDashboard();
-    // Buka ulang detail untuk refresh tombol
-    setTimeout(()=>openDetail(detailRef),400);
-  }catch(err){showToast(err.message||'Terjadi kesalahan',true);}
-}
-
-function openModalOTP(){
-  if(!detailRef){showToast('Tidak ada data yang dipilih',true);return;}
-  document.getElementById('otpCatatan').value='';
-  document.getElementById('otpFotoBukti').value='';
-  document.getElementById('otpModalBody').innerHTML=`<div style="font-size:13px;color:var(--gray-700)">Kode Ref: <strong style="font-family:monospace">${esc(detailRef)}</strong></div>`;
-  openModal('modalOTP');
-}
-
-async function markOTPDone(){
-  const catatan=document.getElementById('otpCatatan').value.trim();
-  const fotoInput=document.getElementById('otpFotoBukti');
-  const btn=document.getElementById('btnOTPDone');
-  btn.disabled=true; btn.textContent='⏳ Menyimpan...';
-  try{
-    // Upload foto jika ada
-    let fotoUrl='';
-    if(fotoInput.files&&fotoInput.files[0]){
-      const file=fotoInput.files[0];
-      if(file.size>5*1024*1024){showToast('Foto terlalu besar, maks 5MB',true);btn.disabled=false;btn.textContent='✅ Tandai Sudah Aktivasi OTP';return;}
-      const b64=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=e=>res(e.target.result.split(',')[1]);fr.onerror=rej;fr.readAsDataURL(file);});
-      const upRes=await apiPost({action:'uploadFile',refKode:detailRef,namaSatker:'',fileKey:'bukti_otp',fileName:'bukti_otp_'+file.name,fileData:b64,mimeType:file.type});
-      if(upRes.success) fotoUrl=upRes.fileUrl||'';
-    }
-    const res=await apiPost({action:'aktivasiOTP',refKode:detailRef,catatan:catatan+(fotoUrl?(' | Foto: '+fotoUrl):'')});
-    if(!res.success){showToast(res.message||'Gagal',true);btn.disabled=false;btn.textContent='✅ Tandai Sudah Aktivasi OTP';return;}
-    closeModal('modalOTP');
-    closeModal('modalDetail');
-    await fetchSubmissions();
-    renderTable();renderDashboard();
-    showToast('✅ Aktivasi OTP berhasil dicatat');
-  }catch(err){showToast(err.message||'Terjadi kesalahan',true);btn.disabled=false;btn.textContent='✅ Tandai Sudah Aktivasi OTP';}
-}
-
-// ─── DOWNLOAD EXCEL (admin) ───────────────────────────────
-const SOLO_PERAN_ADMIN = new Set([
-  'SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM',
-  'SATKER_ADMIN','SATKER_VALIDATOR_ANGGARAN','SATKER_OPERATOR_SPI',
-]);
-const BLU_PERAN_ADMIN = new Set(['SATKER_VALIDATOR_ANGGARAN','SATKER_OPERATOR_SPI']);
-
-function buildExcelRowsAdmin(u){
-  const rows=[], solo=[], ops=[];
-  (u.peranList||[]).forEach(k=>{ if(SOLO_PERAN_ADMIN.has(k)) solo.push(k); else ops.push(k); });
-  solo.forEach(k=>rows.push({peran:k,blu:BLU_PERAN_ADMIN.has(k),u}));
-  if(ops.length) rows.push({peran:ops.join(', '),blu:false,u});
-  return rows;
-}
-function fmtTglExcel(d){
-  if(!d)return'';
-  try{const dt=new Date(d);return`${String(dt.getDate()).padStart(2,'0')}-${String(dt.getMonth()+1).padStart(2,'0')}-${dt.getFullYear()}`;}catch(e){return String(d);}
-}
-function fmtTglIndoAdmin(d){
-  if(!d)return'______';
-  const B=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-  try{const dt=new Date(d);return`${dt.getDate()} ${B[dt.getMonth()]} ${dt.getFullYear()}`;}catch(e){return String(d);}
-}
-
-async function adminDownloadExcel(){
-  if(!detailData){showToast('Buka detail pendaftaran terlebih dahulu',true);return;}
-  const s=detailData;
-  const users=s.users||[];
-  if(!users.length){showToast('Data pengguna tidak tersedia untuk pendaftaran ini',true);return;}
-
-  const kodeSatker  = s.kodeSatker  ||'';
-  const namaSatker  = s.namaSatker  ||'';
-  const levelSatker = s.levelSatker ||'';
-  const namaKPA     = s.namaKpa     ||'';
-  const nipKPA      = s.nip         ||'';
-  const kota        = s.alamat      ||'Jayapura';
-  const tglStr      = fmtTglIndoAdmin(s.tanggalDaftar);
-  const refKode     = s.refKode     ||'';
-
-  showToast('⏳ Membuat Excel, mohon tunggu...');
-  try {
-    const res = await apiPost({
-      action: 'generateExcel',
-      kodeSatker, namaSatker, levelSatker,
-      namaKpa: namaKPA, nip: nipKPA,
-      kota, tglStr, refKode,
-      users: users.map(u=>({
-        nama:u.nama||'', nipnrp:u.nipnrp||'', nik:u.nik||'',
-        email:u.email||'', hp:u.hp||'', sk:u.sk||'',
-        tglsk:fmtTglExcel(u.tglsk)||'', peranList:u.peranList||[]
-      }))
-    });
-    if(!res||!res.success) throw new Error((res&&res.message)||'Server tidak merespons');
-    const fname = res.fileName || `Form-SAKTI-${kodeSatker}-${refKode}.xlsx`;
-    const bytes = Uint8Array.from(atob(res.fileBase64), c=>c.charCodeAt(0));
-    const blob  = new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const url   = URL.createObjectURL(blob);
-    const a     = document.createElement('a'); a.href=url; a.download=fname; a.click();
-    URL.revokeObjectURL(url);
-    showToast('✅ Excel berhasil diunduh: '+fname);
-  } catch(e) {
-    showToast('❌ Gagal buat Excel: '+e.message, true);
-  }
-}
-
-// ─── OTP LIST ─────────────────────────────────────────────
-async function renderOTPList(){
-  await fetchSubmissions();
-  const subs=getSubmissions().filter(s=>s.sudahTerdaftar&&s.hasOTP&&!s.otpAktif);
-  const el=document.getElementById('otpList');
-  if(!subs.length){el.innerHTML='<p style="color:var(--gray-400);font-style:italic;text-align:center;padding:20px">Semua satker sudah aktivasi OTP ✅</p>';return;}
-  el.innerHTML=subs.map(s=>`<div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--gray-100);flex-wrap:wrap">
-    <div style="flex:1;min-width:160px">
-      <div style="font-size:13px;font-weight:700">${esc(s.namaSatker)}</div>
-      <div style="font-size:11px;color:var(--gray-500)">${esc(s.refKode)} — ${fmtTgl(s.tanggalDaftar)}</div>
+// ════════════════════════════════════════════════════════
+// KELOLA SATKER
+// ════════════════════════════════════════════════════════
+function renderSatker(){
+  return `<div class="page-title">Kelola Referensi Satker</div>
+  <div class="page-sub">Tambah, ubah, atau hapus data satker</div>
+  <div class="card" style="max-width:580px">
+    <div class="card-title" id="satkerFormTitle">+ Tambah Satker Baru</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div class="form-group" style="flex:0 0 120px;margin:0">
+        <label>Kode Satker</label>
+        <input type="text" id="sk-kode" placeholder="6 digit" maxlength="6" oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)"/>
+      </div>
+      <div class="form-group" style="flex:1;min-width:200px;margin:0">
+        <label>Nama Satker</label>
+        <input type="text" id="sk-nama" placeholder="Nama lengkap satker"/>
+      </div>
+      <button class="btn btn-primary btn-sm" id="btnSimpanSatker" onclick="doAddSatker()" style="flex-shrink:0">+ Tambah</button>
+      <button class="btn btn-secondary btn-sm" onclick="clearSatkerForm()" style="flex-shrink:0">Reset</button>
     </div>
-    <span class="badge badge-otp">⏳ Belum Aktivasi</span>
-    <button class="btn btn-primary btn-sm" onclick="openDetail('${esc(s.refKode)}')">Lihat Detail</button>
-  </div>`).join('');
+  </div>
+  <div class="card">
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+      <input class="table-search" type="text" id="sk-cari" placeholder="🔍 Cari kode atau nama satker..." oninput="renderSatkerTable()" style="max-width:300px"/>
+      <button class="btn btn-outline btn-sm" onclick="loadSatker()">🔄 Refresh</button>
+      <button class="btn btn-secondary btn-sm admin-only" onclick="provisionSatkerUsers()" style="display:none">⚙️ Provision Users</button>
+    </div>
+    <div style="overflow-x:auto" id="satkerTableWrap">
+      <p style="color:var(--gray-400);font-size:13px">Memuat...</p>
+    </div>
+  </div>`;
 }
 
-
-// ─── PENGATURAN ───────────────────────────────────────────
-async function gantiPassword(){
-  const lama=document.getElementById('s-pwdLama').value;
-  const baru=document.getElementById('s-pwdBaru').value;
-  const konfirm=document.getElementById('s-pwdKonfirm').value;
-  if(!lama||!baru||!konfirm){showToast('Semua field wajib diisi',true);return;}
-  if(baru.length<6){showToast('Password baru minimal 6 karakter',true);return;}
-  if(baru!==konfirm){showToast('Konfirmasi password tidak cocok',true);return;}
-  try{
-    const res=await apiPost({action:'changePassword',passwordLama:lama,passwordBaru:baru});
-    if(!res.success){showToast(res.message||'Gagal',true);return;}
-    document.getElementById('s-pwdLama').value='';document.getElementById('s-pwdBaru').value='';document.getElementById('s-pwdKonfirm').value='';
-    showToast('✅ Password berhasil diubah');
-  }catch(err){showToast(err.message||'Terjadi kesalahan',true);}
-}
-
-// ─── MANAJEMEN USER ───────────────────────────────────────
-async function renderUserList(){
-  if(!['Admin','SuperAdmin'].includes(currentUser?.role))return;
-  const el=document.getElementById('userListAdmin');
-  if(!el)return;
-  el.innerHTML='<p style="color:var(--gray-400);text-align:center;padding:16px">⏳ Memuat...</p>';
-  try{
-    const res=await apiPost({action:'getUsers'});
-    if(!res.success){el.innerHTML=`<p style="color:var(--red)">${esc(res.message)}</p>`;return;}
-    el.innerHTML=res.users.map(u=>`
-      <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--gray-100);flex-wrap:wrap">
-        <div style="flex:1;min-width:140px">
-          <div style="font-size:13px;font-weight:700">👤 ${esc(u.namaLengkap||u.username)}</div>
-          <div style="font-size:11px;color:var(--gray-500)">@${esc(u.username)} · ${esc(u.role)} · Dibuat: ${fmtTgl(u.createdAt)}</div>
-        </div>
-        <span class="badge ${u.role==='SuperAdmin'?'badge-otp':u.role==='Admin'?'badge-done':u.role==='Satker'?'badge-draft':'badge-submitted'}">${esc(u.role)}</span>
-        ${u.username!==currentUser?.user?`<button class="btn btn-danger btn-sm" onclick="hapusUser('${esc(u.username)}')">🗑️ Hapus</button>`:'<span style="font-size:11px;color:var(--gray-400)">(akun ini)</span>'}
-      </div>`).join('');
-  }catch(err){el.innerHTML=`<p style="color:var(--red)">${esc(err.message)}</p>`;}
-}
-
-async function tambahUser(){
-  const namaLengkap=(document.getElementById('nu-nama')?.value||'').trim();
-  const username=(document.getElementById('nu-user')?.value||'').trim();
-  const password=document.getElementById('nu-pass')?.value||'';
-  const role=document.getElementById('nu-role')?.value||'Petugas';
-  if(!namaLengkap||!username||!password){showToast('Nama lengkap, username, dan password wajib diisi',true);return;}
-  try{
-    const res=await apiPost({action:'addUser',namaLengkap,username,password,role});
-    if(!res.success){showToast(res.message||'Gagal',true);return;}
-    document.getElementById('nu-nama').value='';
-    document.getElementById('nu-user').value='';document.getElementById('nu-pass').value='';
-    showToast(`✅ ${res.message}`);
-    renderUserList();
-  }catch(err){showToast(err.message||'Terjadi kesalahan',true);}
-}
-
-async function hapusUser(username){
-  if(!confirm(`Hapus user '${username}'? Tindakan ini tidak dapat dibatalkan.`))return;
-  try{
-    const res=await apiPost({action:'deleteUser',username});
-    if(!res.success){showToast(res.message||'Gagal',true);return;}
-    showToast(`✅ User '${username}' berhasil dihapus`);
-    renderUserList();
-  }catch(err){showToast(err.message||'Terjadi kesalahan',true);}
-}
-
-function clearAllData(){
-  showToast('Fitur ini dinonaktifkan — hapus data langsung dari Google Sheets',true);
-}
-
-// ─── UTILS ────────────────────────────────────────────────
-function esc(str){return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-let toastT;
-function showToast(msg,isErr=false){
-  const t=document.getElementById('toast');t.textContent=msg;t.className='on'+(isErr?' err':'');
-  clearTimeout(toastT);toastT=setTimeout(()=>{t.className='';},3500);
-}
-
-async function initApp(){
-  await renderDashboard();
-  const role=currentUser?.role||'';
-  // Tampilkan/sembunyikan fitur Admin-only
-  if(['Admin','SuperAdmin'].includes(role)){
-    document.querySelectorAll('.admin-only').forEach(el=>el.style.display='');
-  }else{
-    document.querySelectorAll('.admin-only').forEach(el=>el.style.display='none');
-  }
-  // SuperAdmin: tambah opsi Admin di dropdown tambah user
-  if(role==='SuperAdmin'){
-    const sel=document.getElementById('nu-role');
-    if(sel){
-      sel.innerHTML='<option value="Petugas">Petugas</option><option value="Admin">Admin</option>';
-    }
-  }
-  // auto refresh setiap 60 detik
-  setInterval(()=>{
-    if(document.getElementById('panel-dashboard')?.classList.contains('active'))renderDashboard();
-  },60000);
-}
-
-// ═══════════════════════════════════════════════════════════
-// KELOLA REFERENSI SATKER
-// ═══════════════════════════════════════════════════════════
-let satkerList = [];   // cache dari server
-
-async function loadSatkerAdmin(){
-  const wrap = document.getElementById('satkerTableWrap');
+async function loadSatker(){
+  const wrap=document.getElementById('satkerTableWrap');
   if(!wrap) return;
-  wrap.innerHTML = '<p style="color:var(--gray-400);font-size:13px">Memuat...</p>';
+  wrap.innerHTML='<p style="color:var(--gray-400);font-size:13px">Memuat...</p>';
   try{
-    const res = await apiPost({action:'getSatkerList'});
-    satkerList = (res.success && res.list) ? res.list : [];
-  }catch(e){ satkerList = []; }
+    const res=await apiPost({action:'getSatkerList'});
+    cachedSatkerList=(res.success&&res.list)?res.list:[];
+  }catch(e){cachedSatkerList=[];}
   renderSatkerTable();
 }
 
 function renderSatkerTable(){
-  const wrap = document.getElementById('satkerTableWrap');
+  const wrap=document.getElementById('satkerTableWrap');
   if(!wrap) return;
-  const q = (document.getElementById('sk-cari')?.value||'').toLowerCase();
-  const filtered = satkerList.filter(s=>
-    s.kode.includes(q) || s.nama.toLowerCase().includes(q)
-  );
-  if(!satkerList.length){
-    wrap.innerHTML='<p style="color:var(--gray-500);font-size:13px">Belum ada data satker di server. Tambahkan lewat form di atas.<br><small style="color:var(--gray-400)">Catatan: daftar satker bawaan sudah tersedia di formulir pendaftaran secara lokal.</small></p>';
-    return;
-  }
-  if(!filtered.length){
-    wrap.innerHTML='<p style="color:var(--gray-500);font-size:13px">Tidak ada satker yang cocok.</p>';
-    return;
-  }
-  const isAdmin = currentUser?.role === 'Admin';
-  wrap.innerHTML=`
-    <table style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead>
-        <tr style="background:var(--blue-pale);text-align:left">
-          <th style="padding:8px 12px;border:1px solid var(--gray-200);width:100px">Kode</th>
-          <th style="padding:8px 12px;border:1px solid var(--gray-200)">Nama Satker</th>
-          <th style="padding:8px 12px;border:1px solid var(--gray-200);width:180px;text-align:center">Aksi</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${filtered.map(s=>`
-          <tr onmouseover="this.style.background='#F8FBFF'" onmouseout="this.style.background=''">
-            <td style="padding:7px 12px;border:1px solid var(--gray-200);font-family:monospace;font-weight:600;color:var(--blue)">${esc(s.kode)}</td>
-            <td style="padding:7px 12px;border:1px solid var(--gray-200)">${esc(s.nama)}</td>
-            <td style="padding:7px 12px;border:1px solid var(--gray-200);text-align:center">
-              <button class="btn btn-secondary" onclick="editSatker('${esc(s.kode)}','${s.nama.replace(/'/g,"\\'")}')"
-                style="font-size:11px;padding:3px 10px;margin-right:4px">✏️ Ubah</button>
-              ${isAdmin?`<button class="btn btn-danger" onclick="hapusSatker('${esc(s.kode)}','${s.nama.replace(/'/g,"\\'")}')"
-                style="font-size:11px;padding:3px 10px">🗑️</button>`:''}
-            </td>
-          </tr>`).join('')}
-      </tbody>
-    </table>
-    <p style="font-size:12px;color:var(--gray-500);margin-top:8px">Total: ${satkerList.length} satker (menampilkan ${filtered.length})</p>
-  `;
+  const q=(document.getElementById('sk-cari')?.value||'').toLowerCase();
+  const filtered=cachedSatkerList.filter(s=>s.kode.includes(q)||s.nama.toLowerCase().includes(q));
+  if(!cachedSatkerList.length){wrap.innerHTML='<p style="color:var(--gray-500);font-size:13px">Belum ada data satker.</p>';return;}
+  if(!filtered.length){wrap.innerHTML='<p style="color:var(--gray-500);font-size:13px">Tidak ada satker yang cocok.</p>';return;}
+  const isAdmin=['Admin','SuperAdmin'].includes(currentUser?.role);
+  wrap.innerHTML=`<table class="tbl">
+    <thead><tr><th>Kode</th><th>Nama Satker</th><th style="text-align:center">Aksi</th></tr></thead>
+    <tbody>${filtered.map(s=>`<tr>
+      <td style="font-family:monospace;font-weight:700;color:var(--blue)">${esc(s.kode)}</td>
+      <td>${esc(s.nama)}</td>
+      <td style="text-align:center">
+        <button class="btn btn-secondary btn-sm" onclick="editSatker('${esc(s.kode)}','${s.nama.replace(/'/g,"\\'")}')">✏️ Ubah</button>
+        ${isAdmin?`<button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="hapusSatker('${esc(s.kode)}','${s.nama.replace(/'/g,"\\'")}')">🗑️</button>`:''}
+      </td>
+    </tr>`).join('')}</tbody>
+  </table>
+  <p style="font-size:12px;color:var(--gray-500);margin-top:8px">Total: ${cachedSatkerList.length} satker (tampil ${filtered.length})</p>`;
 }
 
-function editSatker(kode, nama){
-  document.getElementById('sk-kode').value = kode;
-  document.getElementById('sk-nama').value = nama;
-  document.getElementById('sk-kode').readOnly = true;
-  document.getElementById('sk-kode').style.background = '#F5F5F5';
-  showToast(`Mode edit: kode ${kode}. Ubah nama lalu klik "Simpan".`);
-  // Ganti tombol Tambah → Simpan
-  const btn = document.querySelector('[onclick="doAddSatker()"]');
-  if(btn){btn.textContent='💾 Simpan Perubahan';btn.setAttribute('onclick','doUpdateSatker()');}
+function editSatker(kode,nama){
+  document.getElementById('sk-kode').value=kode;
+  document.getElementById('sk-nama').value=nama;
+  document.getElementById('sk-kode').readOnly=true;
+  document.getElementById('sk-kode').style.background='#F5F5F5';
+  document.getElementById('satkerFormTitle').textContent='✏️ Edit Satker: '+kode;
+  const btn=document.getElementById('btnSimpanSatker');
+  btn.textContent='💾 Simpan Perubahan'; btn.setAttribute('onclick','doUpdateSatker()');
 }
 
 function clearSatkerForm(){
@@ -1275,228 +1030,248 @@ function clearSatkerForm(){
   document.getElementById('sk-nama').value='';
   document.getElementById('sk-kode').readOnly=false;
   document.getElementById('sk-kode').style.background='';
-  const btn = document.querySelector('[onclick="doUpdateSatker()"]');
-  if(btn){btn.textContent='+ Tambah';btn.setAttribute('onclick','doAddSatker()');}
+  document.getElementById('satkerFormTitle').textContent='+ Tambah Satker Baru';
+  const btn=document.getElementById('btnSimpanSatker');
+  btn.textContent='+ Tambah'; btn.setAttribute('onclick','doAddSatker()');
 }
 
 async function doAddSatker(){
-  const kode = (document.getElementById('sk-kode')?.value||'').trim();
-  const nama  = (document.getElementById('sk-nama')?.value||'').trim();
-  if(!kode||!nama){showToast('❌ Kode dan nama satker wajib diisi',true);return;}
-  if(!/^\d{6}$/.test(kode)){showToast('❌ Kode satker harus tepat 6 digit angka',true);return;}
+  const kode=(document.getElementById('sk-kode')?.value||'').trim();
+  const nama=(document.getElementById('sk-nama')?.value||'').trim();
+  if(!kode||!nama){showToast('Kode dan nama wajib diisi',true);return;}
+  if(!/^\d{6}$/.test(kode)){showToast('Kode satker harus tepat 6 digit',true);return;}
   try{
-    const res = await apiPost({action:'addSatker',kode,nama});
+    const res=await apiPost({action:'addSatker',kode,nama});
     if(!res.success){showToast('❌ '+res.message,true);return;}
-    // Tampilkan info user yang otomatis dibuat
-    const userMsg = res.userCreated
-      ? `\n\n👤 ${res.userInfo}`
-      : `\n\n👤 ${res.userInfo}`;
-    showToast('✅ '+res.message+(res.userCreated?' (user dibuat otomatis)':''));
-    if(res.userCreated) setTimeout(()=>showToast(`👤 User '${kode}' dibuat — password default: ${kode}`),1500);
-    clearSatkerForm();
-    await loadSatkerAdmin();
-  }catch(e){showToast('❌ Gagal terhubung ke server',true);}
+    showToast('✅ '+res.message,false,true);
+    clearSatkerForm(); loadSatker();
+  }catch(e){showToast('Gagal terhubung ke server',true);}
 }
 
 async function doUpdateSatker(){
-  const kode = (document.getElementById('sk-kode')?.value||'').trim();
-  const nama  = (document.getElementById('sk-nama')?.value||'').trim();
-  if(!kode||!nama){showToast('❌ Kode dan nama satker wajib diisi',true);return;}
-  if(!confirm(`Ubah nama satker ${kode} menjadi:\n"${nama}"?`))return;
+  const kode=(document.getElementById('sk-kode')?.value||'').trim();
+  const nama=(document.getElementById('sk-nama')?.value||'').trim();
+  if(!kode||!nama){showToast('Kode dan nama wajib diisi',true);return;}
+  if(!confirm(`Ubah nama satker ${kode} menjadi:\n"${nama}"?`)) return;
   try{
-    const res = await apiPost({action:'updateSatker',kode,nama});
+    const res=await apiPost({action:'updateSatker',kode,nama});
     if(!res.success){showToast('❌ '+res.message,true);return;}
-    showToast('✅ '+res.message);
-    clearSatkerForm();
-    await loadSatkerAdmin();
-  }catch(e){showToast('❌ Gagal terhubung ke server',true);}
+    showToast('✅ '+res.message,false,true);
+    clearSatkerForm(); loadSatker();
+  }catch(e){showToast('Gagal',true);}
 }
 
-async function hapusSatker(kode, nama){
-  if(!confirm(`Hapus satker:\n${kode} — ${nama}\n\nTindakan ini tidak dapat dibatalkan.`))return;
+async function hapusSatker(kode,nama){
+  if(!confirm(`Hapus satker:\n${kode} — ${nama}\n\nTindakan ini tidak dapat dibatalkan.`)) return;
   try{
-    const res = await apiPost({action:'deleteSatker',kode});
+    const res=await apiPost({action:'deleteSatker',kode});
     if(!res.success){showToast('❌ '+res.message,true);return;}
-    showToast('✅ '+res.message);
-    await loadSatkerAdmin();
-  }catch(e){showToast('❌ Gagal terhubung ke server',true);}
+    showToast('✅ '+res.message,false,true); loadSatker();
+  }catch(e){showToast('Gagal',true);}
 }
 
 async function provisionSatkerUsers(){
-  if(!confirm('Buat user untuk semua satker yang belum punya akun?\n\nUsername = kode satker\nPassword = kode satker (default)\n\nLanjut?')) return;
+  if(!confirm('Buat akun untuk semua satker yang belum punya akun?\n\nUsername & Password = kode satker (default)\n\nLanjut?')) return;
   try{
-    const res=await apiPost({action:'provisionSatkerUsers',token:currentUser.token});
+    const res=await apiPost({action:'provisionSatkerUsers'});
     if(!res.success){showToast('❌ '+res.message,true);return;}
-    // Tampilkan hasil detail
-    const msg=`✅ ${res.message}\n\n${(res.details||[]).slice(0,20).join('\n')}${res.details?.length>20?`\n...dan ${res.details.length-20} lainnya`:''}`;
-    alert(msg);
-    showToast(`✅ Provision selesai: ${res.created} user baru dibuat`);
-    // Refresh user list jika tab settings aktif
-    renderUserList();
-  }catch(e){showToast('❌ Gagal: '+e.message,true);}
+    alert(`✅ ${res.message}\n\n${(res.details||[]).slice(0,15).join('\n')}${(res.details||[]).length>15?'\n...dan lainnya':''}`);
+    showToast(`✅ ${res.created} akun baru dibuat`,false,true);
+  }catch(e){showToast('Gagal',true);}
 }
 
-// ═══════════════════════════════════════════════════════════
-// FORM EMAIL SAKTI — ADMIN/PETUGAS
-// ═══════════════════════════════════════════════════════════
-let admEmailRows = [];
-
-function admEmptyRow(){
-  return {kode_satker:'',nama:'',nipnrp:'',nik:'',status:''};
+// ════════════════════════════════════════════════════════
+// MANAJEMEN USER (Admin only)
+// ════════════════════════════════════════════════════════
+function renderUsers(){
+  return `<div class="page-title">Manajemen User Admin</div>
+  <div class="page-sub">Tambah atau hapus user petugas KPPN dan admin</div>
+  <div class="card" style="max-width:580px">
+    <div class="card-title">+ Tambah User Baru</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div class="form-group" style="flex:1;min-width:160px;margin:0">
+        <label>Nama Lengkap</label>
+        <input type="text" id="nu-nama" placeholder="Nama petugas"/>
+      </div>
+      <div class="form-group" style="flex:0 0 140px;margin:0">
+        <label>Username</label>
+        <input type="text" id="nu-user" placeholder="Username login"/>
+      </div>
+      <div class="form-group" style="flex:0 0 130px;margin:0">
+        <label>Password</label>
+        <input type="password" id="nu-pwd" placeholder="Password"/>
+      </div>
+      <div class="form-group" style="flex:0 0 120px;margin:0">
+        <label>Role</label>
+        <select id="nu-role"><option value="Petugas">Petugas</option></select>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="doAddUser()" style="flex-shrink:0">+ Tambah</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Daftar User</div>
+    <div id="userListAdmin"><p style="color:var(--gray-400);font-size:13px">Memuat...</p></div>
+  </div>`;
 }
 
-function admInitEmailTab(){
-  if(!admEmailRows.length) admEmailRows = [admEmptyRow()];
-  admRenderRows();
-}
-
-function admRenderRows(){
-  const tbody = document.getElementById('adm-email-tbody');
-  const satkerDefault = (document.getElementById('adm-email-satker')?.value||'').trim();
-  if(!tbody) return;
-  const statusOpts = `<option value="">—</option>
-    <option value="1">1 – TNI</option>
-    <option value="2">2 – POLRI</option>
-    <option value="3">3 – PNS</option>
-    <option value="4">4 – PPNPN</option>
-    <option value="5">5 – PPPK</option>`;
-  tbody.innerHTML = admEmailRows.map((r,i)=>`
-    <tr>
-      <td style="padding:5px 8px;border:1px solid var(--gray-200);text-align:center;color:var(--gray-400);font-size:12px">${i+1}</td>
-      <td style="padding:4px 6px;border:1px solid var(--gray-200);text-align:center">
-        <span style="font-weight:600;color:var(--blue);font-size:13px">063</span>
-      </td>
-      <td style="padding:4px 6px;border:1px solid var(--gray-200)">
-        <input class="inline-input" type="text" maxlength="6" placeholder="${satkerDefault||'Kode Satker'}"
-          value="${esc(r.kode_satker||satkerDefault)}"
-          oninput="admEmailRows[${i}].kode_satker=this.value;admUpdateCount()"/>
-      </td>
-      <td style="padding:4px 6px;border:1px solid var(--gray-200)">
-        <input class="inline-input" type="text" placeholder="Nama Lengkap Pegawai"
-          value="${esc(r.nama)}"
-          oninput="admEmailRows[${i}].nama=this.value;admUpdateCount()"/>
-      </td>
-      <td style="padding:4px 6px;border:1px solid var(--gray-200)">
-        <input class="inline-input" type="text" maxlength="20" placeholder="NIP atau NRP"
-          value="${esc(r.nipnrp)}"
-          oninput="admEmailRows[${i}].nipnrp=this.value;admUpdateCount()"/>
-      </td>
-      <td style="padding:4px 6px;border:1px solid var(--gray-200)">
-        <input class="inline-input" type="text" maxlength="16" placeholder="16 digit NIK"
-          value="${esc(r.nik)}"
-          oninput="admEmailRows[${i}].nik=this.value;admUpdateCount()"/>
-      </td>
-      <td style="padding:4px 6px;border:1px solid var(--gray-200)">
-        <select class="inline-select" onchange="admEmailRows[${i}].status=this.value;admUpdateCount()">
-          ${statusOpts.replace(`value="${r.status}"`,`value="${r.status}" selected`)}
-        </select>
-      </td>
-      <td style="padding:4px 6px;border:1px solid var(--gray-200);text-align:center">
-        <button onclick="admHapusBaris(${i})" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;padding:2px 4px" title="Hapus baris">✕</button>
-      </td>
-    </tr>`).join('');
-  admUpdateCount();
-}
-
-function admUpdateCount(){
-  const el = document.getElementById('adm-email-count');
-  if(el) el.textContent = admEmailRows.length;
-}
-
-function admTambahBaris(){
-  admEmailRows.push(admEmptyRow());
-  admRenderRows();
-}
-
-function admHapusBaris(i){
-  if(admEmailRows.length<=1){showToast('Minimal 1 baris data',true);return;}
-  admEmailRows.splice(i,1);
-  admRenderRows();
-}
-
-function admResetTable(){
-  if(!confirm('Reset semua data tabel? Tindakan ini tidak dapat dibatalkan.'))return;
-  admEmailRows=[admEmptyRow()];
-  admRenderRows();
-  showToast('Tabel direset.');
-}
-
-async function admDownloadExcel(){
-  // Validasi minimal ada 1 baris terisi
-  const filled = admEmailRows.filter(r=>r.nama||r.nipnrp||r.nik);
-  if(!filled.length){showToast('❌ Isi minimal 1 baris data terlebih dahulu',true);return;}
-
-  // Cek SheetJS tersedia
-  if(typeof XLSX==='undefined'){
-    showToast('❌ Library SheetJS belum dimuat. Periksa koneksi internet.',true);
-    return;
+async function loadUsers(){
+  const el=document.getElementById('userListAdmin');
+  if(!el) return;
+  // Isi dropdown role sesuai SuperAdmin
+  if(currentUser?.role==='SuperAdmin'){
+    const sel=document.getElementById('nu-role');
+    if(sel) sel.innerHTML='<option value="Petugas">Petugas</option><option value="Admin">Admin</option>';
   }
+  try{
+    const res=await apiPost({action:'getUsers'});
+    if(!res.success){el.innerHTML=`<p style="color:var(--red)">❌ ${esc(res.message)}</p>`;return;}
+    const list=(res.users||[]).filter(u=>['Admin','SuperAdmin','Petugas'].includes(u.role));
+    if(!list.length){el.innerHTML='<p style="color:var(--gray-400);font-size:13px">Belum ada user.</p>';return;}
+    el.innerHTML=`<table class="tbl">
+      <thead><tr><th>Nama</th><th>Username</th><th>Role</th><th>Aksi</th></tr></thead>
+      <tbody>${list.map(u=>`<tr>
+        <td>${esc(u.namaLengkap||u.nama||'—')}</td>
+        <td style="font-family:monospace">${esc(u.username)}</td>
+        <td>${bstat(u.role)}</td>
+        <td>${u.username!==currentUser.username?`<button class="btn btn-danger btn-sm" onclick="hapusUser('${esc(u.username)}')">🗑️ Hapus</button>`:'<span style="color:var(--gray-400);font-size:12px">Akun Anda</span>'}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  }catch(e){el.innerHTML='<p style="color:var(--red)">❌ Gagal memuat</p>';}
+}
 
-  const satkerDefault = (document.getElementById('adm-email-satker')?.value||'').trim();
-  const wb = XLSX.utils.book_new();
+async function doAddUser(){
+  const nama=(document.getElementById('nu-nama')?.value||'').trim();
+  const username=(document.getElementById('nu-user')?.value||'').trim();
+  const password=(document.getElementById('nu-pwd')?.value||'').trim();
+  const role=document.getElementById('nu-role')?.value||'Petugas';
+  if(!nama||!username||!password){showToast('Semua field wajib diisi',true);return;}
+  try{
+    const res=await apiPost({action:'addUser',namaLengkap:nama,username,password,role});
+    if(!res.success){showToast('❌ '+res.message,true);return;}
+    showToast('✅ User berhasil ditambahkan',false,true);
+    document.getElementById('nu-nama').value='';
+    document.getElementById('nu-user').value='';
+    document.getElementById('nu-pwd').value='';
+    loadUsers();
+  }catch(e){showToast('Gagal',true);}
+}
 
-  // Header row
-  const headers = ['Kode KPPN','Kode Satker','Nama Pegawai','NIP/NRP','NIK','Status'];
-  const wsData = [headers];
+async function hapusUser(username){
+  if(!confirm(`Hapus user '${username}'? Tindakan ini tidak dapat dibatalkan.`)) return;
+  try{
+    const res=await apiPost({action:'deleteUser',username});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    showToast(`✅ User '${username}' berhasil dihapus`,false,true);
+    loadUsers();
+  }catch(e){showToast('Gagal',true);}
+}
 
-  admEmailRows.forEach(r=>{
-    wsData.push([
-      '063',
-      r.kode_satker || satkerDefault || '',
-      r.nama || '',
-      r.nipnrp || '',
-      r.nik || '',
-      r.status || ''
-    ]);
+// ════════════════════════════════════════════════════════
+// PENGATURAN
+// ════════════════════════════════════════════════════════
+function renderSettings(){
+  return `<div class="page-title">Pengaturan</div>
+  <div class="page-sub">Konfigurasi akun Anda</div>
+  <div class="card" style="max-width:440px">
+    <div class="card-title">Ganti Password</div>
+    <div class="form-group">
+      <label>Password Lama</label>
+      <div class="pwd-wrap"><input type="password" id="s-pwdLama" placeholder="Password saat ini"/>
+        <button class="pwd-toggle" onclick="togglePwd('s-pwdLama',this)" type="button">👁️</button></div>
+    </div>
+    <div class="form-group">
+      <label>Password Baru</label>
+      <div class="pwd-wrap"><input type="password" id="s-pwdBaru" placeholder="Minimal 6 karakter"/>
+        <button class="pwd-toggle" onclick="togglePwd('s-pwdBaru',this)" type="button">👁️</button></div>
+    </div>
+    <div class="form-group">
+      <label>Konfirmasi Password Baru</label>
+      <div class="pwd-wrap"><input type="password" id="s-pwdKonfirm" placeholder="Ulangi password baru"/>
+        <button class="pwd-toggle" onclick="togglePwd('s-pwdKonfirm',this)" type="button">👁️</button></div>
+    </div>
+    <button class="btn btn-primary" onclick="gantiPassword()">💾 Simpan Password</button>
+  </div>
+  <div class="card" style="max-width:440px;margin-top:0">
+    <div class="card-title">Info Sesi</div>
+    <p style="font-size:13px;color:var(--gray-600)">Login sebagai: <strong>${esc(currentUser?.namaLengkap||currentUser?.username||'—')}</strong><br/>
+    Role: <strong>${esc(currentUser?.role||'—')}</strong><br/>
+    Sesi berlaku <strong>8 jam</strong> sejak login.</p>
+  </div>`;
+}
+
+async function gantiPassword(){
+  const lama=document.getElementById('s-pwdLama')?.value||'';
+  const baru=document.getElementById('s-pwdBaru')?.value||'';
+  const konfirm=document.getElementById('s-pwdKonfirm')?.value||'';
+  if(!lama||!baru||!konfirm){showToast('Semua kolom wajib diisi',true);return;}
+  if(baru!==konfirm){showToast('Password baru tidak cocok',true);return;}
+  if(baru.length<6){showToast('Password minimal 6 karakter',true);return;}
+  try{
+    const res=await apiPost({action:'changePassword',oldPassword:lama,newPassword:baru});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    showToast('✅ Password berhasil diubah',false,true);
+    document.getElementById('s-pwdLama').value='';
+    document.getElementById('s-pwdBaru').value='';
+    document.getElementById('s-pwdKonfirm').value='';
+  }catch(e){showToast('Gagal terhubung ke server',true);}
+}
+
+// ════════════════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════════════════
+function esc(str){return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function fmtTgl(iso){
+  if(!iso) return '—';
+  const d=new Date(iso);
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+}
+function fmtTglWaktu(iso){
+  if(!iso) return '—';
+  const d=new Date(iso);
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function bstat(s){
+  const map={
+    'Menunggu':'badge-menunggu','submitted':'badge-menunggu',
+    'Diproses':'badge-proses','diproses':'badge-proses',
+    'Terdaftar':'badge-selesai','terdaftar':'badge-selesai','Selesai':'badge-selesai',
+    'Ditolak':'badge-ditolak','ditolak':'badge-ditolak',
+    'draft':'badge-draft','Draft':'badge-draft',
+    'Petugas':'badge-proses','Admin':'badge-selesai','SuperAdmin':'badge-otp',
+  };
+  return `<span class="badge ${map[s]||'badge-draft'}">${esc(s||'—')}</span>`;
+}
+
+let toastT;
+function showToast(msg,isErr=false,isOk=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='on'+(isErr?' err':isOk?' ok':'');
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>{t.className='';},3500);
+}
+
+function openModal(id){document.getElementById(id)?.classList.add('on');}
+function closeModal(id){document.getElementById(id)?.classList.remove('on');}
+document.addEventListener('click',e=>{
+  ['modalDetail','modalTolak','modalProses','modalHapus',
+   'modalProsesEmail','modalTolakEmail','modalDetailEmail'].forEach(mid=>{
+    const m=document.getElementById(mid);
+    if(m&&e.target===m) closeModal(mid);
   });
+});
 
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-  // Set all columns to TEXT format (@)
-  const range = XLSX.utils.decode_range(ws['!ref']);
-  for(let R=1; R<=range.e.r; R++){
-    for(let C=0; C<=range.e.c; C++){
-      const addr = XLSX.utils.encode_cell({r:R,c:C});
-      if(!ws[addr]) ws[addr]={t:'s',v:''};
-      ws[addr].z='@';
-    }
-  }
-
-  // Column widths
-  ws['!cols'] = [
-    {wch:12},{wch:12},{wch:35},{wch:18},{wch:18},{wch:10}
-  ];
-
-  XLSX.utils.book_append_sheet(wb,'Data Pegawai',ws);
-
-  // Sheet keterangan status
-  const wsKet = XLSX.utils.aoa_to_sheet([
-    ['Kode Status','Keterangan'],
-    ['1','TNI'],
-    ['2','POLRI'],
-    ['3','PNS'],
-    ['4','PPNPN'],
-    ['5','PPPK']
-  ]);
-  wsKet['!cols']=[{wch:14},{wch:25}];
-  XLSX.utils.book_append_sheet(wb,'Keterangan Status',wsKet);
-
-  const now = new Date();
-  const tgl = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
-  XLSX.writeFile(wb, `Form_Email_SAKTI_KPPN063_${tgl}.xlsx`);
-  showToast(`✅ File Excel berhasil diunduh (${filled.length} data pegawai)`);
-}
-
-// ─── AUTO-LOGIN dari sessionStorage ──────────────────────
+// ════════════════════════════════════════════════════════
+// AUTO-LOGIN
+// ════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded',()=>{
   const savedUser=sessionStorage.getItem('sakti_user');
   const savedToken=sessionStorage.getItem('sakti_token');
   if(savedUser&&savedToken){
     try{
       currentUser={...JSON.parse(savedUser),token:savedToken};
-      document.getElementById('loginScreen').style.display='none';
-      document.getElementById('appScreen').style.display='block';
-      document.getElementById('headerUser').textContent=`👤 ${currentUser.user} (${currentUser.role})`;
       initApp();
     }catch(e){sessionStorage.clear();}
   }

@@ -3,200 +3,170 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Portal Satker SAKTI — KPPN Jayapura</title>
+<title>Portal Pendaftaran User SAKTI — KPPN Jayapura</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
-  --blue:       #0D47A1;
-  --blue-mid:   #1565C0;
-  --blue-light: #1976D2;
-  --blue-pale:  #E3F2FD;
-  --blue-pale2: #BBDEFB;
-  --gold:       #F9A825;
-  --gold-light: #FFF8E1;
-  --green:      #2E7D32;
-  --green-pale: #E8F5E9;
-  --red:        #C62828;
-  --red-pale:   #FFEBEE;
-  --orange:     #E65100;
-  --orange-pale:#FFF3E0;
-  --gray-50:    #FAFAFA;
-  --gray-100:   #F5F5F5;
-  --gray-200:   #EEEEEE;
-  --gray-300:   #E0E0E0;
-  --gray-400:   #BDBDBD;
-  --gray-500:   #9E9E9E;
-  --gray-600:   #757575;
-  --gray-700:   #616161;
-  --gray-800:   #424242;
-  --gray-900:   #212121;
-  --radius:     8px;
-  --shadow:     0 1px 4px rgba(0,0,0,.10),0 2px 12px rgba(0,0,0,.06);
-  --shadow-lg:  0 4px 24px rgba(0,0,0,.13);
+  --blue:#0D47A1;--blue-mid:#1565C0;--blue-light:#1976D2;--blue-pale:#E3F2FD;--blue-pale2:#BBDEFB;
+  --gold:#F9A825;--gold-light:#FFF8E1;
+  --green:#2E7D32;--green-pale:#E8F5E9;--green-mid:#388E3C;
+  --red:#C62828;--red-pale:#FFEBEE;
+  --orange:#E65100;--orange-pale:#FFF3E0;
+  --purple:#6A1B9A;--purple-pale:#F3E5F5;
+  --teal:#00695C;--teal-pale:#E0F2F1;
+  --gray-50:#FAFAFA;--gray-100:#F5F5F5;--gray-200:#EEEEEE;--gray-300:#E0E0E0;
+  --gray-400:#BDBDBD;--gray-500:#9E9E9E;--gray-600:#757575;--gray-700:#616161;
+  --gray-800:#424242;--gray-900:#212121;
+  --radius:8px;--radius-lg:12px;
+  --shadow:0 1px 4px rgba(0,0,0,.10),0 2px 12px rgba(0,0,0,.06);
+  --shadow-lg:0 4px 24px rgba(0,0,0,.13);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',sans-serif;background:var(--gray-100);color:var(--gray-900);min-height:100vh;font-size:14px;line-height:1.5}
-a{color:var(--blue-light);text-decoration:none}
-a:hover{text-decoration:underline}
+
+/* ── LOGIN ── */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0D47A1 0%,#1976D2 50%,#42A5F5 100%);padding:20px}
+.login-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:40px 36px;width:100%;max-width:400px}
+.login-logo{text-align:center;margin-bottom:20px}
+.login-logo img{width:64px;height:64px;object-fit:contain}
+.login-title{font-size:22px;font-weight:800;color:var(--blue);text-align:center;margin-bottom:4px}
+.login-sub{font-size:12px;color:var(--gray-500);text-align:center;margin-bottom:24px}
+.login-err{background:var(--red-pale);color:var(--red);border:1px solid #FFCDD2;border-radius:6px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
+.login-err.show{display:block}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--gray-700);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:10px 12px;font-size:14px;font-family:'Inter',sans-serif;transition:border-color .15s,box-shadow .15s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(25,118,210,.12)}
 
 /* ── HEADER ── */
-header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
-.header-top{display:flex;align-items:center;gap:16px;padding:14px 32px;border-bottom:3px solid var(--gold)}
-.header-logo{width:52px;height:52px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.header-logo img{width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);position:sticky;top:0;z-index:100}
+.header-top{display:flex;align-items:center;gap:16px;padding:12px 28px;border-bottom:3px solid var(--gold)}
+.header-logo img{width:44px;height:44px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
 .header-titles{flex:1}
-.header-inst{font-size:11px;font-weight:500;opacity:.75;text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px}
-.header-main{font-size:18px;font-weight:800;line-height:1.25}
-.header-sub{font-size:11px;opacity:.7;margin-top:2px}
-.header-user{margin-left:auto;display:flex;align-items:center;gap:10px;flex-shrink:0}
-.user-chip{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:7px}
-.btn-logout{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);border-radius:var(--radius);padding:7px 14px;font-size:12px;font-weight:500;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s}
-.btn-logout:hover{background:rgba(255,255,255,.22)}
+.header-main{font-size:16px;font-weight:800;line-height:1.2}
+.header-sub{font-size:11px;opacity:.7;margin-top:1px}
+.header-user{margin-left:auto;display:flex;align-items:center;gap:8px}
+.user-chip{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;white-space:nowrap}
+.btn-logout{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;transition:.15s}
+.btn-logout:hover{background:rgba(255,255,255,.25)}
 
 /* ── LAYOUT ── */
-.app-wrap{display:flex;min-height:calc(100vh - 90px)}
-.sidebar{width:220px;background:#fff;border-right:1px solid var(--gray-200);flex-shrink:0;padding:20px 0}
-.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;font-weight:500;color:var(--gray-700);cursor:pointer;border-left:3px solid transparent;transition:all .15s}
+.app-body{display:flex;min-height:calc(100vh - 71px)}
+.sidebar{width:230px;background:#fff;border-right:1px solid var(--gray-200);padding:16px 0;flex-shrink:0;overflow-y:auto}
+.nav-sep{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gray-400);padding:14px 20px 5px;margin-top:6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;font-weight:500;color:var(--gray-700);cursor:pointer;border-left:3px solid transparent;transition:.12s}
 .nav-item:hover{background:var(--blue-pale);color:var(--blue)}
-.nav-item.active{background:var(--blue-pale);color:var(--blue);border-left-color:var(--blue);font-weight:700}
-.nav-icon{font-size:16px;width:22px;text-align:center}
-.nav-sep{font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.8px;padding:14px 20px 6px}
-main{flex:1;padding:28px 32px;max-width:900px}
+.nav-item.active{background:var(--blue-pale);color:var(--blue);font-weight:700;border-left-color:var(--blue)}
+.nav-sub{padding-left:36px;font-size:12px}
+.nav-sub.active{background:var(--blue-pale);color:var(--blue);font-weight:700;border-left-color:var(--blue)}
+.main-content{flex:1;padding:28px 32px 60px;overflow-x:auto;min-width:0}
 
-/* ── CARD ── */
-.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 28px;margin-bottom:20px;border:1px solid var(--gray-200)}
-.card-title{font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.6px;padding-bottom:12px;margin-bottom:18px;border-bottom:2px solid var(--blue-pale);display:flex;align-items:center;gap:8px}
+/* ── CARDS ── */
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:22px 26px;margin-bottom:20px;border:1px solid var(--gray-200)}
+.card-title{font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.6px;padding-bottom:10px;margin-bottom:16px;border-bottom:2px solid var(--blue-pale)}
+.page-title{font-size:20px;font-weight:800;color:var(--gray-900);margin-bottom:4px}
+.page-sub{font-size:13px;color:var(--gray-500);margin-bottom:24px}
 
-/* ── STATUS BADGE ── */
-.status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700}
-.s-menunggu{background:#FFF8E1;color:#F57F17;border:1px solid #FFE082}
-.s-diproses{background:var(--blue-pale);color:var(--blue);border:1px solid var(--blue-pale2)}
-.s-ditolak{background:var(--red-pale);color:var(--red);border:1px solid #EF9A9A}
-.s-terdaftar{background:var(--green-pale);color:var(--green);border:1px solid #A5D6A7}
+/* ── STATS ── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);border-top:3px solid transparent;transition:.15s}
+.stat-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+.stat-num{font-size:32px;font-weight:800;line-height:1}
+.stat-label{font-size:11px;color:var(--gray-500);font-weight:600;margin-top:5px;text-transform:uppercase;letter-spacing:.4px}
+.stat-icon{font-size:24px;margin-bottom:8px}
+.stat-card.blue{border-top-color:var(--blue)}.stat-card.blue .stat-num{color:var(--blue)}
+.stat-card.green{border-top-color:var(--green)}.stat-card.green .stat-num{color:var(--green)}
+.stat-card.orange{border-top-color:var(--orange)}.stat-card.orange .stat-num{color:var(--orange)}
+.stat-card.red{border-top-color:var(--red)}.stat-card.red .stat-num{color:var(--red)}
+.stat-card.purple{border-top-color:var(--purple)}.stat-card.purple .stat-num{color:var(--purple)}
+.stat-card.teal{border-top-color:var(--teal)}.stat-card.teal .stat-num{color:var(--teal)}
 
-/* ── INFO BOX ── */
-.info-box{background:var(--blue-pale);border:1px solid var(--blue-pale2);border-radius:var(--radius);padding:12px 16px;font-size:12.5px;color:var(--blue);margin-bottom:16px;line-height:1.7}
-.warn-box{background:var(--gold-light);border:1px solid #FFE082;border-radius:var(--radius);padding:12px 16px;font-size:12.5px;color:#5D4037;line-height:1.7}
-.success-box{background:var(--green-pale);border:1px solid #A5D6A7;border-radius:var(--radius);padding:12px 16px;font-size:12.5px;color:var(--green);line-height:1.65}
-.error-box{background:var(--red-pale);border:1px solid #EF9A9A;border-radius:var(--radius);padding:12px 16px;font-size:12px;color:#7f1d1d;line-height:1.65}
-
-/* ── SUMMARY ROW ── */
-.srow{display:flex;gap:12px;padding:7px 0;border-bottom:1px solid var(--gray-100)}
-.srow:last-child{border-bottom:none}
-.slbl{font-size:12px;font-weight:600;color:var(--gray-500);min-width:150px;flex-shrink:0}
-.sval{font-size:13px;color:var(--gray-900)}
-
-/* ── BUTTON ── */
-.btn{cursor:pointer;border:none;border-radius:var(--radius);padding:9px 18px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:7px;transition:background .15s,transform .1s;font-family:'Inter',sans-serif;white-space:nowrap}
-.btn:active{transform:scale(.97)}
-.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.btn-primary{background:var(--blue-light);color:#fff}
-.btn-primary:hover:not(:disabled){background:var(--blue-mid)}
-.btn-success{background:var(--green);color:#fff}
-.btn-success:hover:not(:disabled){background:#1B5E20}
-.btn-danger{background:var(--red);color:#fff}
-.btn-danger:hover:not(:disabled){background:#B71C1C}
-.btn-outline{background:#fff;color:var(--blue-light);border:1.5px solid var(--blue-light)}
-.btn-outline:hover:not(:disabled){background:var(--blue-pale)}
-.btn-secondary{background:var(--gray-200);color:var(--gray-700)}
-.btn-secondary:hover:not(:disabled){background:var(--gray-300)}
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:var(--radius);padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid transparent;font-family:'Inter',sans-serif;transition:.15s;text-decoration:none}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}.btn-primary:hover{background:var(--blue-mid)}
+.btn-success{background:var(--green);color:#fff;border-color:var(--green)}.btn-success:hover{background:var(--green-mid)}
+.btn-danger{background:var(--red);color:#fff;border-color:var(--red)}.btn-danger:hover{opacity:.85}
+.btn-outline{background:#fff;color:var(--blue);border-color:var(--blue-pale2)}.btn-outline:hover{background:var(--blue-pale)}
+.btn-secondary{background:var(--gray-100);color:var(--gray-700);border-color:var(--gray-300)}.btn-secondary:hover{background:var(--gray-200)}
 .btn-sm{padding:5px 12px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
 
-/* ── FORM ── */
-.form-group{display:flex;flex-direction:column;margin-bottom:14px}
-.form-group label{font-size:11px;font-weight:600;color:var(--gray-700);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
-.form-group input,.form-group select,.form-group textarea{border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 12px;font-size:13px;color:var(--gray-900);background:#fff;font-family:'Inter',sans-serif;transition:border-color .15s}
-.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(25,118,210,.12)}
-.form-row{display:flex;gap:14px;flex-wrap:wrap}
-.form-row .form-group{flex:1;min-width:180px}
-.hint{font-size:11px;color:var(--gray-500);margin-top:4px}
-.inline-input{width:100%;border:1px solid var(--gray-300);border-radius:4px;padding:5px 8px;font-size:13px;font-family:inherit;background:#fff;color:var(--gray-900)}
-.inline-input:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 2px rgba(25,118,210,.15)}
+/* ── BADGE ── */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.badge-menunggu{background:#FFF3E0;color:#E65100;border:1px solid #FFCC80}
+.badge-proses{background:#E3F2FD;color:#1565C0;border:1px solid #90CAF9}
+.badge-selesai{background:var(--green-pale);color:var(--green);border:1px solid #A5D6A7}
+.badge-ditolak{background:var(--red-pale);color:var(--red);border:1px solid #EF9A9A}
+.badge-draft{background:var(--gray-100);color:var(--gray-600);border:1px solid var(--gray-300)}
 
-/* ── UPLOAD ITEM ── */
-.upload-item{border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;background:var(--gray-50)}
-.upload-item-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
-.upload-item-name{font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:2px}
-.upload-item-desc{font-size:11.5px;color:var(--gray-500)}
-.badge-required{background:var(--red-pale);color:var(--red);border:1px solid #EF9A9A;border-radius:12px;font-size:10px;font-weight:700;padding:2px 8px;white-space:nowrap}
-.badge-optional{background:var(--gray-100);color:var(--gray-500);border:1px solid var(--gray-300);border-radius:12px;font-size:10px;font-weight:700;padding:2px 8px;white-space:nowrap}
-.badge-done-file{background:var(--green-pale);color:var(--green);border:1px solid #A5D6A7;border-radius:12px;font-size:10px;font-weight:700;padding:2px 8px;white-space:nowrap}
-.dropzone{border:2px dashed var(--gray-300);border-radius:var(--radius);padding:16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:#fff}
-.dropzone:hover,.dropzone.dragover{border-color:var(--blue-light);background:var(--blue-pale)}
-.dropzone input[type=file]{display:none}
-.dropzone-label{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:12px;color:var(--gray-500);cursor:pointer}
-.dz-icon{font-size:22px}
-.file-chip{display:flex;align-items:center;gap:8px;background:var(--blue-pale);border:1px solid var(--blue-pale2);border-radius:var(--radius);padding:7px 12px;font-size:12px;margin-top:8px}
-.fname{font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.fsize{color:var(--gray-500);white-space:nowrap}
-.fremove{cursor:pointer;color:var(--red);font-weight:700;font-size:16px;line-height:1;padding:0 2px}
-.file-done-chip{display:flex;align-items:center;gap:8px;background:var(--green-pale);border:1px solid #A5D6A7;border-radius:var(--radius);padding:7px 12px;font-size:12px;margin-top:8px}
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl thead th{text-align:left;padding:10px 12px;background:var(--gray-50);border-bottom:2px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.tbl tbody tr{border-bottom:1px solid var(--gray-100);transition:.1s}
+.tbl tbody tr:hover{background:var(--gray-50)}
+.tbl tbody td{padding:10px 12px;vertical-align:middle}
+.tbl-empty td{text-align:center;color:var(--gray-400);padding:32px;font-style:italic}
 
-/* ── USER TABLE ── */
-.user-table{width:100%;border-collapse:collapse;font-size:13px}
-.user-table th{background:var(--gray-50);font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;text-align:left;border-bottom:2px solid var(--gray-200)}
-.user-table td{padding:10px 10px;border-bottom:1px solid var(--gray-100);vertical-align:top}
-.user-table tr:last-child td{border-bottom:none}
-.user-table tr:hover td{background:var(--gray-50)}
-.peran-chips{display:flex;flex-wrap:wrap;gap:4px}
-.peran-chip{background:var(--blue-pale);color:var(--blue);border-radius:10px;font-size:10px;font-weight:600;padding:2px 8px}
-
-/* ── FILE RIWAYAT ── */
-.file-list-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:1px solid var(--gray-100);font-size:12.5px}
-.file-list-item:last-child{border-bottom:none}
-.file-list-item a{color:var(--blue-light);font-weight:600}
-
-/* ── LOGIN SCREEN ── */
-#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0D47A1 0%,#1976D2 60%,#42A5F5 100%)}
-.login-box{background:#fff;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.25);padding:40px 36px;width:100%;max-width:400px}
-.login-logo{text-align:center;margin-bottom:20px}
-.login-logo-img{width:64px;height:64px;object-fit:contain}
-.login-title{font-size:20px;font-weight:800;color:var(--blue);text-align:center;margin-bottom:4px}
-.login-sub{font-size:12px;color:var(--gray-500);text-align:center;margin-bottom:24px}
-.login-err{background:var(--red-pale);color:var(--red);border-radius:var(--radius);padding:9px 14px;font-size:12px;margin-bottom:14px;display:none}
+/* ── INLINE INPUT (tabel email) ── */
+.inline-input{width:100%;border:1px solid var(--gray-300);border-radius:4px;padding:5px 8px;font-size:13px;font-family:'Inter',sans-serif;background:#fff;transition:.15s}
+.inline-input:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 2px rgba(25,118,210,.12)}
+.inline-select{width:100%;border:1px solid var(--gray-300);border-radius:4px;padding:5px 8px;font-size:13px;font-family:'Inter',sans-serif;background:#fff;cursor:pointer}
 
 /* ── MODAL ── */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
-.modal-overlay.on{opacity:1;pointer-events:auto}
-.modal-box{background:#fff;border-radius:10px;box-shadow:var(--shadow-lg);padding:28px 28px 24px;width:100%;max-width:540px;max-height:85vh;overflow-y:auto}
-.modal-box.wide{max-width:720px}
-.modal-title{font-size:15px;font-weight:800;color:var(--blue);margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--blue-pale)}
-.modal-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--gray-200)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.on{display:flex}
+.modal-box{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:28px 30px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;animation:fadeUp .2s ease}
+.modal-box.wide{max-width:740px}
+.modal-box.narrow{max-width:400px}
+.modal-title{font-size:16px;font-weight:800;color:var(--blue);margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid var(--blue-pale)}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--gray-200)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── INFO BOX ── */
+.info-box{border-radius:var(--radius);padding:14px 16px;font-size:13px;margin-bottom:16px;border:1px solid}
+.info-box.blue{background:var(--blue-pale);color:#1a3f6f;border-color:var(--blue-pale2)}
+.info-box.orange{background:var(--orange-pale);color:var(--orange);border-color:#FFCC80}
+.info-box.green{background:var(--green-pale);color:var(--green);border-color:#C8E6C9}
+.info-box.red{background:var(--red-pale);color:var(--red);border-color:#FFCDD2}
+
+/* ── DEV BADGE ── */
+.dev-badge{display:inline-block;background:var(--orange-pale);color:var(--orange);border:1px solid #FFCC80;border-radius:20px;font-size:11px;font-weight:700;padding:2px 10px;margin-left:6px}
 
 /* ── TOAST ── */
-#toast{position:fixed;bottom:24px;right:24px;background:var(--gray-900);color:#fff;border-radius:var(--radius);padding:12px 20px;font-size:13px;font-weight:500;z-index:9999;opacity:0;transform:translateY(12px);transition:all .25s;pointer-events:none;max-width:380px}
-#toast.on{opacity:1;transform:translateY(0)}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--gray-900);color:#fff;padding:10px 22px;border-radius:24px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:.3s;z-index:9999;white-space:nowrap;max-width:90vw}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 #toast.err{background:var(--red)}
 #toast.ok{background:var(--green)}
 
-/* ── BELUM DAFTAR ── */
-.empty-state{text-align:center;padding:48px 24px;color:var(--gray-500)}
-.empty-icon{font-size:48px;margin-bottom:12px}
-.empty-title{font-size:16px;font-weight:700;color:var(--gray-700);margin-bottom:8px}
-.empty-desc{font-size:13px;line-height:1.6;margin-bottom:20px}
+/* ── DISCLAIMER POPUP ── */
+.disclaimer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px}
+.disclaimer-box{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:32px 36px;max-width:560px;width:100%;animation:fadeUp .25s ease}
+.disclaimer-title{font-size:18px;font-weight:800;color:var(--blue);margin-bottom:16px;text-align:center}
+.disclaimer-body{font-size:13px;color:var(--gray-700);line-height:1.7;margin-bottom:20px}
+.disclaimer-body strong{color:var(--gray-900)}
 
-/* ── RESPONSIVE ── */
-@media(max-width:640px){
-  .sidebar{display:none}
-  main{padding:16px}
-  .header-top{padding:12px 16px}
-  .modal-box{margin:12px;max-height:90vh}
+@media(max-width:768px){
+  .app-body{flex-direction:column}
+  .sidebar{width:100%;border-right:none;border-bottom:1px solid var(--gray-200)}
+  .main-content{padding:16px}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
 }
 </style>
 </head>
 <body>
 
-<!-- ══════════════ LOGIN SCREEN ══════════════ -->
-<div id="loginScreen">
-  <div class="login-box">
+<!-- ══ LOGIN ══ -->
+<div id="loginWrap" class="login-wrap">
+  <div class="login-card">
     <div class="login-logo">
       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Lambang_Garuda_Pancasila.svg/200px-Lambang_Garuda_Pancasila.svg.png"
-           class="login-logo-img" alt="Logo" onerror="this.style.display='none'"/>
+           alt="Logo" onerror="this.style.display='none'"/>
     </div>
-    <div class="login-title">Portal Satker SAKTI</div>
-    <div class="login-sub">KPPN Jayapura — Login dengan kode satker</div>
+    <div class="login-title">Portal Pendaftaran User SAKTI</div>
+    <div class="login-sub">KPPN Jayapura — Login dengan kode satker Anda</div>
     <div id="loginErr" class="login-err"></div>
     <div class="form-group">
       <label>Kode Satker</label>
@@ -207,91 +177,143 @@ main{flex:1;padding:28px 32px;max-width:900px}
     </div>
     <div class="form-group">
       <label>Password</label>
-      <input type="password" id="loginPass" placeholder="Password default = kode satker"
-        onkeydown="if(event.key==='Enter')doLogin()"/>
+      <div style="position:relative">
+        <input type="password" id="loginPass" placeholder="Password default = kode satker"
+          onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:44px"/>
+        <button onclick="togglePwd('loginPass',this)" type="button"
+          style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px">👁️</button>
+      </div>
     </div>
-    <button class="btn btn-primary" onclick="doLogin()" id="btnLogin" style="width:100%;justify-content:center;padding:11px">
+    <button class="btn btn-primary" onclick="doLogin()" id="btnLogin" style="width:100%;justify-content:center;padding:12px;font-size:15px">
       🔐 Masuk
     </button>
     <p style="text-align:center;font-size:11px;color:var(--gray-400);margin-top:16px">
-      Password default = kode satker.<br/>Hubungi KPPN Jayapura jika lupa password.
+      Password default = kode satker Anda.<br/>Hubungi KPPN Jayapura jika lupa password.
     </p>
   </div>
 </div>
 
-<!-- ══════════════ APP (after login) ══════════════ -->
+<!-- ══ DISCLAIMER POPUP ══ -->
+<div id="disclaimerWrap" class="disclaimer-overlay" style="display:none">
+  <div class="disclaimer-box">
+    <div class="disclaimer-title">⚠️ Perhatian Penting</div>
+    <div class="disclaimer-body">
+      <p style="margin-bottom:12px">Portal ini merupakan <strong>sarana pengajuan pendaftaran</strong> kepada KPPN Jayapura, bukan sistem resmi SAKTI.</p>
+      <p style="margin-bottom:12px">Dengan menggunakan portal ini, <strong>Kuasa Pengguna Anggaran (KPA)</strong> menyatakan:</p>
+      <ol style="padding-left:20px;margin-bottom:12px">
+        <li style="margin-bottom:6px">Bertanggung jawab penuh atas <strong>kebenaran seluruh data</strong> yang direkam dan diajukan.</li>
+        <li style="margin-bottom:6px">KPPN Jayapura <strong>tidak dapat melakukan perubahan</strong> atas data yang telah direkam oleh satker.</li>
+        <li style="margin-bottom:6px">Data yang tidak akurat menjadi <strong>tanggung jawab KPA</strong> sepenuhnya.</li>
+        <li style="margin-bottom:6px">Portal ini hanya sebagai <strong>media pengajuan</strong> dan belum merupakan bukti pendaftaran resmi.</li>
+      </ol>
+      <p style="font-size:12px;color:var(--gray-500)">Dengan mengklik "Saya Mengerti", Anda menyetujui ketentuan di atas.</p>
+    </div>
+    <div style="display:flex;justify-content:center">
+      <button class="btn btn-primary" onclick="closeDisclaimer()" style="padding:10px 32px;font-size:14px">
+        ✅ Saya Mengerti &amp; Setuju
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
 <div id="appWrap" style="display:none">
 
-  <!-- HEADER -->
   <header>
     <div class="header-top">
       <div class="header-logo">
         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Lambang_Garuda_Pancasila.svg/200px-Lambang_Garuda_Pancasila.svg.png"
-             alt="Logo" onerror="this.style.display='none'" style="width:44px;height:44px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))"/>
+             alt="Logo" onerror="this.style.display='none'"/>
       </div>
       <div class="header-titles">
-        <div class="header-inst">Kementerian Keuangan — DJPBN</div>
-        <div class="header-main">Portal Satker SAKTI</div>
+        <div class="header-main">Portal Pendaftaran User SAKTI</div>
         <div class="header-sub">KPPN Jayapura — Sistem Akuntansi dan Keuangan TI</div>
       </div>
       <div class="header-user">
-        <div class="user-chip">
-          🏢 <span id="headerSatkerNama">—</span>
-        </div>
+        <div class="user-chip">🏢 <span id="headerSatkerNama">—</span></div>
         <button class="btn-logout" onclick="doLogout()">⬡ Keluar</button>
       </div>
     </div>
   </header>
 
-  <!-- BODY -->
-  <div class="app-wrap">
+  <div class="app-body">
+    <nav class="sidebar" id="sidebar">
+      <div class="nav-sep">Menu Utama</div>
+      <div class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')">
+        📊 Dashboard
+      </div>
 
-    <!-- SIDEBAR -->
-    <div class="sidebar">
-      <div class="nav-sep">Menu</div>
-      <div class="nav-item active" onclick="switchTab('dashboard')" id="nav-dashboard">
-        <span class="nav-icon">📊</span> Dashboard
+      <div class="nav-sep">Pendaftaran Email SAKTI</div>
+      <div class="nav-item nav-sub" id="nav-email-baru" onclick="switchTab('email-baru')">
+        ✉️ Pendaftaran Baru
       </div>
-      <div class="nav-item" onclick="switchTab('upload')" id="nav-upload">
-        <span class="nav-icon">📂</span> Upload Dokumen
+      <div class="nav-item nav-sub" id="nav-email-riwayat" onclick="switchTab('email-riwayat')">
+        🗂️ Riwayat Email SAKTI
       </div>
-      <div class="nav-item" onclick="switchTab('riwayat')" id="nav-riwayat">
-        <span class="nav-icon">🗂️</span> Riwayat Dokumen
-      </div>
-      <div class="nav-item" onclick="switchTab('excel')" id="nav-excel">
-        <span class="nav-icon">📥</span> Download Excel
-      </div>
-      <div class="nav-item" onclick="switchTab('edit')" id="nav-edit">
-        <span class="nav-icon">✏️</span> Edit Data
-      </div>
-      <div class="nav-item" onclick="switchTab('email')" id="nav-email">
-        <span class="nav-icon">📧</span> Form Email SAKTI
-      </div>
-    </div>
 
-    <!-- MAIN CONTENT -->
-    <main id="mainContent">
-      <!-- diisi oleh JS -->
+      <div class="nav-sep">Pendaftaran User SAKTI</div>
+      <div class="nav-item nav-sub" id="nav-user-baru" onclick="switchTab('user-baru')" style="font-weight:700">
+        🆕 <strong>USER SAKTI BARU</strong>
+      </div>
+      <div class="nav-item nav-sub" id="nav-user-ganti" onclick="switchTab('user-ganti')">
+        🔄 Pergantian User
+      </div>
+      <div class="nav-item nav-sub" id="nav-user-riwayat" onclick="switchTab('user-riwayat')">
+        📋 Riwayat Pendaftaran
+      </div>
+
+      <div class="nav-sep">Lainnya</div>
+      <div class="nav-item nav-sub" id="nav-role" onclick="switchTab('role')">
+        🎭 Perubahan Role <span class="dev-badge">Dev</span>
+      </div>
+      <div class="nav-item nav-sub" id="nav-data-user" onclick="switchTab('data-user')">
+        👤 Perubahan Data <span class="dev-badge">Dev</span>
+      </div>
+    </nav>
+
+    <main class="main-content" id="mainContent">
+      <!-- diisi JS -->
     </main>
+  </div>
+</div>
 
-  </div><!-- /app-wrap -->
-</div><!-- /appWrap -->
-
-<!-- ══════════════ MODAL EDIT PENGGUNA ══════════════ -->
-<div class="modal-overlay" id="modalEditUser">
-  <div class="modal-box wide">
-    <div class="modal-title">✏️ Edit Data Pengguna</div>
-    <div id="editUserBody"></div>
+<!-- ══ MODAL KONFIRMASI SUBMIT EMAIL SAKTI ══ -->
+<div class="modal-overlay" id="modalKonfirmasiEmail">
+  <div class="modal-box">
+    <div class="modal-title">⚠️ Konfirmasi Pengajuan</div>
+    <div class="info-box orange" style="margin-bottom:14px">
+      <strong>Perhatian!</strong> Pastikan seluruh data yang Anda masukkan sudah benar.
+    </div>
+    <p style="font-size:13px;color:var(--gray-700);line-height:1.7;margin-bottom:14px">
+      Dengan mengklik <strong>"Ya, Submit"</strong>, saya menyatakan bahwa:
+    </p>
+    <ul style="font-size:13px;color:var(--gray-700);line-height:1.8;padding-left:20px;margin-bottom:14px">
+      <li>Data pegawai yang diajukan adalah <strong>benar dan akurat</strong>.</li>
+      <li>Saya sebagai <strong>KPA bertanggung jawab penuh</strong> atas kebenaran data ini.</li>
+      <li>KPPN Jayapura tidak bertanggung jawab atas kesalahan data yang diinput satker.</li>
+    </ul>
+    <div id="konfirmasiEmailInfo" style="font-size:13px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;padding:10px 14px;margin-bottom:4px"></div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modalEditUser')">Batal</button>
-      <button class="btn btn-primary" onclick="saveEditUsers()">💾 Simpan Perubahan</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalKonfirmasiEmail')">Batal</button>
+      <button class="btn btn-primary" onclick="doSubmitEmailSakti()" id="btnDoSubmitEmail">✅ Ya, Submit</button>
     </div>
   </div>
 </div>
 
-<!-- ══════════════ MODAL GANTI PASSWORD ══════════════ -->
+<!-- ══ MODAL DETAIL RIWAYAT EMAIL SAKTI ══ -->
+<div class="modal-overlay" id="modalDetailEmail">
+  <div class="modal-box wide">
+    <div class="modal-title">📧 Detail Pendaftaran Email SAKTI</div>
+    <div id="detailEmailBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalDetailEmail')">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL GANTI PASSWORD ══ -->
 <div class="modal-overlay" id="modalPassword">
-  <div class="modal-box">
+  <div class="modal-box narrow">
     <div class="modal-title">🔑 Ganti Password</div>
     <div class="form-group">
       <label>Password Lama</label>
@@ -312,912 +334,637 @@ main{flex:1;padding:28px 32px;max-width:900px}
   </div>
 </div>
 
-<!-- TOAST -->
+<!-- ══ TOAST ══ -->
 <div id="toast"></div>
 
 <script>
-// ── CONFIG ────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════
+// CONFIG & STATE
+// ════════════════════════════════════════════════════════
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-LEjXzM-3XaNNn_bR343B4b-Z4H33eU0CVHz18oQPO-dT8xCtJmPsGXs_q7oBMCjsoA/exec';
-const MAX_FILE = 2 * 1024 * 1024; // 2 MB
+const MAX_FILE = 2 * 1024 * 1024;
 
-// ── STATE ─────────────────────────────────────────────────
-let currentUser   = null;  // { token, username, kodeSatker, namaSatker }
-let dashboardData = null;  // response getSatkerDashboard
-let pendaftaran   = null;  // objek pendaftaran aktif (satu satker = satu pendaftaran)
-let activeTab     = 'dashboard';
-const uploadedFiles   = {};
-const uploadedStatus  = {};
-const uploadedFileUrls= {};
+let currentUser = null;
+let activeTab   = 'dashboard';
+let emailRows   = [];           // rows di form email baru
+let emailRiwayat = [];          // cache riwayat email dari server
+let userSaktiData = null;       // cache data pendaftaran user sakti milik satker ini
 
-// ── API ───────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════
+// API HELPER
+// ════════════════════════════════════════════════════════
 async function apiPost(payload) {
-  const r = await fetch(APPS_SCRIPT_URL, { method:'POST', body:JSON.stringify(payload) });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+  if (currentUser?.token && !payload.token) payload.token = currentUser.token;
+  const res = await fetch(APPS_SCRIPT_URL, { method:'POST', body: JSON.stringify(payload) });
+  return res.json();
 }
 
-// ── PERAN LABELS ─────────────────────────────────────────
-const PERAN_LABELS = {
-  SATKER_KPA:                          'KPA',
-  SATKER_PPK:                          'PPK',
-  SATKER_PPK_DFDD:                     'PPK DFDD',
-  SATKER_PPSPM:                        'PPSPM',
-  SATKER_BENDAHARA_PENGELUARAN:        'Bendahara Pengeluaran',
-  SATKER_BENDAHARA_PENERIMAAN:         'Bendahara Penerimaan',
-  SATKER_BENDAHARA_PENGELUARAN_PEMBANTU:'Bendahara Pengeluaran Pembantu',
-  SATKER_OPERATOR:                     'Operator',
-};
-function getLabel(k){ return PERAN_LABELS[k] || k; }
-
-const BNT_MAP = {
-  'SATKER_BENDAHARA_PENGELUARAN':          'BNT Pengeluaran',
-  'SATKER_BENDAHARA_PENERIMAAN':           'BNT Penerimaan',
-  'SATKER_BENDAHARA_PENGELUARAN_PEMBANTU': 'BNT Pengeluaran Pembantu',
-  'SATKER_PPSPM':                          'SNT PPSPM',
-};
-
-// ── LOGIN ────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════════════
 async function doLogin() {
-  const username = document.getElementById('loginUser').value.trim();
-  const password = document.getElementById('loginPass').value;
+  const username = (document.getElementById('loginUser').value || '').trim();
+  const password = (document.getElementById('loginPass').value || '').trim();
   const errEl    = document.getElementById('loginErr');
   const btn      = document.getElementById('btnLogin');
-  errEl.style.display = 'none';
-  if (!username || !password) { errEl.textContent='Kode satker dan password wajib diisi'; errEl.style.display='block'; return; }
+  errEl.classList.remove('show');
+  if (!username || !password) { showLoginErr('Kode satker dan password wajib diisi'); return; }
   btn.disabled = true; btn.textContent = '⏳ Memverifikasi...';
   try {
-    const res = await apiPost({ action:'login', username, password });
-    if (!res.success) { errEl.textContent = res.message || 'Login gagal'; errEl.style.display='block'; return; }
-    if (res.role !== 'Satker') { errEl.textContent = 'Akun ini bukan akun satker. Gunakan halaman admin.'; errEl.style.display='block'; return; }
-    currentUser = { token: res.token, username: res.username, kodeSatker: res.kodeSatker || res.username, namaSatker: res.namaLengkap || res.username };
-    sessionStorage.setItem('sakti_satker', JSON.stringify(currentUser));
+    const res = await fetch(APPS_SCRIPT_URL, { method:'POST', body: JSON.stringify({ action:'login', username, password }) });
+    const data = await res.json();
+    if (!data.success) { showLoginErr(data.message || 'Username atau password salah'); btn.disabled=false; btn.innerHTML='🔐 Masuk'; return; }
+    if (data.role !== 'Satker') { showLoginErr('Akses hanya untuk akun Satker'); btn.disabled=false; btn.innerHTML='🔐 Masuk'; return; }
+    currentUser = data;
+    sessionStorage.setItem('sakti_satker', JSON.stringify(data));
     showApp();
   } catch(e) {
-    errEl.textContent = 'Gagal terhubung ke server: ' + e.message; errEl.style.display='block';
-  } finally {
-    btn.disabled = false; btn.textContent = '🔐 Masuk';
+    showLoginErr('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+    btn.disabled=false; btn.innerHTML='🔐 Masuk';
   }
 }
 
-async function doLogout() {
-  try { if (currentUser?.token) await apiPost({ action:'logout', token:currentUser.token }); } catch(e) {}
-  sessionStorage.removeItem('sakti_satker');
-  currentUser = null; dashboardData = null; pendaftaran = null;
-  document.getElementById('appWrap').style.display = 'none';
-  document.getElementById('loginScreen').style.display = 'flex';
+function showLoginErr(msg) {
+  const el = document.getElementById('loginErr');
+  el.textContent = msg; el.classList.add('show');
 }
 
 function showApp() {
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('appWrap').style.display = 'block';
-  document.getElementById('headerSatkerNama').textContent = currentUser.namaSatker + ' (' + currentUser.kodeSatker + ')';
-  loadDashboard();
-}
-
-// ── LOAD DASHBOARD ────────────────────────────────────────
-async function loadDashboard() {
-  try {
-    const res = await apiPost({ action:'getSatkerDashboard', token:currentUser.token });
-    if (!res.success) { showToast(res.message || 'Gagal memuat data', true); return; }
-    dashboardData = res;
-    // Ambil pendaftaran terbaru (jika ada lebih dari 1, ambil yang paling baru)
-    pendaftaran = res.pendaftaran && res.pendaftaran.length > 0
-      ? res.pendaftaran[res.pendaftaran.length - 1]
-      : null;
-    renderTab(activeTab);
-  } catch(e) {
-    showToast('Gagal terhubung ke server', true);
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('appWrap').style.display   = 'block';
+  document.getElementById('headerSatkerNama').textContent =
+    (currentUser.namaSatker || currentUser.namaLengkap || currentUser.username) +
+    ' (' + (currentUser.kodeSatker || currentUser.username) + ')';
+  // Tampilkan disclaimer jika belum pernah lihat di sesi ini
+  if (!sessionStorage.getItem('disclaimer_shown')) {
+    document.getElementById('disclaimerWrap').style.display = 'flex';
+  } else {
+    switchTab('dashboard');
   }
 }
 
-// ── TAB SWITCHING ─────────────────────────────────────────
+function closeDisclaimer() {
+  document.getElementById('disclaimerWrap').style.display = 'none';
+  sessionStorage.setItem('disclaimer_shown', '1');
+  switchTab('dashboard');
+}
+
+async function doLogout() {
+  if (currentUser?.token) {
+    try { await apiPost({ action:'logout' }); } catch(e) {}
+  }
+  sessionStorage.clear();
+  currentUser = null;
+  document.getElementById('appWrap').style.display  = 'none';
+  document.getElementById('loginWrap').style.display = 'flex';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginErr').classList.remove('show');
+}
+
+function togglePwd(id, btn) {
+  const el = document.getElementById(id);
+  const show = el.type === 'password';
+  el.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁️';
+}
+
+// ════════════════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════════════════
 function switchTab(name) {
   activeTab = name;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-  document.getElementById('nav-' + name)?.classList.add('active');
-  renderTab(name);
-}
-
-function renderTab(name) {
+  const navEl = document.getElementById('nav-' + name);
+  if (navEl) navEl.classList.add('active');
   const main = document.getElementById('mainContent');
-  if (name === 'dashboard') main.innerHTML = renderDashboard();
-  else if (name === 'upload')   main.innerHTML = renderUploadTab();
-  else if (name === 'riwayat')  main.innerHTML = renderRiwayatTab();
-  else if (name === 'excel')    main.innerHTML = renderExcelTab();
-  else if (name === 'edit')     main.innerHTML = renderEditTab();
-  else if (name === 'email')    main.innerHTML = renderEmailTab();
 
-  // Re-bind upload area setelah render
-  if (name === 'upload') initUploadArea();
-  if (name === 'edit')   initEditForm();
-  if (name === 'email')  initEmailTab();
+  if (name === 'dashboard')      { main.innerHTML = renderDashboard();     initDashboard(); }
+  else if (name === 'email-baru')    { main.innerHTML = renderEmailBaru();     initEmailBaru(); }
+  else if (name === 'email-riwayat') { main.innerHTML = renderEmailRiwayat(); initEmailRiwayat(); }
+  else if (name === 'user-baru')     { main.innerHTML = renderUserBaru();      initUserBaru(); }
+  else if (name === 'user-ganti')    { main.innerHTML = renderUserGanti(); }
+  else if (name === 'user-riwayat')  { main.innerHTML = renderUserRiwayat();   initUserRiwayat(); }
+  else if (name === 'role')          { main.innerHTML = renderDev('Perubahan Role User SAKTI'); }
+  else if (name === 'data-user')     { main.innerHTML = renderDev('Perubahan Data Pengguna SAKTI'); }
 }
 
-// ══════════════════════════════════════════════════════════
-// TAB 1 — DASHBOARD
-// ══════════════════════════════════════════════════════════
+function renderDev(judul) {
+  return `<div class="page-title">${judul}</div>
+  <div class="page-sub">Fitur ini sedang dalam tahap pengembangan</div>
+  <div class="card" style="max-width:480px;text-align:center;padding:40px">
+    <div style="font-size:48px;margin-bottom:16px">🚧</div>
+    <div style="font-size:16px;font-weight:700;color:var(--orange);margin-bottom:8px">Dalam Pengembangan</div>
+    <p style="font-size:13px;color:var(--gray-600)">Fitur <strong>${judul}</strong> sedang disiapkan dan akan segera tersedia. Hubungi KPPN Jayapura untuk informasi lebih lanjut.</p>
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════════════════
 function renderDashboard() {
-  if (!pendaftaran) {
-    return `<div class="card">
-      <div class="card-title">📊 Dashboard Status</div>
-      <div class="empty-state">
-        <div class="empty-icon">📋</div>
-        <div class="empty-title">Belum Ada Pendaftaran</div>
-        <div class="empty-desc">Satker ini belum pernah mengajukan pendaftaran pengguna SAKTI.<br/>Mulai proses pendaftaran melalui halaman Formulir Pendaftaran.</div>
-        <a href="index.html" class="btn btn-primary">📝 Mulai Pendaftaran</a>
-      </div>
-    </div>`;
-  }
-
-  const d = pendaftaran;
-  const statusClass = { 'Menunggu':'s-menunggu','Diproses':'s-diproses','Ditolak':'s-ditolak','Terdaftar':'s-terdaftar' }[d.status] || 's-menunggu';
-  const statusEmoji = { 'Menunggu':'⏳','Diproses':'⚙️','Ditolak':'❌','Terdaftar':'✅' }[d.status] || '⏳';
-  const fileCount   = Object.keys(d.filesJson || {}).length;
-  const userCount   = (d.usersJson || []).length;
-
-  return `
-  <div class="card">
-    <div class="card-title">📊 Status Pendaftaran</div>
-
-    ${d.status==='Ditolak'?`
-    <div class="warn-box" style="margin-bottom:16px">
-      <strong>⚠️ Pendaftaran dikembalikan${d.revisiKe>0?' (Revisi ke-'+d.revisiKe+')':''}.</strong><br/>
-      ${d.catatanAdmin?`<em>Catatan KPPN: ${esc(d.catatanAdmin)}</em><br/>`:''}
-      Silakan perbaiki data dan/atau upload ulang dokumen, lalu kirimkan kembali.
-      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-primary btn-sm" onclick="switchTab('upload')">📂 Upload Ulang Dokumen</button>
-        <button class="btn btn-outline btn-sm" onclick="switchTab('edit')">✏️ Edit Data</button>
-      </div>
-    </div>`:''}
-
-    ${d.status==='Terdaftar'?`
-    <div class="success-box" style="margin-bottom:16px">
-      <strong>✅ Pendaftaran berhasil!</strong> Pengguna SAKTI sudah aktif terdaftar di sistem KPPN Jayapura.
-    </div>`:''}
-
-    <div class="srow"><span class="slbl">Kode Referensi</span><span class="sval" style="font-family:monospace;font-weight:700">${esc(d.refKode)}</span></div>
-    <div class="srow"><span class="slbl">Status</span><span class="sval"><span class="status-badge ${statusClass}">${statusEmoji} ${esc(d.status)}</span></span></div>
-    <div class="srow"><span class="slbl">Nama Satker</span><span class="sval">${esc(d.namaSatker)}</span></div>
-    <div class="srow"><span class="slbl">Kode Satker</span><span class="sval">${esc(d.kodeSatker)}</span></div>
-    <div class="srow"><span class="slbl">Nama KPA</span><span class="sval">${esc(d.namaKpa||'-')}</span></div>
-    <div class="srow"><span class="slbl">NIP KPA</span><span class="sval">${esc(d.nip||'-')}</span></div>
-    <div class="srow"><span class="slbl">Tanggal Daftar</span><span class="sval">${fmtTgl(d.tanggalDaftar)}</span></div>
-    <div class="srow"><span class="slbl">Jumlah Pengguna</span><span class="sval">${userCount} orang</span></div>
-    <div class="srow"><span class="slbl">Dokumen Terupload</span><span class="sval">${fileCount} file</span></div>
-    ${d.revisiKe>0?`<div class="srow"><span class="slbl">Revisi</span><span class="sval" style="color:var(--orange);font-weight:700">Ke-${d.revisiKe}</span></div>`:''}
+  return `<div class="page-title">Dashboard</div>
+  <div class="page-sub" id="dashDate"></div>
+  <div class="stats-grid" id="statsGrid">
+    ${statCard('blue','📝','—','Total Pengajuan')}
+    ${statCard('orange','⏳','—','Menunggu Proses')}
+    ${statCard('teal','🔄','—','Sedang Diproses')}
+    ${statCard('green','✅','—','Selesai')}
+    ${statCard('red','❌','—','Ditolak')}
+    ${statCard('purple','📧','—','Email SAKTI')}
   </div>
-
   <div class="card">
-    <div class="card-title">👥 Daftar Pengguna yang Didaftarkan</div>
-    ${renderUserTable(d.usersJson)}
-  </div>
-
-  <div class="card" style="padding:16px 24px">
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      ${d.bisaUpload?`<button class="btn btn-primary" onclick="switchTab('upload')">📂 Upload Dokumen</button>`:''}
-      ${d.bisaEdit?`<button class="btn btn-outline" onclick="switchTab('edit')">✏️ Edit Data</button>`:''}
-      <button class="btn btn-secondary" onclick="switchTab('excel')">📥 Download Excel</button>
-      <button class="btn btn-secondary" onclick="openModal('modalPassword')">🔑 Ganti Password</button>
-    </div>
+    <div class="card-title">Aktivitas Terbaru</div>
+    <div id="recentActivity"><p style="color:var(--gray-400);font-style:italic;font-size:13px">Memuat data...</p></div>
   </div>`;
 }
 
-function renderUserTable(users) {
-  if (!users || users.length === 0) return '<p style="color:var(--gray-400);font-size:13px">Belum ada data pengguna</p>';
-  return `<div style="overflow-x:auto"><table class="user-table">
-    <thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>NIK</th><th>Peran</th></tr></thead>
-    <tbody>${users.map((u,i)=>`<tr>
-      <td>${i+1}</td>
-      <td>${esc(u.nama||'-')}</td>
-      <td style="font-family:monospace">${esc(u.nipnrp||'-')}</td>
-      <td style="font-family:monospace">${esc(u.nik||'-')}</td>
-      <td><div class="peran-chips">${(u.peranList||[]).map(k=>`<span class="peran-chip">${esc(getLabel(k))}</span>`).join('')}</div></td>
-    </tr>`).join('')}
-    </tbody></table></div>`;
+function statCard(cls, icon, num, label) {
+  return `<div class="stat-card ${cls}"><div class="stat-icon">${icon}</div><div class="stat-num" id="stat-${label.replace(/\s/g,'-')}">${num}</div><div class="stat-label">${label}</div></div>`;
 }
 
-// ══════════════════════════════════════════════════════════
-// TAB 2 — UPLOAD DOKUMEN
-// ══════════════════════════════════════════════════════════
-function getDokList(d) {
-  if (!d) return [];
-  const allPeran  = (d.usersJson||[]).flatMap(u=>u.peranList||[]);
-  const hasPejabat= allPeran.some(k=>['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM','SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENERIMAAN','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU'].includes(k));
-  const hasOTP    = allPeran.some(k=>['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'].includes(k));
-  const bntDoks   = [];
-  (d.usersJson||[]).forEach(u=>{
-    (u.peranList||[]).forEach(peran=>{
-      if (BNT_MAP[peran]) {
-        const jenis = BNT_MAP[peran];
-        const key   = `bnt_${peran.toLowerCase()}_${(u.nipnrp||u.nama||'').replace(/\W/g,'_')}`;
-        bntDoks.push({ key, name:`Sertifikat ${jenis}`, desc:`Sertifikat ${jenis} a.n. ${u.nama||'?'} (NIP: ${u.nipnrp||'-'})`, accept:'.pdf,.jpg,.jpeg,.png', req:true, icon:'🎓' });
-      }
-    });
-  });
-  // KTP per user
-  const ktpDoks = (d.usersJson||[]).map((u,i)=>({
-    key:`ktp_${i}`, name:`KTP ${u.nama||'User '+(i+1)}`, desc:`KTP a.n. ${u.nama||'?'} (NIP: ${u.nipnrp||'-'})`,
-    accept:'.jpg,.jpeg,.png,.pdf', req:true, icon:'🪪'
-  }));
-  return [
-    ...ktpDoks,
-    { key:'sk_pengguna',   name:'SK Penetapan Pengguna SAKTI',  desc:'SK yang ditandatangani KPA', accept:'.pdf', req:true, icon:'📄' },
-    { key:'form_ttd_kpa',  name:'Formulir Bertandatangan KPA',   desc:'Formulir dicetak, TTD KPA, di-scan ke PDF', accept:'.pdf', req:true, icon:'📝' },
-    { key:'sk_pejabat',    name:'SK Pejabat Perbendaharaan',     desc:'SK KPA, PPK, PPSPM, dan/atau Bendahara', accept:'.pdf', req:hasPejabat, show:hasPejabat, icon:'📜' },
-    { key:'specimen_ttd',  name:'Specimen Tanda Tangan Pejabat', desc:'Lembar specimen TTD yang dilegalisir', accept:'.pdf,.jpg,.jpeg,.png', req:hasPejabat, show:hasPejabat, icon:'✍️' },
-    ...bntDoks,
-    { key:'formulir_otp',  name:'Formulir Permohonan Aktivasi OTP', desc:'Formulir aktivasi token OTP KPA/PPK/PPSPM', accept:'.pdf', req:hasOTP, show:hasOTP, icon:'🔐' },
-  ].filter(doc => doc.show !== false);
-}
+async function initDashboard() {
+  const now = new Date();
+  const dateEl = document.getElementById('dashDate');
+  if (dateEl) dateEl.textContent = 'Selamat datang, ' + (currentUser.namaSatker||currentUser.username) + ' · ' + now.toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
-function renderUploadTab() {
-  if (!pendaftaran) return noDataHtml('upload');
-  const d = pendaftaran;
-
-  if (!d.bisaUpload) {
-    return `<div class="card">
-      <div class="card-title">📂 Upload Dokumen</div>
-      ${d.sudahTerdaftar
-        ? '<div class="success-box">✅ Pendaftaran sudah selesai. Tidak perlu upload dokumen lagi.</div>'
-        : '<div class="info-box">⏳ Dokumen sudah diupload dan sedang dalam proses verifikasi KPPN Jayapura. Tidak bisa upload ulang kecuali ada penolakan dari admin.</div>'}
-    </div>`;
-  }
-
-  const docs = getDokList(d);
-  const existingFiles = d.filesJson || {};
-
-  return `
-  <div class="card">
-    <div class="card-title">📂 Upload Dokumen Persyaratan</div>
-    ${d.revisiKe>0?`<div class="warn-box" style="margin-bottom:16px">⚠️ <strong>Revisi ke-${d.revisiKe}.</strong> ${d.catatanAdmin?`Catatan KPPN: <em>${esc(d.catatanAdmin)}</em>`:''} Silakan upload ulang dokumen yang diperlukan.</div>`:''}
-    <div class="info-box">
-      Pilih file untuk setiap dokumen lalu tekan <strong>⬆️ Upload</strong>. Setelah semua dokumen terupload, tekan <strong>Kirim ke KPPN</strong>.
-      <ul style="margin-top:6px;padding-left:18px"><li>Format: PDF, JPG, PNG</li><li>Maksimum 2 MB per file</li></ul>
-    </div>
-    <div id="uploadArea">
-      ${docs.map(doc => renderDocItem(doc, existingFiles[doc.key])).join('')}
-    </div>
-    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--gray-200);display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-success" onclick="tryFinalizeUpload()" id="btnKirim">📤 Kirim ke KPPN Jayapura</button>
-      <button class="btn btn-secondary" onclick="switchTab('dashboard')">← Kembali</button>
-    </div>
-    <div id="errUploadPanel" style="display:none;background:var(--red-pale);border:1px solid #EF9A9A;border-radius:var(--radius);padding:12px 16px;margin-top:14px;font-size:12px;color:#7f1d1d"></div>
-  </div>`;
-}
-
-function renderDocItem(doc, existing) {
-  const isDone = uploadedStatus[doc.key] === 'done' || (existing && existing.url);
-  const existingUrl = existing ? existing.url : null;
-  return `
-  <div class="upload-item" id="uitem-${doc.key}">
-    <div class="upload-item-header">
-      <div>
-        <div class="upload-item-name">${doc.icon} ${esc(doc.name)}</div>
-        <div class="upload-item-desc">${esc(doc.desc)}</div>
-      </div>
-      <span class="${doc.req?'badge-required':'badge-optional'}">${doc.req?'WAJIB':'OPSIONAL'}</span>
-    </div>
-    ${existingUrl && uploadedStatus[doc.key]!=='done' ? `
-    <div class="file-done-chip">
-      <span>✅</span>
-      <span class="fname">Sudah terupload sebelumnya</span>
-      <a href="${existingUrl}" target="_blank" style="font-size:11px;margin-left:auto">Lihat ↗</a>
-    </div>` : ''}
-    <div class="dropzone" id="dz-${doc.key}" onclick="triggerFile('${doc.key}')"
-      ondragover="dzOver(event,'${doc.key}')" ondragleave="dzLeave('${doc.key}')" ondrop="dzDrop(event,'${doc.key}')">
-      <input type="file" id="fi-${doc.key}" accept="${doc.accept}" onchange="onFile('${doc.key}',this)"/>
-      <label class="dropzone-label" for="fi-${doc.key}" onclick="event.stopPropagation()">
-        <span class="dz-icon">${doc.icon}</span>
-        ${existingUrl?'Upload ulang (opsional)':'Klik atau drop file di sini'}<br/>
-        <span style="font-size:11px;color:var(--gray-500)">${doc.accept.split(',').map(x=>x.replace('.','').toUpperCase()).join(', ')} · Maks 2 MB</span>
-      </label>
-    </div>
-    <div class="file-chip" id="fc-${doc.key}" style="display:none">
-      <span>📄</span>
-      <span class="fname" id="fn-${doc.key}"></span>
-      <span class="fsize" id="fsz-${doc.key}"></span>
-      <span class="fremove" onclick="removeFile('${doc.key}')">×</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
-      <button id="btn-up-${doc.key}" class="btn btn-primary btn-sm" onclick="uploadSingleFile('${doc.key}')" style="display:none">⬆️ Upload</button>
-      <div id="upst-${doc.key}" style="font-size:11px;line-height:1.4"></div>
-    </div>
-  </div>`;
-}
-
-function initUploadArea() {
-  // Restore status dari uploadedStatus yang sudah ada (jika pindah tab lalu balik)
-}
-
-// FILE HANDLERS
-function triggerFile(key) { document.getElementById(`fi-${key}`)?.click(); }
-
-function onFile(key, input) {
-  const file = input.files[0]; if (!file) return;
-  if (file.size > MAX_FILE) { showToast('File terlalu besar. Maksimum 2 MB.', true); input.value=''; return; }
-  uploadedFiles[key]  = file;
-  uploadedStatus[key] = 'pending';
-  document.getElementById(`fn-${key}`).textContent  = file.name;
-  document.getElementById(`fsz-${key}`).textContent = fmtSize(file.size);
-  document.getElementById(`fc-${key}`).style.display = 'flex';
-  document.getElementById(`dz-${key}`).style.display = 'none';
-  const btnUp = document.getElementById(`btn-up-${key}`);
-  if (btnUp) { btnUp.style.display='inline-flex'; btnUp.disabled=false; btnUp.textContent='⬆️ Upload'; btnUp.style.background=''; btnUp.style.color=''; }
-  const st = document.getElementById(`upst-${key}`);
-  if (st) { st.textContent=''; st.style.color=''; }
-}
-
-function removeFile(key) {
-  delete uploadedFiles[key]; delete uploadedStatus[key]; delete uploadedFileUrls[key];
-  const fi = document.getElementById(`fi-${key}`); if (fi) fi.value = '';
-  document.getElementById(`fc-${key}`).style.display = 'none';
-  document.getElementById(`dz-${key}`).style.display = 'block';
-  const btnUp = document.getElementById(`btn-up-${key}`);
-  if (btnUp) { btnUp.style.display='none'; btnUp.style.background=''; btnUp.style.color=''; btnUp.textContent='⬆️ Upload'; }
-  const st = document.getElementById(`upst-${key}`);
-  if (st) { st.textContent=''; st.style.color=''; st.style.fontWeight=''; }
-}
-
-async function uploadSingleFile(key) {
-  const file = uploadedFiles[key];
-  if (!file) { showToast('Pilih file terlebih dahulu', true); return; }
-  const btnUp = document.getElementById(`btn-up-${key}`);
-  const statusEl = document.getElementById(`upst-${key}`);
-  if (btnUp) { btnUp.disabled=true; btnUp.textContent='⏳ Mengupload...'; }
-  if (statusEl) { statusEl.textContent='Mengupload...'; }
+  // Load pendaftaran user sakti
+  let userStats = {total:0, menunggu:0, proses:0, selesai:0, ditolak:0};
   try {
-    const result = await uploadFileToDrive(key, file);
-    uploadedStatus[key]   = 'done';
-    uploadedFileUrls[key] = result.fileUrl || '';
-    if (btnUp) { btnUp.textContent='✅ Terupload'; btnUp.style.background='var(--green)'; btnUp.style.color='#fff'; }
-    if (statusEl) { statusEl.textContent='✅ Berhasil diupload'; statusEl.style.color='var(--green)'; statusEl.style.fontWeight='600'; }
-  } catch(err) {
-    uploadedStatus[key] = 'error';
-    if (btnUp) { btnUp.disabled=false; btnUp.textContent='⬆️ Coba Lagi'; btnUp.style.background=''; btnUp.style.color=''; }
-    if (statusEl) { statusEl.textContent='❌ Gagal: '+err.message; statusEl.style.color='var(--red)'; }
-    showToast('Gagal upload: ' + err.message, true);
-  }
-}
-
-async function uploadFileToDrive(key, file) {
-  const base64 = await fileToBase64(file);
-  const result = await apiPost({
-    action:'uploadFile', token: currentUser.token,
-    refKode: pendaftaran.refKode,
-    namaSatker: pendaftaran.namaSatker,
-    fileKey: key, fileName: file.name,
-    fileData: base64, mimeType: file.type || 'application/octet-stream',
-  });
-  if (!result.success) throw new Error(result.message || 'Upload gagal');
-  return result;
-}
-
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload  = e => resolve(e.target.result.split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-function dzOver(e, key) { e.preventDefault(); document.getElementById(`dz-${key}`)?.classList.add('dragover'); }
-function dzLeave(key)   { document.getElementById(`dz-${key}`)?.classList.remove('dragover'); }
-function dzDrop(e, key) {
-  e.preventDefault(); dzLeave(key);
-  const file = e.dataTransfer.files[0]; if (!file) return;
-  const fi = document.getElementById(`fi-${key}`);
-  const dt = new DataTransfer(); dt.items.add(file); fi.files = dt.files;
-  onFile(key, fi);
-}
-
-function tryFinalizeUpload() {
-  const docs   = getDokList(pendaftaran);
-  const errors = [];
-  docs.forEach(doc => {
-    if (!doc.req) return;
-    const existing = (pendaftaran.filesJson||{})[doc.key];
-    const isDone   = uploadedStatus[doc.key]==='done' || (existing && existing.url);
-    if (!isDone) errors.push(`${doc.name} — belum diupload`);
-  });
-  const panel = document.getElementById('errUploadPanel');
-  if (errors.length) {
-    panel.style.display = 'block';
-    panel.innerHTML = '<strong>⚠️ Harap upload dokumen berikut terlebih dahulu:</strong><ul style="margin-top:6px;padding-left:18px">' + errors.map(e=>`<li>${esc(e)}</li>`).join('') + '</ul>';
-    panel.scrollIntoView({behavior:'smooth',block:'center'});
-    return;
-  }
-  panel.style.display = 'none';
-  if (confirm('Kirim semua dokumen ke KPPN Jayapura?\n\nSetelah dikirim, pendaftaran akan diproses oleh petugas KPPN.')) doFinalizeUpload();
-}
-
-async function doFinalizeUpload() {
-  const btn = document.getElementById('btnKirim');
-  if (btn) { btn.disabled=true; btn.textContent='⏳ Mengirim...'; }
-  try {
-    const res = await apiPost({ action:'finalizeUpload', refKode: pendaftaran.refKode });
-    if (!res.success) { showToast(res.message || 'Gagal mengirim', true); return; }
-    showToast('✅ Dokumen berhasil dikirim ke KPPN Jayapura!', false);
-    // Refresh data
-    await loadDashboard();
-    switchTab('dashboard');
-  } catch(e) {
-    showToast('Gagal: ' + e.message, true);
-  } finally {
-    if (btn) { btn.disabled=false; btn.textContent='📤 Kirim ke KPPN Jayapura'; }
-  }
-}
-
-function fmtSize(b) { if(b<1024)return`${b}B`; if(b<1048576)return`${(b/1024).toFixed(1)}KB`; return`${(b/1048576).toFixed(1)}MB`; }
-
-// ══════════════════════════════════════════════════════════
-// TAB 3 — RIWAYAT DOKUMEN
-// ══════════════════════════════════════════════════════════
-function renderRiwayatTab() {
-  if (!pendaftaran) return noDataHtml('riwayat');
-  const files = pendaftaran.filesJson || {};
-  const keys  = Object.keys(files);
-
-  const docNames = {
-    sk_pengguna:'SK Penetapan Pengguna SAKTI', form_ttd_kpa:'Formulir Bertandatangan KPA',
-    sk_pejabat:'SK Pejabat Perbendaharaan', specimen_ttd:'Specimen Tanda Tangan',
-    formulir_otp:'Formulir Permohonan Aktivasi OTP',
-  };
-  function getDocName(key) {
-    if (docNames[key]) return docNames[key];
-    if (key.startsWith('ktp_'))  return 'KTP Pengguna ' + (parseInt(key.split('_')[1])+1);
-    if (key.startsWith('bnt_'))  return 'Sertifikat BNT/SNT';
-    return key;
-  }
-
-  return `
-  <div class="card">
-    <div class="card-title">🗂️ Riwayat Dokumen Terupload</div>
-    ${keys.length === 0
-      ? '<p style="color:var(--gray-400);font-size:13px">Belum ada dokumen yang diupload.</p>'
-      : `<div>${keys.map(k => {
-          const f = files[k];
-          return `<div class="file-list-item">
-            <div>
-              <div style="font-weight:600;font-size:13px">${esc(getDocName(k))}</div>
-              <div style="font-size:11px;color:var(--gray-500)">${esc(f.name||k)}</div>
-            </div>
-            <a href="${f.url||'#'}" target="_blank" class="btn btn-outline btn-sm">↗ Lihat</a>
-          </div>`;
-        }).join('')}</div>`
+    const res = await apiPost({ action:'getSatkerDashboard' });
+    if (res.success && res.data) {
+      const d = res.data;
+      userStats = {
+        total:   (d.submitted||0) + (d.diproses||0) + (d.terdaftar||0) + (d.ditolak||0),
+        menunggu: d.submitted || 0,
+        proses:   d.diproses  || 0,
+        selesai:  d.terdaftar || 0,
+        ditolak:  d.ditolak   || 0
+      };
+      userSaktiData = d;
     }
+  } catch(e) {}
+
+  // Load riwayat email SAKTI
+  let emailCount = 0;
+  try {
+    const res2 = await apiPost({ action:'getRiwayatEmailSakti' });
+    if (res2.success) { emailRiwayat = res2.list||[]; emailCount = emailRiwayat.length; }
+  } catch(e) {}
+
+  // Update stat cards
+  const upd = (lbl, val) => { const el = document.getElementById('stat-'+lbl); if(el) el.textContent = val; };
+  upd('Total-Pengajuan', userStats.total);
+  upd('Menunggu-Proses', userStats.menunggu);
+  upd('Sedang-Diproses', userStats.proses);
+  upd('Selesai',         userStats.selesai);
+  upd('Ditolak',         userStats.ditolak);
+  upd('Email-SAKTI',     emailCount);
+
+  // Recent activity
+  const recentEl = document.getElementById('recentActivity');
+  if (recentEl) {
+    const items = [];
+    if (emailRiwayat.length) {
+      emailRiwayat.slice(0,3).forEach(e => {
+        items.push({ tgl: e.tanggalSubmit, label: `📧 Email SAKTI — ${e.jumlahPegawai} pegawai`, status: e.status });
+      });
+    }
+    if (!items.length) {
+      recentEl.innerHTML = '<p style="color:var(--gray-400);font-style:italic;font-size:13px">Belum ada aktivitas tercatat.</p>';
+    } else {
+      recentEl.innerHTML = `<table class="tbl"><thead><tr><th>Tanggal</th><th>Kegiatan</th><th>Status</th></tr></thead><tbody>
+        ${items.map(i=>`<tr><td>${fmtTgl(i.tgl)}</td><td>${i.label}</td><td>${badgeStatus(i.status)}</td></tr>`).join('')}
+      </tbody></table>`;
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// EMAIL SAKTI — PENDAFTARAN BARU
+// ════════════════════════════════════════════════════════
+function renderEmailBaru() {
+  return `<div class="page-title">Pendaftaran Email SAKTI</div>
+  <div class="page-sub">Pendaftaran Awal — Khusus Pengguna Baru</div>
+  <div class="info-box blue">
+    ℹ️ Isi data pegawai yang akan didaftarkan email SAKTI-nya. Kode KPPN sudah terisi otomatis (<strong>063</strong>). Kode Satker diambil dari akun Anda secara otomatis. Setelah submit, data akan diproses oleh KPPN Jayapura.
   </div>
-
   <div class="card">
-    <div class="card-title">📋 Riwayat Status</div>
-    <div class="srow"><span class="slbl">Status Saat Ini</span><span class="sval">${esc(pendaftaran.status||'-')}</span></div>
-    <div class="srow"><span class="slbl">Tanggal Daftar</span><span class="sval">${fmtTgl(pendaftaran.tanggalDaftar)}</span></div>
-    ${pendaftaran.revisiKe>0?`<div class="srow"><span class="slbl">Revisi</span><span class="sval" style="color:var(--orange);font-weight:700">Ke-${pendaftaran.revisiKe}</span></div>`:''}
-    ${pendaftaran.diprosesoleh?`<div class="srow"><span class="slbl">Diproses Oleh</span><span class="sval">${esc(pendaftaran.diprosesoleh)}</span></div>`:''}
-    ${pendaftaran.catatanAdmin?`<div class="srow"><span class="slbl">Catatan KPPN</span><span class="sval" style="color:var(--orange)">${esc(pendaftaran.catatanAdmin)}</span></div>`:''}
-  </div>`;
-}
-
-// ══════════════════════════════════════════════════════════
-// TAB 4 — DOWNLOAD EXCEL
-// ══════════════════════════════════════════════════════════
-function renderExcelTab() {
-  if (!pendaftaran) return noDataHtml('excel');
-  const d = pendaftaran;
-  return `
-  <div class="card">
-    <div class="card-title">📥 Download Formulir Excel</div>
-    <div class="info-box" style="margin-bottom:16px">
-      Download formulir pendaftaran dalam format Excel (.xlsx). Formulir ini sudah terisi dengan data pendaftaran satker. Cetak, tandatangani KPA, lalu scan dan upload sebagai PDF.
-    </div>
-    <div class="srow" style="margin-bottom:12px"><span class="slbl">Nama Satker</span><span class="sval">${esc(d.namaSatker)}</span></div>
-    <div class="srow" style="margin-bottom:12px"><span class="slbl">Kode Referensi</span><span class="sval" style="font-family:monospace">${esc(d.refKode)}</span></div>
-    <div class="srow" style="margin-bottom:20px"><span class="slbl">Jumlah Pengguna</span><span class="sval">${(d.usersJson||[]).length} orang</span></div>
-    <button class="btn btn-success" onclick="downloadExcel()" id="btnExcel">
-      📥 Download Formulir Excel
-    </button>
-    <p class="hint" style="margin-top:10px">File Excel akan dibuat sesuai data pendaftaran terkini.</p>
-  </div>`;
-}
-
-async function downloadExcel() {
-  const btn = document.getElementById('btnExcel');
-  if (btn) { btn.disabled=true; btn.textContent='⏳ Menyiapkan file...'; }
-  try {
-    const res = await apiPost({ action:'generateExcel', refKode: pendaftaran.refKode });
-    if (!res.success) { showToast(res.message||'Gagal generate Excel', true); return; }
-    // Decode base64 dan download
-    const binary = atob(res.fileBase64);
-    const bytes  = new Uint8Array(binary.length);
-    for (let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
-    const blob = new Blob([bytes], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = `Formulir_SAKTI_${pendaftaran.kodeSatker}_${pendaftaran.refKode}.xlsx`;
-    a.click(); URL.revokeObjectURL(url);
-    showToast('✅ File Excel berhasil didownload!');
-  } catch(e) {
-    showToast('Gagal: ' + e.message, true);
-  } finally {
-    if (btn) { btn.disabled=false; btn.textContent='📥 Download Formulir Excel'; }
-  }
-}
-
-// ══════════════════════════════════════════════════════════
-// TAB 5 — EDIT DATA
-// ══════════════════════════════════════════════════════════
-function renderEditTab() {
-  if (!pendaftaran) return noDataHtml('edit');
-  const d = pendaftaran;
-
-  if (!d.bisaEdit) {
-    return `<div class="card">
-      <div class="card-title">✏️ Edit Data Pendaftaran</div>
-      ${d.sudahTerdaftar
-        ? '<div class="success-box">✅ Pendaftaran sudah selesai terdaftar. Data tidak bisa diedit.</div>'
-        : '<div class="info-box">⏳ Data sedang dalam proses verifikasi KPPN. Tidak bisa diedit sekarang. Jika ada masalah, hubungi KPPN Jayapura.</div>'}
-    </div>`;
-  }
-
-  return `
-  <div class="card">
-    <div class="card-title">✏️ Edit Data Pendaftaran</div>
-    ${d.revisiKe>0?`<div class="warn-box" style="margin-bottom:16px">⚠️ <strong>Revisi ke-${d.revisiKe}.</strong> ${d.catatanAdmin?`Catatan KPPN: <em>${esc(d.catatanAdmin)}</em>`:''}</div>`:''}
-    <div class="info-box" style="margin-bottom:18px">
-      Anda bisa mengubah data KPA dan data pengguna. Jika ada perubahan pengguna, dokumen yang sudah diupload akan direset dan perlu diupload ulang.
-    </div>
-
-    <div style="font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">Data KPA / Satker</div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Nama KPA</label>
-        <input type="text" id="edit-namaKpa" value="${esc(d.namaKpa||'')}"/>
-      </div>
-      <div class="form-group">
-        <label>NIP KPA</label>
-        <input type="text" id="edit-nip" value="${esc(d.nip||'')}" style="font-family:monospace"/>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div class="card-title" style="margin:0;padding:0;border:none">Data Pegawai</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="emailTambahBaris()">+ Tambah Baris</button>
+        <button class="btn btn-secondary btn-sm" onclick="emailResetTabel()">🔄 Reset</button>
+        <button class="btn btn-success" onclick="konfirmasiSubmitEmail()">📤 Submit ke KPPN</button>
       </div>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>No HP / Telepon</label>
-        <input type="text" id="edit-noHp" value="${esc(d.noHp||'')}"/>
-      </div>
-      <div class="form-group">
-        <label>Email</label>
-        <input type="email" id="edit-email" value="${esc(d.email||'')}"/>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Alamat Satker</label>
-      <input type="text" id="edit-alamat" value="${esc(d.alamat||'')}"/>
-    </div>
-
-    <div style="font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.6px;margin:20px 0 12px">Data Pengguna</div>
-    <div id="editUsersList">
-      ${renderEditUsers(d.usersJson||[])}
-    </div>
-    <button class="btn btn-outline btn-sm" onclick="addEditUser()" style="margin-bottom:16px">+ Tambah Pengguna</button>
-
-    <div id="editErrPanel" style="display:none" class="error-box" style="margin-bottom:12px"></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;padding-top:16px;border-top:1px solid var(--gray-200)">
-      <button class="btn btn-primary" onclick="doSaveEdit()" id="btnSaveEdit">💾 Simpan Perubahan</button>
-      <button class="btn btn-secondary" onclick="switchTab('dashboard')">← Batal</button>
-    </div>
-  </div>`;
-}
-
-const PERAN_OPTIONS = [
-  {v:'SATKER_KPA',label:'KPA'},
-  {v:'SATKER_PPK',label:'PPK'},
-  {v:'SATKER_PPK_DFDD',label:'PPK DFDD'},
-  {v:'SATKER_PPSPM',label:'PPSPM'},
-  {v:'SATKER_BENDAHARA_PENGELUARAN',label:'Bendahara Pengeluaran'},
-  {v:'SATKER_BENDAHARA_PENERIMAAN',label:'Bendahara Penerimaan'},
-  {v:'SATKER_BENDAHARA_PENGELUARAN_PEMBANTU',label:'Bendahara Pembantu'},
-  {v:'SATKER_OPERATOR',label:'Operator'},
-];
-
-function renderEditUsers(users) {
-  return users.map((u,i) => renderEditUserRow(u, i)).join('');
-}
-
-function renderEditUserRow(u, i) {
-  const peranChecks = PERAN_OPTIONS.map(p => `
-    <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;margin-right:10px;margin-bottom:4px;cursor:pointer">
-      <input type="checkbox" name="peran_${i}" value="${p.v}" ${(u.peranList||[]).includes(p.v)?'checked':''}/>
-      ${p.label}
-    </label>`).join('');
-  return `
-  <div class="upload-item" id="eu-row-${i}" style="margin-bottom:10px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <div style="font-size:12px;font-weight:700;color:var(--blue)">Pengguna ${i+1}</div>
-      <button class="btn btn-danger btn-sm" onclick="removeEditUser(${i})">🗑️ Hapus</button>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label>Nama Lengkap</label><input type="text" id="eu-nama-${i}" value="${esc(u.nama||'')}"/></div>
-      <div class="form-group"><label>NIP / NRP</label><input type="text" id="eu-nip-${i}" value="${esc(u.nipnrp||'')}" style="font-family:monospace"/></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label>NIK</label><input type="text" id="eu-nik-${i}" value="${esc(u.nik||'')}" style="font-family:monospace"/></div>
-    </div>
-    <div class="form-group">
-      <label>Peran</label>
-      <div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:4px">${peranChecks}</div>
-    </div>
-  </div>`;
-}
-
-let editUserCount = 0;
-function initEditForm() {
-  editUserCount = (pendaftaran?.usersJson||[]).length;
-}
-
-function addEditUser() {
-  const container = document.getElementById('editUsersList');
-  if (!container) return;
-  const i = editUserCount++;
-  const div = document.createElement('div');
-  div.innerHTML = renderEditUserRow({ nama:'', nipnrp:'', nik:'', peranList:[] }, i);
-  container.appendChild(div.firstElementChild);
-}
-
-function removeEditUser(i) {
-  document.getElementById(`eu-row-${i}`)?.remove();
-}
-
-function collectEditUsers() {
-  const users = [];
-  document.querySelectorAll('[id^="eu-row-"]').forEach(row => {
-    const i = parseInt(row.id.split('-').pop());
-    const nama   = document.getElementById(`eu-nama-${i}`)?.value.trim() || '';
-    const nipnrp = document.getElementById(`eu-nip-${i}`)?.value.trim()  || '';
-    const nik    = document.getElementById(`eu-nik-${i}`)?.value.trim()   || '';
-    const peranList = [...document.querySelectorAll(`input[name="peran_${i}"]:checked`)].map(el=>el.value);
-    if (nama || nipnrp) users.push({ nama, nipnrp, nik, peranList });
-  });
-  return users;
-}
-
-async function doSaveEdit() {
-  const btn = document.getElementById('btnSaveEdit');
-  const errPanel = document.getElementById('editErrPanel');
-  const namaKpa = document.getElementById('edit-namaKpa')?.value.trim() || '';
-  const nip     = document.getElementById('edit-nip')?.value.trim()     || '';
-  const noHp    = document.getElementById('edit-noHp')?.value.trim()    || '';
-  const email   = document.getElementById('edit-email')?.value.trim()   || '';
-  const alamat  = document.getElementById('edit-alamat')?.value.trim()  || '';
-  const users   = collectEditUsers();
-
-  if (!namaKpa) { errPanel.style.display='block'; errPanel.textContent='Nama KPA wajib diisi'; return; }
-  if (users.length === 0) { errPanel.style.display='block'; errPanel.textContent='Minimal 1 pengguna harus diisi'; return; }
-  errPanel.style.display = 'none';
-
-  if (btn) { btn.disabled=true; btn.textContent='⏳ Menyimpan...'; }
-  try {
-    const res = await apiPost({
-      action:'editPendaftaran', token: currentUser.token,
-      refKode: pendaftaran.refKode,
-      namaKpa, nip, noHp, email, alamat, usersJson: users,
-    });
-    if (!res.success) { errPanel.style.display='block'; errPanel.textContent=res.message||'Gagal menyimpan'; return; }
-    showToast('✅ Data berhasil disimpan. Silakan upload ulang dokumen jika ada perubahan pengguna.');
-    await loadDashboard();
-    switchTab('dashboard');
-  } catch(e) {
-    errPanel.style.display='block'; errPanel.textContent='Gagal: '+e.message;
-  } finally {
-    if (btn) { btn.disabled=false; btn.textContent='💾 Simpan Perubahan'; }
-  }
-}
-
-// ══════════════════════════════════════════════════════════
-// GANTI PASSWORD
-// ══════════════════════════════════════════════════════════
-async function doChangePassword() {
-  const lama  = document.getElementById('pwLama').value;
-  const baru  = document.getElementById('pwBaru').value;
-  const baru2 = document.getElementById('pwBaru2').value;
-  if (!lama||!baru) { showToast('Semua field wajib diisi', true); return; }
-  if (baru !== baru2) { showToast('Konfirmasi password tidak cocok', true); return; }
-  if (baru.length < 6) { showToast('Password baru minimal 6 karakter', true); return; }
-  try {
-    const res = await apiPost({ action:'changePassword', token: currentUser.token, passwordLama: lama, passwordBaru: baru });
-    if (!res.success) { showToast(res.message||'Gagal', true); return; }
-    showToast('✅ Password berhasil diubah!');
-    closeModal('modalPassword');
-    document.getElementById('pwLama').value=''; document.getElementById('pwBaru').value=''; document.getElementById('pwBaru2').value='';
-  } catch(e) { showToast('Gagal: '+e.message, true); }
-}
-
-// ── HELPERS ───────────────────────────────────────────────
-function noDataHtml(tab) {
-  return `<div class="card">
-    <div class="empty-state">
-      <div class="empty-icon">📋</div>
-      <div class="empty-title">Belum Ada Pendaftaran</div>
-      <div class="empty-desc">Satker ini belum pernah mengajukan pendaftaran.<br/>Mulai proses pendaftaran terlebih dahulu.</div>
-      <a href="index.html" class="btn btn-primary">📝 Mulai Pendaftaran</a>
-    </div>
-  </div>`;
-}
-
-function fmtTgl(iso) {
-  if (!iso) return '-';
-  try { const d=new Date(iso); return`${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`; }
-  catch(e) { return String(iso); }
-}
-
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-function openModal(id)  { document.getElementById(id)?.classList.add('on'); }
-function closeModal(id) { document.getElementById(id)?.classList.remove('on'); }
-
-document.addEventListener('click', e => {
-  ['modalEditUser','modalPassword'].forEach(mid => {
-    const m = document.getElementById(mid); if (m && e.target===m) closeModal(mid);
-  });
-});
-
-let toastT;
-function showToast(msg, isErr=false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.className = 'on' + (isErr?' err':' ok');
-  clearTimeout(toastT); toastT = setTimeout(()=>{ t.className=''; }, 3500);
-}
-
-// ══════════════════════════════════════════════════════════
-// TAB EMAIL SAKTI
-// ══════════════════════════════════════════════════════════
-function renderEmailTab() {
-  const kodeSatker = currentUser.kodeSatker || currentUser.username || '';
-  return `
-  <div class="card">
-    <div class="card-title">📧 Form Email SAKTI</div>
-    <div class="info-box" style="margin-bottom:16px">
-      Isi data pegawai untuk pendaftaran email SAKTI. Kode KPPN sudah terisi otomatis (<strong>063</strong>).
-      Setelah selesai, download file Excel untuk dikirimkan ke KPPN Jayapura.
-    </div>
-
-    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="tambahBarisSatker()">➕ Tambah Baris</button>
-      <button class="btn btn-success" onclick="downloadEmailExcel()">📥 Download Excel</button>
-      <button class="btn btn-secondary" onclick="resetTableEmail()">🗑️ Reset Tabel</button>
-    </div>
-
     <div style="overflow-x:auto">
-      <table class="user-table" id="tblEmail">
+      <table style="width:100%;border-collapse:collapse;min-width:680px">
         <thead>
-          <tr>
-            <th style="width:40px">No</th>
-            <th style="width:90px">Kode KPPN</th>
-            <th style="width:110px">Kode Satker</th>
-            <th style="min-width:200px">Nama Pegawai</th>
-            <th style="width:170px">NIP / NRP</th>
-            <th style="width:160px">NIK</th>
-            <th style="width:120px">Status</th>
-            <th style="width:60px">Hapus</th>
+          <tr style="background:var(--blue-pale)">
+            <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);width:36px;text-align:center">No</th>
+            <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);width:80px">KPPN</th>
+            <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);width:100px">Kode Satker</th>
+            <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue)">Nama Pegawai</th>
+            <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);width:130px">NIP / NRP</th>
+            <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);width:130px">NIK</th>
+            <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);width:90px">Status</th>
+            <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);width:40px;text-align:center">✕</th>
           </tr>
         </thead>
-        <tbody id="tbodyEmail"></tbody>
+        <tbody id="emailTbody"></tbody>
       </table>
     </div>
-    <p class="hint" style="margin-top:10px">Status: 1=TNI, 2=POLRI, 3=PNS, 4=PPNPN, 5=P3K</p>
+    <p style="font-size:12px;color:var(--gray-500);margin-top:8px"><span id="emailCount">0</span> baris · Status: 1=TNI, 2=POLRI, 3=PNS, 4=PPNPN, 5=PPPK</p>
   </div>`;
 }
 
-let emailRows = [];
-
-function initEmailTab() {
-  emailRows = emailRows.length ? emailRows : [emptyEmailRow()];
-  renderEmailRows();
+function initEmailBaru() {
+  if (!emailRows.length) emailRows = [emptyEmailRow()];
+  renderEmailTbody();
 }
 
 function emptyEmailRow() {
   return { nama:'', nipnrp:'', nik:'', status:'' };
 }
 
-function renderEmailRows() {
-  const kodeSatker = currentUser.kodeSatker || currentUser.username || '';
-  const tbody = document.getElementById('tbodyEmail');
+function renderEmailTbody() {
+  const tbody = document.getElementById('emailTbody');
   if (!tbody) return;
-  tbody.innerHTML = emailRows.map((r, i) => `
+  const kode = currentUser.kodeSatker || currentUser.username;
+  const statusOpts = ['','1','2','3','4','5'].map(v =>
+    `<option value="${v}">${v ? v+' – '+{1:'TNI',2:'POLRI',3:'PNS',4:'PPNPN',5:'PPPK'}[v] : '— Pilih —'}</option>`
+  ).join('');
+
+  tbody.innerHTML = emailRows.map((r,i) => `
     <tr>
-      <td style="text-align:center;color:var(--gray-500)">${i+1}</td>
-      <td style="text-align:center;font-family:monospace;font-weight:600">063</td>
-      <td style="text-align:center;font-family:monospace">${esc(kodeSatker)}</td>
-      <td><input type="text" class="inline-input" placeholder="Nama lengkap" value="${esc(r.nama)}" oninput="emailRows[${i}].nama=this.value"/></td>
-      <td><input type="text" class="inline-input" placeholder="NIP/NRP" value="${esc(r.nipnrp)}" oninput="emailRows[${i}].nipnrp=this.value" style="font-family:monospace"/></td>
-      <td><input type="text" class="inline-input" placeholder="NIK (16 digit)" value="${esc(r.nik)}" oninput="emailRows[${i}].nik=this.value" style="font-family:monospace"/></td>
-      <td>
-        <select class="inline-input" oninput="emailRows[${i}].status=this.value" style="cursor:pointer">
-          <option value="">-- Pilih --</option>
-          ${[1,2,3,4,5].map(n=>`<option value="${n}" ${r.status==n?'selected':''}>${n} – ${{1:'TNI',2:'POLRI',3:'PNS',4:'PPNPN',5:'P3K'}[n]}</option>`).join('')}
+      <td style="padding:4px 8px;border:1px solid var(--gray-200);text-align:center;color:var(--gray-400);font-size:12px">${i+1}</td>
+      <td style="padding:4px 6px;border:1px solid var(--gray-200);text-align:center;font-weight:700;color:var(--blue)">063</td>
+      <td style="padding:4px 6px;border:1px solid var(--gray-200);text-align:center;font-family:monospace;font-weight:600;color:var(--blue-mid)">${esc(kode)}</td>
+      <td style="padding:4px 6px;border:1px solid var(--gray-200)">
+        <input class="inline-input" placeholder="Nama lengkap" value="${esc(r.nama)}" oninput="emailRows[${i}].nama=this.value;updEmailCount()"/>
+      </td>
+      <td style="padding:4px 6px;border:1px solid var(--gray-200)">
+        <input class="inline-input" placeholder="NIP atau NRP" value="${esc(r.nipnrp)}" maxlength="20" oninput="emailRows[${i}].nipnrp=this.value;updEmailCount()" style="font-family:monospace"/>
+      </td>
+      <td style="padding:4px 6px;border:1px solid var(--gray-200)">
+        <input class="inline-input" placeholder="16 digit NIK" value="${esc(r.nik)}" maxlength="16" oninput="emailRows[${i}].nik=this.value;updEmailCount()" style="font-family:monospace"/>
+      </td>
+      <td style="padding:4px 6px;border:1px solid var(--gray-200)">
+        <select class="inline-select" onchange="emailRows[${i}].status=this.value;updEmailCount()">
+          ${statusOpts.replace(`value="${r.status}"`,`value="${r.status}" selected`)}
         </select>
       </td>
-      <td style="text-align:center">
-        <button onclick="hapusBarisSatker(${i})" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--red)">🗑️</button>
+      <td style="padding:4px 6px;border:1px solid var(--gray-200);text-align:center">
+        <button onclick="emailHapusBaris(${i})" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:17px;padding:2px 4px">✕</button>
       </td>
-    </tr>
-  `).join('');
+    </tr>`).join('');
+  updEmailCount();
 }
 
-function tambahBarisSatker() {
-  emailRows.push(emptyEmailRow());
-  renderEmailRows();
+function updEmailCount() {
+  const el = document.getElementById('emailCount');
+  if (el) el.textContent = emailRows.length;
 }
 
-function hapusBarisSatker(i) {
-  if (emailRows.length === 1) { emailRows[0] = emptyEmailRow(); }
-  else { emailRows.splice(i, 1); }
-  renderEmailRows();
+function emailTambahBaris() { emailRows.push(emptyEmailRow()); renderEmailTbody(); }
+
+function emailHapusBaris(i) {
+  if (emailRows.length <= 1) { showToast('Minimal 1 baris data', true); return; }
+  emailRows.splice(i, 1); renderEmailTbody();
 }
 
-function resetTableEmail() {
+function emailResetTabel() {
   if (!confirm('Reset semua data tabel?')) return;
-  emailRows = [emptyEmailRow()];
-  renderEmailRows();
+  emailRows = [emptyEmailRow()]; renderEmailTbody();
 }
 
-async function downloadEmailExcel() {
-  const kodeSatker = currentUser.kodeSatker || currentUser.username || '';
-  const rows = emailRows.filter(r => r.nama || r.nipnrp || r.nik);
-  if (!rows.length) { showToast('Isi minimal 1 baris data dulu!', true); return; }
+function konfirmasiSubmitEmail() {
+  const filled = emailRows.filter(r => r.nama && r.nipnrp);
+  if (!filled.length) { showToast('Isi minimal 1 baris data (nama & NIP wajib)', true); return; }
+  const infoEl = document.getElementById('konfirmasiEmailInfo');
+  if (infoEl) infoEl.innerHTML = `📊 Total: <strong>${filled.length} pegawai</strong> akan diajukan ke KPPN Jayapura.`;
+  openModal('modalKonfirmasiEmail');
+}
 
-  // Buat XLSX secara client-side dengan SheetJS
-  const script = document.createElement('script');
-  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-  script.onload = () => {
-    const wb = XLSX.utils.book_new();
-    // Header
-    const wsData = [
-      ['Kode KPPN', 'Kode Satker', 'Nama Pegawai', 'NIP / NRP', 'NIK', 'Status (1=TNI; 2=POLRI; 3=PNS; 4=PPNPN; 5=P3K)']
-    ];
-    rows.forEach(r => {
-      wsData.push([
-        '063',
-        kodeSatker,
-        r.nama || '',
-        r.nipnrp || '',
-        r.nik || '',
-        r.status ? String(r.status) : ''
-      ]);
-    });
+async function doSubmitEmailSakti() {
+  const btn = document.getElementById('btnDoSubmitEmail');
+  btn.disabled = true; btn.textContent = '⏳ Mengirim...';
+  const filled = emailRows.filter(r => r.nama && r.nipnrp);
+  try {
+    const res = await apiPost({ action:'submitEmailSakti', pegawai: filled });
+    closeModal('modalKonfirmasiEmail');
+    if (!res.success) { showToast(res.message || 'Gagal submit', true); btn.disabled=false; btn.innerHTML='✅ Ya, Submit'; return; }
+    showToast('✅ Berhasil disubmit! ID: ' + res.id, false);
+    emailRows = [emptyEmailRow()];
+    emailRiwayat = []; // reset cache
+    setTimeout(() => switchTab('email-riwayat'), 1200);
+  } catch(e) {
+    showToast('Gagal terhubung ke server', true);
+  }
+  btn.disabled = false; btn.innerHTML = '✅ Ya, Submit';
+}
 
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
+// ════════════════════════════════════════════════════════
+// EMAIL SAKTI — RIWAYAT
+// ════════════════════════════════════════════════════════
+function renderEmailRiwayat() {
+  return `<div class="page-title">Riwayat Email SAKTI</div>
+  <div class="page-sub">Daftar pengajuan email SAKTI yang pernah Anda submit</div>
+  <div class="card" style="padding:16px 20px">
+    <div id="emailRiwayatBody"><p style="color:var(--gray-400);font-style:italic;font-size:13px">Memuat...</p></div>
+  </div>`;
+}
 
-    // Format semua sel sebagai TEXT (@)
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    for (let R = range.s.r; R <= range.e.r; R++) {
-      for (let C = range.s.c; C <= range.e.c; C++) {
-        const addr = XLSX.utils.encode_cell({r:R, c:C});
-        if (!ws[addr]) continue;
-        if (!ws[addr].z) ws[addr].z = '@';
-        ws[addr].t = 's'; // force string
-      }
+async function initEmailRiwayat() {
+  const body = document.getElementById('emailRiwayatBody');
+  if (!body) return;
+  body.innerHTML = '<p style="color:var(--gray-400);font-size:13px">Memuat data...</p>';
+  try {
+    const res = await apiPost({ action:'getRiwayatEmailSakti' });
+    if (!res.success) { body.innerHTML = `<p style="color:var(--red)">❌ ${res.message}</p>`; return; }
+    emailRiwayat = res.list || [];
+    renderEmailRiwayatTable();
+  } catch(e) {
+    body.innerHTML = '<p style="color:var(--red)">❌ Gagal memuat data. Periksa koneksi internet.</p>';
+  }
+}
+
+function renderEmailRiwayatTable() {
+  const body = document.getElementById('emailRiwayatBody');
+  if (!body) return;
+  if (!emailRiwayat.length) {
+    body.innerHTML = '<p style="color:var(--gray-400);font-style:italic;text-align:center;padding:24px">Belum ada riwayat pendaftaran email SAKTI.</p>';
+    return;
+  }
+  body.innerHTML = `<div style="overflow-x:auto">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Tanggal Submit</th>
+          <th>ID Pengajuan</th>
+          <th>Jumlah Pegawai</th>
+          <th>Status</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${emailRiwayat.map(e => `
+          <tr>
+            <td>${fmtTgl(e.tanggalSubmit)}</td>
+            <td style="font-family:monospace;font-size:12px;color:var(--gray-600)">${esc(e.id)}</td>
+            <td style="text-align:center"><strong>${e.jumlahPegawai}</strong> pegawai</td>
+            <td>${badgeStatus(e.status)}</td>
+            <td>
+              <button class="btn btn-outline btn-sm" onclick="lihatDetailEmail('${esc(e.id)}')">🔍 Lihat Detail</button>
+              ${e.status==='Ditolak'?`<button class="btn btn-secondary btn-sm" style="margin-left:4px" onclick="ajukanUlangEmail('${esc(e.id)}')">🔄 Ajukan Ulang</button>`:''}
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:12px;color:var(--gray-500);margin-top:10px">Total: ${emailRiwayat.length} pengajuan</p>`;
+}
+
+function lihatDetailEmail(id) {
+  const e = emailRiwayat.find(x => x.id === id);
+  if (!e) return;
+  const body = document.getElementById('detailEmailBody');
+  const statusColor = { Menunggu:'orange', Selesai:'green', Ditolak:'red', Diproses:'blue' }[e.status] || 'blue';
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;font-size:13px">
+      <div><span style="color:var(--gray-500)">ID Pengajuan:</span><br/><strong style="font-family:monospace">${esc(e.id)}</strong></div>
+      <div><span style="color:var(--gray-500)">Status:</span><br/>${badgeStatus(e.status)}</div>
+      <div><span style="color:var(--gray-500)">Tanggal Submit:</span><br/><strong>${fmtTglWaktu(e.tanggalSubmit)}</strong></div>
+      <div><span style="color:var(--gray-500)">Jumlah Pegawai:</span><br/><strong>${e.jumlahPegawai} pegawai</strong></div>
+      ${e.diprosesTgl?`<div><span style="color:var(--gray-500)">Diproses Pada:</span><br/><strong>${fmtTglWaktu(e.diprosesTgl)}</strong></div>`:''}
+      ${e.diprosesoleh?`<div><span style="color:var(--gray-500)">Diproses Oleh:</span><br/><strong>${esc(e.diprosesoleh)}</strong></div>`:''}
+    </div>
+    ${e.alasanTolak?`<div class="info-box red" style="margin-bottom:14px"><strong>Alasan Penolakan:</strong> ${esc(e.alasanTolak)}</div>`:''}
+    ${e.status==='Selesai'&&e.emailHasil&&e.emailHasil.length?`
+      <div class="card-title" style="margin-bottom:12px">Email yang Diberikan KPPN</div>
+      <table class="tbl" style="margin-bottom:14px">
+        <thead><tr><th>Nama Pegawai</th><th>NIP/NRP</th><th>Email SAKTI</th></tr></thead>
+        <tbody>
+          ${e.emailHasil.map(h=>`<tr>
+            <td>${esc(h.nama||'—')}</td>
+            <td style="font-family:monospace">${esc(h.nipnrp||'—')}</td>
+            <td><a href="mailto:${esc(h.email)}">${esc(h.email||'—')}</a></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`:
+      (e.status==='Menunggu'?'<div class="info-box orange">⏳ Pengajuan Anda sedang menunggu diproses oleh KPPN Jayapura.</div>':
+      e.status==='Ditolak'?'<div class="info-box red">❌ Pengajuan ini telah ditolak. Silakan ajukan ulang setelah memperbaiki data.</div>':
+      '<div class="info-box blue">🔄 Sedang diproses oleh KPPN Jayapura.</div>')}
+    <div class="card-title" style="margin:16px 0 10px">Data Pegawai yang Diajukan</div>
+    <table class="tbl">
+      <thead><tr><th>No</th><th>Nama Pegawai</th><th>NIP/NRP</th><th>NIK</th><th>Status</th></tr></thead>
+      <tbody>
+        ${(e.pegawai||[]).map((p,i)=>`<tr>
+          <td style="text-align:center">${i+1}</td>
+          <td>${esc(p.nama||'')}</td>
+          <td style="font-family:monospace">${esc(p.nipnrp||'')}</td>
+          <td style="font-family:monospace">${esc(p.nik||'')}</td>
+          <td>${{1:'TNI',2:'POLRI',3:'PNS',4:'PPNPN',5:'PPPK'}[p.status]||p.status||'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  openModal('modalDetailEmail');
+}
+
+function ajukanUlangEmail(id) {
+  const e = emailRiwayat.find(x => x.id === id);
+  if (!e) return;
+  emailRows = (e.pegawai||[]).map(p => ({...p}));
+  closeModal('modalDetailEmail');
+  switchTab('email-baru');
+  showToast('Data pegawai dari pengajuan sebelumnya sudah dimuat. Periksa dan submit ulang.', false);
+}
+
+// ════════════════════════════════════════════════════════
+// USER SAKTI — BARU
+// ════════════════════════════════════════════════════════
+function renderUserBaru() {
+  return `<div class="page-title"><strong style="font-size:22px">USER SAKTI BARU</strong></div>
+  <div class="page-sub">Pendaftaran pengguna baru aplikasi SAKTI</div>
+  <div class="info-box blue">
+    ℹ️ Gunakan form di bawah untuk mendaftarkan pengguna SAKTI baru. Setelah submit dan upload dokumen, data <strong>tidak dapat diubah</strong> sampai ada keputusan dari KPPN. Pastikan data sudah benar sebelum submit.
+  </div>
+  <div class="card">
+    <div class="card-title">Form Pendaftaran User SAKTI</div>
+    <div id="userBaruBody">
+      <p style="color:var(--gray-400);font-style:italic;font-size:13px">Memuat data pendaftaran...</p>
+    </div>
+  </div>`;
+}
+
+async function initUserBaru() {
+  const body = document.getElementById('userBaruBody');
+  if (!body) return;
+  // Cek apakah sudah ada pendaftaran aktif
+  try {
+    const res = await apiPost({ action:'getSatkerDashboard' });
+    if (res.success && res.data && res.data.refKode) {
+      const d = res.data;
+      const status = d.status || 'submitted';
+      const locked = ['submitted','diproses','terdaftar'].includes(status.toLowerCase());
+      body.innerHTML = `<div class="info-box ${locked?'orange':'green'}" style="margin-bottom:16px">
+        ${locked?'🔒':'✅'} Pendaftaran user SAKTI Anda <strong>${locked?'sedang dalam proses':'sudah selesai'}</strong> (Status: <strong>${esc(status)}</strong>).
+        ${locked?'Data tidak dapat diubah selama proses berlangsung.':''}
+      </div>
+      <div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+        <div><span style="color:var(--gray-500)">Kode Referensi:</span><br/><strong style="font-family:monospace">${esc(d.refKode||'—')}</strong></div>
+        <div><span style="color:var(--gray-500)">Nama Satker:</span><br/><strong>${esc(d.namaSatker||'—')}</strong></div>
+        <div><span style="color:var(--gray-500)">Nama KPA:</span><br/><strong>${esc(d.namaKpa||'—')}</strong></div>
+        <div><span style="color:var(--gray-500)">Email:</span><br/><strong>${esc(d.email||'—')}</strong></div>
+      </div>
+      <div style="margin-top:16px">
+        <button class="btn btn-outline btn-sm" onclick="switchTab('user-riwayat')">📋 Lihat Riwayat Pendaftaran</button>
+      </div>`;
+      return;
     }
-
-    // Lebar kolom
-    ws['!cols'] = [
-      {wch:12},{wch:14},{wch:30},{wch:22},{wch:20},{wch:20}
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Form Email SAKTI');
-
-    // Sheet keterangan
-    const wsKet = XLSX.utils.aoa_to_sheet([
-      ['Kode','Keterangan'],
-      ['1','TNI'],['2','POLRI'],['3','PNS'],['4','PPNPN'],['5','P3K']
-    ]);
-    XLSX.utils.book_append_sheet(wb, wsKet, 'Keterangan');
-
-    XLSX.writeFile(wb, `Form_Email_SAKTI_${kodeSatker}.xlsx`);
-    showToast('✅ File Excel berhasil didownload!');
-  };
-  document.head.appendChild(script);
+  } catch(e) {}
+  // Tampilkan link ke form pendaftaran
+  body.innerHTML = `<p style="font-size:13px;color:var(--gray-700);margin-bottom:16px">Belum ada pendaftaran user SAKTI. Klik tombol di bawah untuk memulai pendaftaran.</p>
+  <a href="index.html" class="btn btn-primary" target="_blank">📝 Mulai Pendaftaran User SAKTI</a>
+  <p style="font-size:12px;color:var(--gray-500);margin-top:10px">Anda akan diarahkan ke halaman formulir pendaftaran.</p>`;
 }
 
-// ── AUTO-LOGIN ────────────────────────────────────────────
+// ════════════════════════════════════════════════════════
+// USER SAKTI — PERGANTIAN
+// ════════════════════════════════════════════════════════
+function renderUserGanti() {
+  return renderDev('Pergantian User SAKTI');
+}
+
+// ════════════════════════════════════════════════════════
+// USER SAKTI — RIWAYAT
+// ════════════════════════════════════════════════════════
+function renderUserRiwayat() {
+  return `<div class="page-title">Riwayat Pendaftaran User SAKTI</div>
+  <div class="page-sub">Status dan progres pendaftaran user SAKTI Anda</div>
+  <div id="userRiwayatBody"><p style="color:var(--gray-400);font-size:13px">Memuat...</p></div>`;
+}
+
+async function initUserRiwayat() {
+  const body = document.getElementById('userRiwayatBody');
+  if (!body) return;
+  try {
+    const res = await apiPost({ action:'getSatkerDashboard' });
+    if (!res.success || !res.data || !res.data.refKode) {
+      body.innerHTML = `<div class="card"><p style="color:var(--gray-400);font-style:italic;text-align:center;padding:24px">Belum ada pendaftaran User SAKTI yang diajukan.</p>
+      <div style="text-align:center;margin-top:8px"><a href="index.html" class="btn btn-primary btn-sm" target="_blank">📝 Mulai Pendaftaran</a></div></div>`;
+      return;
+    }
+    const d = res.data;
+    const steps = [
+      { key:'rekam',    label:'Rekam Data',       done: !!d.refKode },
+      { key:'upload',   label:'Upload Dokumen',    done: d.hasFiles },
+      { key:'submit',   label:'Submit ke KPPN',    done: ['submitted','diproses','terdaftar'].includes((d.status||'').toLowerCase()) },
+      { key:'diproses', label:'Diproses KPPN',     done: ['diproses','terdaftar'].includes((d.status||'').toLowerCase()) },
+      { key:'otp',      label:'Aktivasi OTP',      done: d.otpAktif },
+      { key:'selesai',  label:'Terdaftar',         done: (d.status||'').toLowerCase()==='terdaftar' },
+    ];
+    const status = d.status || 'draft';
+    const locked = ['submitted','diproses','terdaftar'].includes(status.toLowerCase());
+
+    body.innerHTML = `
+    <div class="card">
+      <div class="card-title">Status Pendaftaran</div>
+      <div style="display:flex;align-items:center;gap:0;margin-bottom:24px;overflow-x:auto;padding-bottom:8px">
+        ${steps.map((s,i)=>`
+          <div style="display:flex;align-items:center;flex-shrink:0">
+            <div style="text-align:center;min-width:90px">
+              <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;margin:0 auto 4px;
+                background:${s.done?'var(--green)':'var(--gray-200)'};color:${s.done?'#fff':'var(--gray-500)'}">
+                ${s.done?'✓':i+1}</div>
+              <div style="font-size:11px;font-weight:600;color:${s.done?'var(--green)':'var(--gray-500)'}">${s.label}</div>
+            </div>
+            ${i<steps.length-1?`<div style="height:2px;width:24px;background:${steps[i+1].done?'var(--green)':'var(--gray-200)'};flex-shrink:0"></div>`:''}
+          </div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;margin-bottom:16px">
+        <div><span style="color:var(--gray-500)">Kode Referensi:</span><br/><strong style="font-family:monospace">${esc(d.refKode||'—')}</strong></div>
+        <div><span style="color:var(--gray-500)">Status Saat Ini:</span><br/>${badgeStatus(status)}</div>
+        <div><span style="color:var(--gray-500)">Nama Satker:</span><br/><strong>${esc(d.namaSatker||'—')}</strong></div>
+        <div><span style="color:var(--gray-500)">Nama KPA:</span><br/><strong>${esc(d.namaKpa||'—')}</strong></div>
+        ${d.catatanAdmin?`<div style="grid-column:1/-1"><span style="color:var(--red)">Catatan KPPN:</span><br/><strong style="color:var(--red)">${esc(d.catatanAdmin)}</strong></div>`:''}
+      </div>
+      ${!locked?`<a href="index.html" class="btn btn-primary btn-sm" target="_blank">✏️ Lengkapi / Edit Data</a>`:''}
+      ${status.toLowerCase()==='ditolak'?`<div class="info-box red" style="margin-top:12px">❌ Pendaftaran ditolak. Perbaiki data dan ajukan kembali.</div>`:''}
+    </div>`;
+  } catch(e) {
+    body.innerHTML = '<div class="card"><p style="color:var(--red)">❌ Gagal memuat data.</p></div>';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════════════════
+function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function fmtTgl(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+}
+function fmtTglWaktu(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function badgeStatus(s) {
+  const map = {
+    'Menunggu':  'badge-menunggu',
+    'Diproses':  'badge-proses',
+    'Selesai':   'badge-selesai',
+    'Terdaftar': 'badge-selesai',
+    'Ditolak':   'badge-ditolak',
+    'submitted': 'badge-menunggu',
+    'diproses':  'badge-proses',
+    'terdaftar': 'badge-selesai',
+    'ditolak':   'badge-ditolak',
+    'draft':     'badge-draft',
+  };
+  return `<span class="badge ${map[s]||'badge-draft'}">${esc(s||'—')}</span>`;
+}
+
+let toastT;
+function showToast(msg, isErr=false, isOk=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'on' + (isErr?' err':isOk?' ok':'');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { t.className = ''; }, 3500);
+}
+
+function openModal(id)  { document.getElementById(id)?.classList.add('on'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('on'); }
+document.addEventListener('click', e => {
+  ['modalKonfirmasiEmail','modalDetailEmail','modalPassword'].forEach(mid => {
+    const m = document.getElementById(mid);
+    if (m && e.target === m) closeModal(mid);
+  });
+});
+
+async function doChangePassword() {
+  const lama   = document.getElementById('pwLama').value;
+  const baru   = document.getElementById('pwBaru').value;
+  const baru2  = document.getElementById('pwBaru2').value;
+  if (!lama||!baru||!baru2) { showToast('Semua kolom wajib diisi', true); return; }
+  if (baru !== baru2)        { showToast('Password baru tidak cocok', true); return; }
+  if (baru.length < 6)       { showToast('Password minimal 6 karakter', true); return; }
+  try {
+    const res = await apiPost({ action:'changePassword', oldPassword:lama, newPassword:baru });
+    if (!res.success) { showToast(res.message||'Gagal', true); return; }
+    showToast('✅ Password berhasil diubah', false, true);
+    closeModal('modalPassword');
+  } catch(e) { showToast('Gagal terhubung ke server', true); }
+}
+
+// ════════════════════════════════════════════════════════
+// AUTO-LOGIN
+// ════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
   const saved = sessionStorage.getItem('sakti_satker');
   if (saved) {
