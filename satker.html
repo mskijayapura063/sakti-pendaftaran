@@ -1855,13 +1855,56 @@ async function initUserRiwayat() {
   body.innerHTML = '<p style="color:var(--gray-400);font-size:13px;text-align:center;padding:24px">⏳ Memuat data...</p>';
   try {
     const res = await apiPost({ action:'getSatkerDashboard' });
-    // Ambil semua pendaftaran (array) bukan hanya data terbaru
-    const daftarAll = (res.pendaftaran || (res.data ? [res.data] : []));
 
-    if (!res.success || !daftarAll.length) {
+    // --- Kumpulkan semua record dari SEMUA kemungkinan field response ---
+    let daftarAll = [];
+
+    // 1. Field 'pendaftaran' = array semua record satker (format ideal)
+    if (Array.isArray(res.pendaftaran) && res.pendaftaran.length) {
+      daftarAll = res.pendaftaran;
+    }
+    // 2. Field 'list' = format alternatif array
+    else if (Array.isArray(res.list) && res.list.length) {
+      daftarAll = res.list;
+    }
+    // 3. Field 'data' = satu record terbaru (fallback ke single-item array)
+    else if (res.data && typeof res.data === 'object' && res.data.refKode) {
+      daftarAll = [res.data];
+    }
+    // 4. res sendiri berupa array (edge case)
+    else if (Array.isArray(res) && res.length) {
+      daftarAll = res;
+    }
+
+    // Tampilkan debug panel agar bisa debug response GAS jika masih kosong
+    const debugInfo = `
+      <details style="margin-bottom:12px">
+        <summary style="cursor:pointer;font-size:11px;color:var(--gray-400);padding:4px 0">🔧 Debug info (klik untuk buka)</summary>
+        <pre style="font-size:10px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;padding:10px;overflow-x:auto;margin-top:6px;white-space:pre-wrap;word-break:break-all">${esc(JSON.stringify({
+          success: res.success,
+          fields: Object.keys(res||{}),
+          pendaftaranIsArray: Array.isArray(res.pendaftaran),
+          pendaftaranLen: (res.pendaftaran||[]).length,
+          listIsArray: Array.isArray(res.list),
+          dataHasRefKode: !!(res.data?.refKode),
+          daftarAllLen: daftarAll.length
+        }, null, 2))}</pre>
+      </details>`;
+
+    if (!res.success) {
+      body.innerHTML = `<div class="card" style="text-align:center;padding:32px">
+        <p style="color:var(--red);margin-bottom:12px">❌ ${esc(res.message||'Gagal memuat data dari server.')}</p>
+        <button class="btn btn-secondary btn-sm" onclick="initUserRiwayat()">🔄 Coba Lagi</button>
+        ${debugInfo}
+      </div>`;
+      return;
+    }
+
+    if (!daftarAll.length) {
       body.innerHTML = `<div class="card" style="text-align:center;padding:32px">
         <p style="color:var(--gray-400);font-style:italic;margin-bottom:16px">Belum ada pendaftaran User SAKTI yang diajukan.</p>
         <button class="btn btn-primary" onclick="switchTab('user-baru')">📝 Mulai Pendaftaran</button>
+        ${debugInfo}
       </div>`;
       return;
     }
@@ -1941,9 +1984,18 @@ async function initUserRiwayat() {
           </div>
         </details>`:''}
       </div>`;
-    }).join('')}`;
+    }).join('')}
+    <details style="margin-top:8px">
+      <summary style="cursor:pointer;font-size:11px;color:var(--gray-400);padding:4px 0">🔧 Debug info</summary>
+      <pre style="font-size:10px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;padding:10px;overflow-x:auto;margin-top:6px;white-space:pre-wrap;word-break:break-all">${esc(JSON.stringify({
+        sumber: Array.isArray(res.pendaftaran)?'pendaftaran[]': Array.isArray(res.list)?'list[]':'data{}',
+        total: daftar.length,
+        fields_response: Object.keys(res||{}),
+        sample_keys: daftar[0]?Object.keys(daftar[0]):[]
+      }, null, 2))}</pre>
+    </details>`;
   } catch(e) {
-    body.innerHTML = '<div class="card"><p style="color:var(--red)">❌ Gagal memuat data. Periksa koneksi internet.</p></div>';
+    body.innerHTML = `<div class="card"><p style="color:var(--red)">❌ Gagal memuat data. Periksa koneksi internet.</p><p style="color:var(--gray-500);font-size:12px;margin-top:8px">Error: ${esc(e.message||String(e))}</p></div>`;
   }
 }
 
