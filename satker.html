@@ -1596,28 +1596,58 @@ async function ubDoGenerateExcel(){
     const a=document.createElement('a');a.href=url;a.download=fname;a.click();URL.revokeObjectURL(url);
   }catch(e){showToast('❌ Gagal buat Excel: '+e.message,true);return;}
   // Kirim ke server dan tunggu hasilnya sebelum buka modal sukses
+  const noHp = document.getElementById('ub_noHp')?.value||'';
+  const submitPayload = {
+    action:'submitDaftar',
+    refKode, namaSatker, kodeSatker,
+    namaKPA, nip: nipKPA,
+    noHp, email:'', alamat: kota, levelSatker,
+    tglSurat, fname,
+    userCount: ubUsers.length,
+    usersJson: JSON.stringify(ubUsers.map(u=>({
+      nama:u.nama, nipnrp:u.nipnrp, nik:u.nik,
+      email:u.email, hp:u.hp, sk:u.sk,
+      tglsk:u.tglsk, peranList:u.peranList
+    })))
+  };
+
+  let submitOk = false;
+  let submitMsg = '';
+  let submitDebug = '';
   try {
-    const res2 = await apiPost({
-      action:'submitDaftar',
-      refKode, namaSatker, kodeSatker,
-      namaKPA, nip: nipKPA,
-      noHp: document.getElementById('ub_noHp')?.value||'',
-      email:'', alamat: kota, levelSatker,
-      tglSurat, fname,
-      userCount: ubUsers.length,
-      usersJson: JSON.stringify(ubUsers.map(u=>({
-        nama:u.nama, nipnrp:u.nipnrp, nik:u.nik,
-        email:u.email, hp:u.hp, sk:u.sk,
-        tglsk:u.tglsk, peranList:u.peranList
-      })))
-    });
-    if (!res2.success) {
-      showToast('⚠️ Excel diunduh, tapi gagal kirim ke server: ' + (res2.message||''), true);
-    }
+    showToast('⏳ Menyimpan data ke server...');
+    const res2 = await apiPost(submitPayload);
+    submitOk = !!res2.success;
+    submitMsg = res2.message || '';
+    submitDebug = JSON.stringify({
+      success: res2.success,
+      message: res2.message,
+      responseFields: Object.keys(res2||{})
+    }, null, 2);
   } catch(e) {
-    showToast('⚠️ Excel diunduh, tapi gagal kirim ke server. Cek koneksi.', true);
+    submitOk = false;
+    submitMsg = 'Koneksi gagal: ' + e.message;
+    submitDebug = 'Error: ' + e.message;
   }
 
+  if (!submitOk) {
+    // Excel sudah terunduh tapi data tidak tersimpan di server
+    // Tampilkan error di form (jangan buka modal sukses)
+    const errPanel = document.getElementById('ubErrPanel');
+    const errList  = document.getElementById('ubErrList');
+    if (errPanel && errList) {
+      errList.innerHTML = `<li>⚠️ Excel berhasil diunduh (<strong>${fname}</strong>), TAPI data GAGAL tersimpan ke server.</li>
+        <li>Pesan error: <strong>${esc(submitMsg||'Tidak ada pesan dari server')}</strong></li>
+        <li>Coba klik tombol <strong>"Unduh Excel & Dapatkan Kode Referensi"</strong> sekali lagi, atau hubungi admin KPPN.</li>
+        <li style="font-size:10px;color:var(--gray-500)">Debug: ${esc(submitDebug)}</li>`;
+      errPanel.style.display='block';
+      errPanel.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+    showToast('❌ Data gagal tersimpan ke server. Lihat panel error.', true);
+    return; // JANGAN buka modal sukses
+  }
+
+  // Sukses — buka modal
   document.getElementById('ubRefKodeDisplay').textContent=refKode;
   openModal('modalSuksesUB');
 }
@@ -1876,7 +1906,7 @@ async function initUserRiwayat() {
       daftarAll = res;
     }
 
-    // Tampilkan debug panel agar bisa debug response GAS jika masih kosong
+    // Tampilkan debug panel agar bisa debug response script jika masih kosong
     const debugInfo = `
       <details style="margin-bottom:12px">
         <summary style="cursor:pointer;font-size:11px;color:var(--gray-400);padding:4px 0">🔧 Debug info (klik untuk buka)</summary>
@@ -1887,7 +1917,9 @@ async function initUserRiwayat() {
           pendaftaranLen: (res.pendaftaran||[]).length,
           listIsArray: Array.isArray(res.list),
           dataHasRefKode: !!(res.data?.refKode),
-          daftarAllLen: daftarAll.length
+          daftarAllLen: daftarAll.length,
+          serverDebug: res._debug || null,
+          currentUserUsername: currentUser?.username || '(kosong)',
         }, null, 2))}</pre>
       </details>`;
 
