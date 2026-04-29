@@ -8,6 +8,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
 <style>
 :root{
   --blue:#0D47A1;--blue-mid:#1565C0;--blue-light:#1976D2;--blue-pale:#E3F2FD;--blue-pale2:#BBDEFB;
@@ -174,6 +177,59 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
   .main-content{padding:16px}
   .stats-grid{grid-template-columns:repeat(2,1fr)}
 }
+
+/* ── USER CARD (User SAKTI Baru) ── */
+.user-card{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px 20px;margin-bottom:12px}
+.user-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.user-card-num{font-size:13px;font-weight:700;color:var(--blue)}
+.user-card-actions{display:flex;gap:8px}
+.btn-add-user{background:var(--blue-pale);color:var(--blue);border:2px dashed var(--blue-pale2);font-size:13px;padding:11px 20px;width:100%;border-radius:var(--radius);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:background .15s;display:block;text-align:center;margin-top:8px}
+.btn-add-user:hover{background:var(--blue-pale2)}
+
+/* ── PERAN (User SAKTI Baru) ── */
+.peran-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:6px;margin-top:8px}
+.peran-item{display:flex;align-items:flex-start;gap:9px;padding:8px 11px;border-radius:var(--radius);border:1.5px solid var(--gray-300);background:#fff;cursor:pointer;transition:border-color .12s,background .12s}
+.peran-item:hover:not(.disabled){border-color:var(--blue-light);background:var(--blue-pale)}
+.peran-item.checked{border-color:var(--blue);background:var(--blue-pale)}
+.peran-item.disabled{opacity:.38;cursor:not-allowed;background:var(--gray-100)}
+.peran-item input[type=checkbox]{margin-top:2px;accent-color:var(--blue);width:15px;height:15px;flex-shrink:0}
+.peran-item-label{font-size:12px;line-height:1.4}
+.peran-item-label .kode{font-size:10px;color:var(--gray-500);font-family:monospace}
+.peran-group-title{font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.6px;margin:12px 0 6px;border-bottom:1px solid var(--gray-200);padding-bottom:5px}
+
+/* ── BADGES (User SAKTI Baru) ── */
+.kb{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:inline-block;white-space:nowrap;margin:1px}
+.kb-A{background:#FFEBEE;color:#B71C1C}
+.kb-V{background:#E8F5E9;color:#1B5E20}
+.kb-O{background:#E3F2FD;color:#0D47A1}
+.kb-Ad{background:var(--gray-800);color:#fff}
+.kb-M{background:#FFF3E0;color:#E65100}
+
+/* ── WARN BOX (konflik peran) ── */
+.warn-box{background:var(--gold-light);border:1px solid #FFE082;border-radius:var(--radius);padding:10px 14px;font-size:12px;color:#5D4037;margin-top:8px;line-height:1.7;display:none}
+.warn-box.on{display:block}
+.warn-box div+div{margin-top:5px;padding-top:5px;border-top:1px dashed #FFE082}
+
+/* ── ERROR PANEL (validasi) ── */
+.error-panel{background:var(--red-pale);border:1px solid #EF9A9A;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:12px;color:#7f1d1d;display:none}
+.error-panel ul{padding-left:16px;margin-top:6px}
+.error-panel li{margin-bottom:3px}
+
+/* ── REF BOX ── */
+.ref-box{background:var(--blue);border-radius:10px;padding:22px;text-align:center;margin:16px 0}
+.ref-box .ref-label{color:rgba(255,255,255,.75);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.ref-box .ref-kode{color:#fff;font-size:22px;font-weight:800;letter-spacing:2px;font-family:monospace}
+.ref-box .ref-copy{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer;margin-top:10px;display:inline-block;font-family:'Inter',sans-serif;transition:background .15s}
+.ref-box .ref-copy:hover{background:rgba(255,255,255,.25)}
+
+/* ── form-row for User Baru ── */
+.ub-form-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.ub-form-group{display:flex;flex-direction:column;flex:1;min-width:180px}
+.ub-form-group label{font-size:11px;font-weight:600;color:var(--gray-700);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.ub-form-group input,.ub-form-group select{border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 12px;font-size:13px;color:var(--gray-900);background:#fff;font-family:'Inter',sans-serif;transition:border-color .15s,box-shadow .15s;width:100%}
+.ub-form-group input:focus,.ub-form-group select:focus{outline:none;border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(25,118,210,.12)}
+.ub-form-group input.err{border-color:var(--red)!important}
+.ub-hint{font-size:11px;color:var(--gray-500);margin-top:3px}
 </style>
 </head>
 <body>
@@ -309,7 +365,7 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
       <!-- Group: Lainnya -->
       <div class="nav-group" id="grp-lain">
         <div class="nav-group-hdr" id="grp-lain-hdr" onclick="toggleGroup('lain')">
-          <span class="nav-icon">⚙️</span>
+          <span class="nav-icon">🔧</span>
           <span>Lainnya</span>
           <span class="nav-arrow">▼</span>
         </div>
@@ -322,6 +378,13 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
             <span class="sub-icon">📝</span>
             <span class="sub-label">Perubahan Data</span>
           </div>
+        </div>
+      </div>
+
+      <!-- Pengaturan Akun (single, paling bawah) -->
+      <div style="border-top:1px solid var(--gray-200);margin-top:10px;padding-top:6px">
+        <div class="nav-single" id="nav-settings" onclick="switchTab('settings')">
+          <span class="nav-icon">⚙️</span> Pengaturan Akun
         </div>
       </div>
 
@@ -386,6 +449,81 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modalPassword')">Batal</button>
       <button class="btn btn-primary" onclick="doChangePassword()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL PERNYATAAN (User SAKTI Baru) ══ -->
+<div class="modal-overlay" id="modalPernyataanUB">
+  <div class="modal-box">
+    <div class="modal-title">📜 Pernyataan Kebenaran Data</div>
+    <p style="font-size:13px;color:var(--gray-600);line-height:1.7;margin-bottom:12px">Dengan mengklik <strong>Setuju</strong>, saya menyatakan bahwa:</p>
+    <div style="background:var(--blue-pale);border-left:4px solid var(--blue);padding:12px 14px;border-radius:0 6px 6px 0;font-size:13px;font-style:italic;color:var(--blue);line-height:1.7;margin-bottom:12px">
+      "Saya menyatakan bahwa semua data yang diisi dalam formulir ini adalah benar dan dapat dipertanggungjawabkan.
+      Saya tunduk pada ketentuan perundang-undangan yang berlaku terkait penggunaan Aplikasi SAKTI."
+    </div>
+    <p style="font-size:12px;color:var(--gray-600)">Data palsu dapat mengakibatkan penolakan pendaftaran dan/atau tindakan administratif.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalPernyataanUB')">Tidak Setuju</button>
+      <button class="btn btn-success" onclick="ubDoGenerateExcel()">✅ Setuju &amp; Unduh Excel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL SUKSES (User SAKTI Baru) ══ -->
+<div class="modal-overlay" id="modalSuksesUB">
+  <div class="modal-box">
+    <div class="modal-title">🎉 Excel Berhasil Diunduh!</div>
+    <p style="font-size:13px;color:var(--gray-600);line-height:1.7">File Excel berhasil diunduh. Selanjutnya:</p>
+    <ol style="font-size:13px;color:var(--gray-700);padding-left:20px;margin:10px 0;line-height:2.1">
+      <li>Cetak file Excel, minta tanda tangan KPA</li>
+      <li>Scan kembali ke PDF</li>
+      <li>Kumpulkan semua dokumen pendukung</li>
+      <li>Upload dokumen ke KPPN Jayapura menggunakan kode referensi berikut</li>
+    </ol>
+    <p style="font-size:12px;color:var(--red);font-weight:600;margin-bottom:6px">⚠️ Simpan kode ini! Diperlukan untuk menyelesaikan pendaftaran.</p>
+    <div class="ref-box">
+      <div class="ref-label">Kode Referensi Anda</div>
+      <div class="ref-kode" id="ubRefKodeDisplay">—</div>
+      <div class="ref-copy" onclick="ubCopyRefKode()">📋 Salin Kode</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalSuksesUB')">Tutup</button>
+      <button class="btn btn-primary" onclick="closeModal('modalSuksesUB');switchTab('user-riwayat')">📋 Lihat Riwayat</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL EDIT USER (User SAKTI Baru) ══ -->
+<div class="modal-overlay" id="modalEditUB">
+  <div class="modal-box wide">
+    <div class="modal-title">✏️ Edit Data Pengguna</div>
+    <div id="ubEditModalBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalEditUB')">Batal</button>
+      <button class="btn btn-primary" onclick="ubSaveEdit()">💾 Simpan Perubahan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL PANGGIL REKAMAN (User SAKTI Baru) ══ -->
+<div class="modal-overlay" id="modalPanggilRekamanUB">
+  <div class="modal-box">
+    <div class="modal-title">🔍 Panggil Rekaman Sebelumnya</div>
+    <p style="font-size:13px;color:var(--gray-600);line-height:1.7;margin-bottom:14px">
+      Masukkan kode referensi dari pendaftaran sebelumnya untuk memuat kembali data.
+      <br/><strong style="color:var(--red)">⚠️ Hanya bisa diubah selama belum ditandai "Terdaftar" oleh KPPN.</strong>
+    </p>
+    <div class="form-group">
+      <label>Kode Referensi</label>
+      <input type="text" id="ubInputPanggilRef" placeholder="Contoh: 28042026-123456-00"
+        style="font-family:monospace;letter-spacing:1px"
+        onkeydown="if(event.key==='Enter')ubDoPanggilRekaman()"/>
+    </div>
+    <div id="ubPanggilErr" style="display:none;background:var(--red-pale);border:1px solid var(--red);border-radius:6px;padding:10px 14px;font-size:13px;color:var(--red);margin-top:8px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalPanggilRekamanUB')">Batal</button>
+      <button class="btn btn-primary" id="ubBtnPanggilLoad" onclick="ubDoPanggilRekaman()">🔍 Muat Rekaman</button>
     </div>
   </div>
 </div>
@@ -487,11 +625,12 @@ function togglePwd(id, btn) {
 // ════════════════════════════════════════════════════════
 // NAVIGATION
 // ════════════════════════════════════════════════════════
-// Map tab → group id
+// Map tab → group id (tabs that belong to an accordion group)
 const TAB_GROUP = {
   'email-baru':'email','email-riwayat':'email',
   'user-baru':'user','user-ganti':'user','user-riwayat':'user',
   'role':'lain','data-user':'lain'
+  // 'settings' → no group, it's a standalone nav-single
 };
 function toggleGroup(grp) {
   const hdr = document.getElementById('grp-'+grp+'-hdr');
@@ -526,6 +665,93 @@ function switchTab(name) {
   else if (name === 'user-riwayat')  { main.innerHTML = renderUserRiwayat();   initUserRiwayat(); }
   else if (name === 'role')          { main.innerHTML = renderDev('Perubahan Role User SAKTI'); }
   else if (name === 'data-user')     { main.innerHTML = renderDev('Perubahan Data Pengguna SAKTI'); }
+  else if (name === 'settings')      { main.innerHTML = renderSettings(); }
+}
+
+// ════════════════════════════════════════════════════════
+// PENGATURAN AKUN
+// ════════════════════════════════════════════════════════
+function renderSettings() {
+  const u = currentUser || {};
+  return `<div class="page-title">⚙️ Pengaturan Akun</div>
+  <div class="page-sub">Kelola informasi dan keamanan akun Anda</div>
+
+  <!-- Info Akun -->
+  <div class="card" style="max-width:540px;margin-bottom:20px">
+    <div class="card-title">👤 Informasi Akun</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
+      <div>
+        <div style="color:var(--gray-500);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Kode Satker</div>
+        <div style="font-family:monospace;font-weight:700;font-size:16px;color:var(--blue)">${esc(u.username||'—')}</div>
+      </div>
+      <div>
+        <div style="color:var(--gray-500);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Role</div>
+        <div><span class="badge badge-proses">${esc(u.role||'Satker')}</span></div>
+      </div>
+      <div style="grid-column:1/-1">
+        <div style="color:var(--gray-500);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Nama Satker</div>
+        <div style="font-weight:600">${esc(u.namaLengkap||u.username||'—')}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ganti Password -->
+  <div class="card" style="max-width:540px">
+    <div class="card-title">🔑 Ubah Password</div>
+    <div id="pwSettingsMsg"></div>
+    <div class="form-group">
+      <label>Password Lama <span style="color:var(--red)">*</span></label>
+      <div style="position:relative">
+        <input type="password" id="pwsLama" placeholder="Password saat ini" style="padding-right:42px"/>
+        <button type="button" onclick="togglePwd('pwsLama',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px">👁️</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Password Baru <span style="color:var(--red)">*</span></label>
+      <div style="position:relative">
+        <input type="password" id="pwsBaru" placeholder="Minimal 6 karakter" style="padding-right:42px"/>
+        <button type="button" onclick="togglePwd('pwsBaru',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px">👁️</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Konfirmasi Password Baru <span style="color:var(--red)">*</span></label>
+      <div style="position:relative">
+        <input type="password" id="pwsBaru2" placeholder="Ulangi password baru" style="padding-right:42px"/>
+        <button type="button" onclick="togglePwd('pwsBaru2',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px">👁️</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="doChangePwSettings()" id="btnChangePws">🔐 Simpan Password Baru</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('pwsLama').value='';document.getElementById('pwsBaru').value='';document.getElementById('pwsBaru2').value='';document.getElementById('pwSettingsMsg').innerHTML=''">✕ Batal</button>
+    </div>
+  </div>`;
+}
+
+async function doChangePwSettings() {
+  const btn  = document.getElementById('btnChangePws');
+  const msg  = document.getElementById('pwSettingsMsg');
+  const lama = document.getElementById('pwsLama')?.value;
+  const baru = document.getElementById('pwsBaru')?.value;
+  const baru2= document.getElementById('pwsBaru2')?.value;
+  if (!lama||!baru||!baru2) { msg.innerHTML=`<div class="info-box red" style="margin-bottom:14px">⚠️ Semua kolom wajib diisi</div>`; return; }
+  if (baru!==baru2)         { msg.innerHTML=`<div class="info-box red" style="margin-bottom:14px">⚠️ Password baru tidak cocok</div>`; return; }
+  if (baru.length<6)        { msg.innerHTML=`<div class="info-box red" style="margin-bottom:14px">⚠️ Password minimal 6 karakter</div>`; return; }
+  btn.disabled=true; btn.textContent='⏳ Menyimpan...';
+  try {
+    const res = await apiPost({ action:'changePassword', oldPassword:lama, newPassword:baru });
+    if (!res.success) {
+      msg.innerHTML=`<div class="info-box red" style="margin-bottom:14px">❌ ${esc(res.message||'Gagal mengubah password')}</div>`;
+      btn.disabled=false; btn.textContent='🔐 Simpan Password Baru';
+      return;
+    }
+    msg.innerHTML=`<div class="info-box green" style="margin-bottom:14px">✅ Password berhasil diubah! Silakan login ulang jika diperlukan.</div>`;
+    document.getElementById('pwsLama').value='';
+    document.getElementById('pwsBaru').value='';
+    document.getElementById('pwsBaru2').value='';
+  } catch(e) {
+    msg.innerHTML=`<div class="info-box red" style="margin-bottom:14px">❌ Gagal terhubung ke server</div>`;
+  }
+  btn.disabled=false; btn.textContent='🔐 Simpan Password Baru';
 }
 
 function renderDev(judul) {
@@ -622,126 +848,302 @@ async function initDashboard() {
 // ════════════════════════════════════════════════════════
 // EMAIL SAKTI — PENDAFTARAN BARU
 // ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// EMAIL SAKTI — PENDAFTARAN BARU (flow mirip User SAKTI)
+// ════════════════════════════════════════════════════════
+
+// State
+let ebStep = 1;          // step: 1=rekam data, 2=data pegawai
+let ebLocked = false;    // locked if ada pengajuan pending
+let ebActiveId = null;   // id pengajuan aktif (jika ada)
+// emailRows already declared in state block above
+
+function emptyEmailRow() { return { nama:'', nipnrp:'', nik:'', status:'3' }; }
+
 function renderEmailBaru() {
   return `<div class="page-title">Pendaftaran Email SAKTI</div>
   <div class="page-sub">Pendaftaran Awal — Khusus Pengguna Baru</div>
-  <div class="info-box blue">
-    ℹ️ Isi data pegawai yang akan didaftarkan email SAKTI-nya. Kode KPPN sudah terisi otomatis (<strong>063</strong>). Kode Satker diambil dari akun Anda secara otomatis. Setelah submit, data akan diproses oleh KPPN Jayapura.
-  </div>
-  <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-      <div class="card-title" style="margin:0;padding:0;border:none">Data Pegawai</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-outline btn-sm" onclick="emailTambahBaris()">+ Tambah Baris</button>
-        <button class="btn btn-secondary btn-sm" onclick="emailResetTabel()">🔄 Reset</button>
-        <button class="btn btn-success" onclick="konfirmasiSubmitEmail()">📤 Submit ke KPPN</button>
-      </div>
-    </div>
-    <div style="overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;min-width:680px">
-        <thead>
-          <tr style="background:var(--blue-pale)">
-            <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);width:36px;text-align:center">No</th>
-            <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);width:80px">KPPN</th>
-            <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);width:100px">Kode Satker</th>
-            <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue)">Nama Pegawai</th>
-            <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);width:130px">NIP / NRP</th>
-            <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);width:130px">NIK</th>
-            <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);width:90px">Status</th>
-            <th style="padding:9px 10px;border:1px solid var(--gray-200);font-size:11px;font-weight:700;color:var(--blue);width:40px;text-align:center">✕</th>
-          </tr>
-        </thead>
-        <tbody id="emailTbody"></tbody>
-      </table>
-    </div>
-    <p style="font-size:12px;color:var(--gray-500);margin-top:8px"><span id="emailCount">0</span> baris · Status: 1=TNI, 2=POLRI, 3=PNS, 4=PPNPN, 5=PPPK</p>
+  <div id="ebBody"><p style="color:var(--gray-400);font-style:italic;text-align:center;padding:40px">⏳ Memuat...</p></div>`;
+}
+
+// ── Step indicator ──
+function ebStepBar(current) {
+  const steps = ['Informasi Pengajuan','Data Pegawai','Review & Submit'];
+  return `<div style="display:flex;align-items:center;gap:0;margin-bottom:28px">
+    ${steps.map((s,i)=>{
+      const n=i+1, done=n<current, active=n===current;
+      const bg = done?'var(--green)':active?'var(--blue)':'var(--gray-200)';
+      const col = (done||active)?'#fff':'var(--gray-500)';
+      const tcol = done?'var(--green)':active?'var(--blue)':'var(--gray-400)';
+      return `<div style="display:flex;align-items:center;flex:1;min-width:0">
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+          <div style="width:34px;height:34px;border-radius:50%;background:${bg};color:${col};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;margin-bottom:5px">${done?'✓':n}</div>
+          <div style="font-size:11px;font-weight:600;color:${tcol};text-align:center;white-space:nowrap">${s}</div>
+        </div>
+        ${i<steps.length-1?`<div style="height:2px;flex:1;background:${done?'var(--green)':'var(--gray-200)'};margin:0 4px;margin-bottom:18px"></div>`:''}
+      </div>`;
+    }).join('')}
   </div>`;
 }
 
-function initEmailBaru() {
-  if (!emailRows.length) emailRows = [emptyEmailRow()];
-  renderEmailTbody();
+// ── Step 1: Informasi Pengajuan ──
+function ebRenderStep1(existing) {
+  const kode = currentUser?.username || '';
+  const d = existing || {};
+  return `
+  ${ebStepBar(1)}
+  <div class="info-box blue" style="margin-bottom:18px">
+    ℹ️ Lengkapi informasi pengajuan email SAKTI. Kode KPPN <strong>063</strong> dan Kode Satker diisi otomatis dari akun Anda.
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">🏢 Identitas Satker</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-group" style="margin:0">
+        <label>Kode KPPN</label>
+        <input type="text" value="063 — KPPN Jayapura" readonly style="background:var(--gray-100);font-weight:600"/>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Kode Satker</label>
+        <input type="text" value="${esc(kode)}" readonly style="background:var(--gray-100);font-family:monospace;font-weight:700"/>
+      </div>
+      <div class="form-group" style="margin:0;grid-column:1/-1">
+        <label>Nama Satker <span style="color:var(--red)">*</span></label>
+        <input type="text" id="eb_namaSatker" value="${esc(d.namaSatker||'')}" placeholder="Nama lengkap satker"/>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">👤 Penanggung Jawab / KPA</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-group" style="margin:0">
+        <label>Nama KPA <span style="color:var(--red)">*</span></label>
+        <input type="text" id="eb_namaKpa" value="${esc(d.namaKpa||'')}" placeholder="Nama lengkap KPA"/>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>NIP KPA <span style="color:var(--red)">*</span></label>
+        <input type="text" id="eb_nipKpa" value="${esc(d.nipKpa||'')}" placeholder="18 digit NIP" maxlength="18" style="font-family:monospace"/>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>No. HP / WA <span style="color:var(--red)">*</span></label>
+        <input type="text" id="eb_noHp" value="${esc(d.noHp||'')}" placeholder="08xx-xxxx-xxxx"/>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Email KPA</label>
+        <input type="text" id="eb_emailKpa" value="${esc(d.emailKpa||'')}" placeholder="email@satker.go.id"/>
+      </div>
+      <div class="form-group" style="margin:0;grid-column:1/-1">
+        <label>Keterangan / Catatan</label>
+        <textarea id="eb_keterangan" rows="2" placeholder="Keterangan tambahan jika ada..." style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:8px 12px;font-size:13px;font-family:'Inter',sans-serif;resize:vertical">${esc(d.keterangan||'')}</textarea>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;justify-content:flex-end">
+    <button class="btn btn-primary" onclick="ebNextStep()">Selanjutnya → Data Pegawai</button>
+  </div>`;
 }
 
-function emptyEmailRow() {
-  return { nama:'', nipnrp:'', nik:'', status:'' };
+// ── Step 2: Data Pegawai ──
+function ebRenderStep2() {
+  return `
+  ${ebStepBar(2)}
+  <div class="info-box blue" style="margin-bottom:18px">
+    ℹ️ Tambahkan semua pegawai yang akan didaftarkan email SAKTI-nya. Nama dan NIP/NRP wajib diisi.
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>👥 Daftar Pegawai</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="ebTambahBaris()">+ Tambah Baris</button>
+        <button class="btn btn-secondary btn-sm" onclick="ebHapusSemua()">🗑️ Kosongkan</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl" style="min-width:660px">
+        <thead><tr>
+          <th style="width:36px;text-align:center">#</th>
+          <th>Nama Lengkap <span style="color:var(--red)">*</span></th>
+          <th style="width:140px">NIP / NRP <span style="color:var(--red)">*</span></th>
+          <th style="width:140px">NIK (16 digit)</th>
+          <th style="width:110px">Status Pegawai</th>
+          <th style="width:36px"></th>
+        </tr></thead>
+        <tbody id="ebTbody"></tbody>
+      </table>
+    </div>
+    <div style="font-size:11px;color:var(--gray-500);margin-top:8px">
+      Status: 1=TNI · 2=POLRI · 3=PNS · 4=PPNPN · 5=PPPK
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;justify-content:space-between">
+    <button class="btn btn-secondary" onclick="ebPrevStep()">← Kembali</button>
+    <button class="btn btn-primary" onclick="ebNextStep()">Selanjutnya → Review</button>
+  </div>`;
 }
 
-function renderEmailTbody() {
-  const tbody = document.getElementById('emailTbody');
+// ── Step 3: Review & Submit ──
+function ebRenderStep3() {
+  const kode = currentUser?.username || '';
+  const ns = document.getElementById('eb_namaSatker')?.value||ebTempData.namaSatker||'';
+  const kpa = document.getElementById('eb_namaKpa')?.value||ebTempData.namaKpa||'';
+  const nip = document.getElementById('eb_nipKpa')?.value||ebTempData.nipKpa||'';
+  const hp  = document.getElementById('eb_noHp')?.value||ebTempData.noHp||'';
+  const filled = emailRows.filter(r=>r.nama&&r.nipnrp);
+  return `
+  ${ebStepBar(3)}
+  <div class="info-box orange" style="margin-bottom:18px">
+    ⚠️ Periksa kembali seluruh data sebelum submit. Setelah submit, data <strong>tidak dapat diubah</strong> sampai ada keputusan dari KPPN.
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">🏢 Identitas Satker</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+      <div><span style="color:var(--gray-500)">Kode KPPN</span><br/><strong>063 — KPPN Jayapura</strong></div>
+      <div><span style="color:var(--gray-500)">Kode Satker</span><br/><strong style="font-family:monospace">${esc(kode)}</strong></div>
+      <div style="grid-column:1/-1"><span style="color:var(--gray-500)">Nama Satker</span><br/><strong>${esc(ns)}</strong></div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">👤 Penanggung Jawab / KPA</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+      <div><span style="color:var(--gray-500)">Nama KPA</span><br/><strong>${esc(kpa)}</strong></div>
+      <div><span style="color:var(--gray-500)">NIP KPA</span><br/><strong style="font-family:monospace">${esc(nip)}</strong></div>
+      <div><span style="color:var(--gray-500)">No. HP/WA</span><br/><strong>${esc(hp)}</strong></div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-title">👥 Daftar Pegawai (${filled.length} orang)</div>
+    <table class="tbl">
+      <thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>NIK</th><th>Status</th></tr></thead>
+      <tbody>${filled.map((r,i)=>`<tr>
+        <td style="text-align:center">${i+1}</td>
+        <td>${esc(r.nama)}</td>
+        <td style="font-family:monospace">${esc(r.nipnrp)}</td>
+        <td style="font-family:monospace">${esc(r.nik)||'—'}</td>
+        <td>${{1:'TNI',2:'POLRI',3:'PNS',4:'PPNPN',5:'PPPK'}[r.status]||r.status}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>
+  <div style="display:flex;gap:10px;justify-content:space-between">
+    <button class="btn btn-secondary" onclick="ebPrevStep()">← Kembali Edit</button>
+    <button class="btn btn-success" onclick="ebDoSubmit()" id="btnEbSubmit">📤 Submit ke KPPN Jayapura</button>
+  </div>`;
+}
+
+// ── State simpan data step 1 ──
+let ebTempData = {};
+
+function ebRenderTbody() {
+  const tbody = document.getElementById('ebTbody');
   if (!tbody) return;
-  const kode = currentUser.kodeSatker || currentUser.username;
-  const statusOpts = ['','1','2','3','4','5'].map(v =>
-    `<option value="${v}">${v ? v+' – '+{1:'TNI',2:'POLRI',3:'PNS',4:'PPNPN',5:'PPPK'}[v] : '— Pilih —'}</option>`
+  const statusOpts = ['1','2','3','4','5'].map(v=>
+    `<option value="${v}">${v} – ${{1:'TNI',2:'POLRI',3:'PNS',4:'PPNPN',5:'PPPK'}[v]}</option>`
   ).join('');
-
-  tbody.innerHTML = emailRows.map((r,i) => `
-    <tr>
-      <td style="padding:4px 8px;border:1px solid var(--gray-200);text-align:center;color:var(--gray-400);font-size:12px">${i+1}</td>
-      <td style="padding:4px 6px;border:1px solid var(--gray-200);text-align:center;font-weight:700;color:var(--blue)">063</td>
-      <td style="padding:4px 6px;border:1px solid var(--gray-200);text-align:center;font-family:monospace;font-weight:600;color:var(--blue-mid)">${esc(kode)}</td>
-      <td style="padding:4px 6px;border:1px solid var(--gray-200)">
-        <input class="inline-input" placeholder="Nama lengkap" value="${esc(r.nama)}" oninput="emailRows[${i}].nama=this.value;updEmailCount()"/>
-      </td>
-      <td style="padding:4px 6px;border:1px solid var(--gray-200)">
-        <input class="inline-input" placeholder="NIP atau NRP" value="${esc(r.nipnrp)}" maxlength="20" oninput="emailRows[${i}].nipnrp=this.value;updEmailCount()" style="font-family:monospace"/>
-      </td>
-      <td style="padding:4px 6px;border:1px solid var(--gray-200)">
-        <input class="inline-input" placeholder="16 digit NIK" value="${esc(r.nik)}" maxlength="16" oninput="emailRows[${i}].nik=this.value;updEmailCount()" style="font-family:monospace"/>
-      </td>
-      <td style="padding:4px 6px;border:1px solid var(--gray-200)">
-        <select class="inline-select" onchange="emailRows[${i}].status=this.value;updEmailCount()">
-          ${statusOpts.replace(`value="${r.status}"`,`value="${r.status}" selected`)}
-        </select>
-      </td>
-      <td style="padding:4px 6px;border:1px solid var(--gray-200);text-align:center">
-        <button onclick="emailHapusBaris(${i})" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:17px;padding:2px 4px">✕</button>
-      </td>
-    </tr>`).join('');
-  updEmailCount();
+  tbody.innerHTML = emailRows.map((r,i)=>`<tr>
+    <td style="text-align:center;color:var(--gray-400);font-size:12px;padding:4px 6px">${i+1}</td>
+    <td style="padding:4px 6px"><input class="inline-input" placeholder="Nama lengkap" value="${esc(r.nama)}"
+      oninput="emailRows[${i}].nama=this.value"/></td>
+    <td style="padding:4px 6px"><input class="inline-input" placeholder="NIP/NRP" maxlength="20" value="${esc(r.nipnrp)}"
+      style="font-family:monospace" oninput="emailRows[${i}].nipnrp=this.value"/></td>
+    <td style="padding:4px 6px"><input class="inline-input" placeholder="16 digit" maxlength="16" value="${esc(r.nik)}"
+      style="font-family:monospace" oninput="emailRows[${i}].nik=this.value"/></td>
+    <td style="padding:4px 6px">
+      <select class="inline-select" onchange="emailRows[${i}].status=this.value">
+        ${statusOpts.replace(`value="${r.status||'3'}"`,`value="${r.status||'3'}" selected`)}
+      </select>
+    </td>
+    <td style="padding:4px 6px;text-align:center">
+      <button onclick="ebHapusBaris(${i})" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px">✕</button>
+    </td>
+  </tr>`).join('') || `<tr class="tbl-empty"><td colspan="6">Klik "+ Tambah Baris" untuk menambah pegawai</td></tr>`;
 }
 
-function updEmailCount() {
-  const el = document.getElementById('emailCount');
-  if (el) el.textContent = emailRows.length;
+function ebTambahBaris()  { emailRows.push(emptyEmailRow()); ebRenderTbody(); }
+function ebHapusBaris(i)  {
+  if (emailRows.length<=1) { showToast('Minimal 1 baris', true); return; }
+  emailRows.splice(i,1); ebRenderTbody();
+}
+function ebHapusSemua()   {
+  if (!confirm('Kosongkan semua baris?')) return;
+  emailRows=[emptyEmailRow()]; ebRenderTbody();
 }
 
-function emailTambahBaris() { emailRows.push(emptyEmailRow()); renderEmailTbody(); }
-
-function emailHapusBaris(i) {
-  if (emailRows.length <= 1) { showToast('Minimal 1 baris data', true); return; }
-  emailRows.splice(i, 1); renderEmailTbody();
+function ebSaveStep1() {
+  ebTempData.namaSatker = document.getElementById('eb_namaSatker')?.value.trim()||'';
+  ebTempData.namaKpa    = document.getElementById('eb_namaKpa')?.value.trim()||'';
+  ebTempData.nipKpa     = document.getElementById('eb_nipKpa')?.value.trim()||'';
+  ebTempData.noHp       = document.getElementById('eb_noHp')?.value.trim()||'';
+  ebTempData.emailKpa   = document.getElementById('eb_emailKpa')?.value.trim()||'';
+  ebTempData.keterangan = document.getElementById('eb_keterangan')?.value.trim()||'';
 }
 
-function emailResetTabel() {
-  if (!confirm('Reset semua data tabel?')) return;
-  emailRows = [emptyEmailRow()]; renderEmailTbody();
-}
-
-function konfirmasiSubmitEmail() {
-  const filled = emailRows.filter(r => r.nama && r.nipnrp);
-  if (!filled.length) { showToast('Isi minimal 1 baris data (nama & NIP wajib)', true); return; }
-  const infoEl = document.getElementById('konfirmasiEmailInfo');
-  if (infoEl) infoEl.innerHTML = `📊 Total: <strong>${filled.length} pegawai</strong> akan diajukan ke KPPN Jayapura.`;
-  openModal('modalKonfirmasiEmail');
-}
-
-async function doSubmitEmailSakti() {
-  const btn = document.getElementById('btnDoSubmitEmail');
-  btn.disabled = true; btn.textContent = '⏳ Mengirim...';
-  const filled = emailRows.filter(r => r.nama && r.nipnrp);
-  try {
-    const res = await apiPost({ action:'submitEmailSakti', pegawai: filled });
-    closeModal('modalKonfirmasiEmail');
-    if (!res.success) { showToast(res.message || 'Gagal submit', true); btn.disabled=false; btn.innerHTML='✅ Ya, Submit'; return; }
-    showToast('✅ Berhasil disubmit! ID: ' + res.id, false);
-    emailRows = [emptyEmailRow()];
-    emailRiwayat = []; // reset cache
-    setTimeout(() => switchTab('email-riwayat'), 1200);
-  } catch(e) {
-    showToast('Gagal terhubung ke server', true);
+function ebNextStep() {
+  const body = document.getElementById('ebBody');
+  if (!body) return;
+  if (ebStep === 1) {
+    ebSaveStep1();
+    if (!ebTempData.namaSatker) { showToast('Nama satker wajib diisi', true); return; }
+    if (!ebTempData.namaKpa)    { showToast('Nama KPA wajib diisi', true); return; }
+    if (!ebTempData.nipKpa)     { showToast('NIP KPA wajib diisi', true); return; }
+    if (!ebTempData.noHp)       { showToast('No. HP wajib diisi', true); return; }
+    ebStep = 2;
+    body.innerHTML = ebRenderStep2();
+    ebRenderTbody();
+  } else if (ebStep === 2) {
+    const filled = emailRows.filter(r=>r.nama&&r.nipnrp);
+    if (!filled.length) { showToast('Minimal 1 baris data pegawai (nama & NIP wajib)', true); return; }
+    ebStep = 3;
+    body.innerHTML = ebRenderStep3();
   }
-  btn.disabled = false; btn.innerHTML = '✅ Ya, Submit';
+}
+
+function ebPrevStep() {
+  const body = document.getElementById('ebBody');
+  if (!body) return;
+  if (ebStep === 2) {
+    ebStep = 1;
+    body.innerHTML = ebRenderStep1(ebTempData);
+  } else if (ebStep === 3) {
+    ebStep = 2;
+    body.innerHTML = ebRenderStep2();
+    ebRenderTbody();
+  }
+}
+
+async function ebDoSubmit() {
+  const btn = document.getElementById('btnEbSubmit');
+  const filled = emailRows.filter(r=>r.nama&&r.nipnrp);
+  if (!filled.length) { showToast('Tidak ada data pegawai', true); return; }
+  btn.disabled=true; btn.textContent='⏳ Mengirim...';
+  try {
+    const res = await apiPost({
+      action: 'submitEmailSakti',
+      namaSatker: ebTempData.namaSatker,
+      namaKpa:    ebTempData.namaKpa,
+      nipKpa:     ebTempData.nipKpa,
+      noHp:       ebTempData.noHp,
+      emailKpa:   ebTempData.emailKpa,
+      keterangan: ebTempData.keterangan,
+      pegawai:    filled
+    });
+    if (!res.success) {
+      showToast(res.message||'Gagal submit', true);
+      btn.disabled=false; btn.textContent='📤 Submit ke KPPN Jayapura';
+      return;
+    }
+    showToast('✅ Berhasil disubmit! ID: '+(res.id||''), false, true);
+    emailRows=[emptyEmailRow()]; ebTempData={}; ebStep=1;
+    emailRiwayat=[];
+    setTimeout(()=>switchTab('email-riwayat'), 1400);
+  } catch(e) {
+    showToast('❌ Gagal terhubung ke server', true);
+    btn.disabled=false; btn.textContent='📤 Submit ke KPPN Jayapura';
+  }
+}
+
+function initEmailBaru() {
+  ebStep=1; ebLocked=false; ebTempData={}; emailRows=[emptyEmailRow()];
+  const body=document.getElementById('ebBody');
+  if (!body) return;
+  body.innerHTML=ebRenderStep1({});
 }
 
 // ════════════════════════════════════════════════════════
@@ -854,71 +1256,500 @@ function lihatDetailEmail(id) {
 function ajukanUlangEmail(id) {
   const e = emailRiwayat.find(x => x.id === id);
   if (!e) return;
-  emailRows = (e.pegawai||[]).map(p => ({...p}));
+  // Load old data into step flow
+  ebTempData = {
+    namaSatker: e.namaSatker||'',
+    namaKpa: e.namaKpa||'',
+    nipKpa: e.nipKpa||'',
+    noHp: e.noHp||'',
+    emailKpa: e.emailKpa||'',
+    keterangan: e.keterangan||''
+  };
+  emailRows = (e.pegawai||[]).map(p => ({
+    nama: p.nama||'', nipnrp: p.nipnrp||'',
+    nik: p.nik||'', status: String(p.status||'3')
+  }));
+  if (!emailRows.length) emailRows = [emptyEmailRow()];
+  ebStep = 1;
   closeModal('modalDetailEmail');
   switchTab('email-baru');
-  showToast('Data pegawai dari pengajuan sebelumnya sudah dimuat. Periksa dan submit ulang.', false);
+  showToast('📋 Data dari pengajuan sebelumnya sudah dimuat. Periksa dan submit ulang.', false);
 }
 
 // ════════════════════════════════════════════════════════
 // USER SAKTI — BARU
 // ════════════════════════════════════════════════════════
-// ── State form user baru ──
-let ubRows = []; // daftar user di tabel
-let ubLocked = false;
 
-function ubEmptyRow() {
-  return { nama:'', nipnrp:'', nik:'', jabatan:'', status:'3' };
+// ─── PERAN DATA ──────────────────────────────────────────
+const PERAN_DATA = [
+  {kode:'SATKER_KPA',                           label:'KPA',                                 kelompok:'APPROVER',  modul:['ANGGARAN','PEMBAYARAN']},
+  {kode:'SATKER_PPSPM',                         label:'PPSPM',                               kelompok:'APPROVER',  modul:['PEMBAYARAN']},
+  {kode:'SATKER_APPROVER_PERSEDIAAN',           label:'Approver Persediaan',                 kelompok:'APPROVER',  modul:['PERSEDIAAN']},
+  {kode:'SATKER_APPROVER_PERSEDIAAN_PEMBANTU',  label:'Approver Persediaan Pembantu',        kelompok:'APPROVER',  modul:['PERSEDIAAN']},
+  {kode:'SATKER_APPROVER_ASET',                 label:'Approver Aset',                       kelompok:'APPROVER',  modul:['ASET']},
+  {kode:'SATKER_APPROVER_ASET_PEMBANTU',        label:'Approver Aset Pembantu (UAPKPB)',     kelompok:'APPROVER',  modul:['ASET']},
+  {kode:'SATKER_PPK',                           label:'PPK',                                 kelompok:'VALIDATOR', modul:['KOMITMEN','PEMBAYARAN']},
+  {kode:'SATKER_PPK_DFDD',                      label:'PPK Penyalur DAK Fisik & Dana Desa',  kelompok:'VALIDATOR', modul:['KOMITMEN_DFDD','PEMBAYARAN']},
+  {kode:'SATKER_VALIDATOR_ANGGARAN',            label:'Validator Anggaran (Khusus BLU)',      kelompok:'VALIDATOR', modul:['ANGGARAN']},
+  {kode:'SATKER_VALIDATOR_ASET',                label:'Validator Aset',                      kelompok:'VALIDATOR', modul:['ASET']},
+  {kode:'SATKER_VALIDATOR_ASET_PEMBANTU',       label:'Validator Aset Pembantu (UAPKPB)',    kelompok:'VALIDATOR', modul:['ASET']},
+  {kode:'SATKER_OPERATOR_ANGGARAN',             label:'Operator Anggaran',                   kelompok:'OPERATOR',  modul:['ANGGARAN']},
+  {kode:'SATKER_OPERATOR_PEMBAYARAN',           label:'Operator Pembayaran (SPP + SPM)',      kelompok:'OPERATOR',  modul:['PEMBAYARAN']},
+  {kode:'SATKER_OPERATOR_PEMBAYARAN_SPM',       label:'Operator Pembayaran SPM saja',         kelompok:'OPERATOR',  modul:['PEMBAYARAN']},
+  {kode:'SATKER_OPERATOR_PEMBAYARAN_SPP',       label:'Operator Pembayaran SPP saja',         kelompok:'OPERATOR',  modul:['PEMBAYARAN']},
+  {kode:'SATKER_OPERATOR_KOMITMEN',             label:'Operator Komitmen',                   kelompok:'OPERATOR',  modul:['KOMITMEN']},
+  {kode:'SATKER_BENDAHARA_PENGELUARAN',         label:'Bendahara Pengeluaran',               kelompok:'OPERATOR',  modul:['BENDAHARA']},
+  {kode:'SATKER_BENDAHARA_PENGELUARAN_PEMBANTU',label:'Bendahara Pengeluaran Pembantu',      kelompok:'OPERATOR',  modul:['BENDAHARA']},
+  {kode:'SATKER_BENDAHARA_PENERIMAAN',          label:'Bendahara Penerimaan',                kelompok:'OPERATOR',  modul:['BENDAHARA']},
+  {kode:'SATKER_OPERATOR_PNBP',                 label:'Operator PNBP',                       kelompok:'OPERATOR',  modul:['BENDAHARA']},
+  {kode:'SATKER_OPERATOR_PELAPORAN',            label:'Operator Pelaporan / GL',             kelompok:'OPERATOR',  modul:['GLP']},
+  {kode:'SATKER_OPERATOR_PERSEDIAAN',           label:'Operator Persediaan',                 kelompok:'OPERATOR',  modul:['PERSEDIAAN']},
+  {kode:'SATKER_OPERATOR_PERSEDIAAN_PEMBANTU',  label:'Operator Persediaan Pembantu',        kelompok:'OPERATOR',  modul:['PERSEDIAAN']},
+  {kode:'SATKER_OPERATOR_ASET',                 label:'Operator Aset',                       kelompok:'OPERATOR',  modul:['ASET']},
+  {kode:'SATKER_OPERATOR_ASET_PEMBANTU',        label:'Operator Aset Pembantu (UAPKPB)',     kelompok:'OPERATOR',  modul:['ASET']},
+  {kode:'SATKER_OPERATOR_PIUTANG',              label:'Operator Piutang',                    kelompok:'OPERATOR',  modul:['PIUTANG']},
+  {kode:'SATKER_OPERATOR_SPI',                  label:'Operator SPI (Khusus BLU)',           kelompok:'OPERATOR',  modul:['PELAPORAN']},
+  {kode:'SATKER_ADMIN',                         label:'Admin Satker',                        kelompok:'ADMIN',     modul:['ADMIN']},
+];
+function ubGetKelompok(k){return (PERAN_DATA.find(p=>p.kode===k)||{}).kelompok||null;}
+function ubGetLabel(k){return (PERAN_DATA.find(p=>p.kode===k)||{}).label||k;}
+function ubGetModul(k){return (PERAN_DATA.find(p=>p.kode===k)||{}).modul||[];}
+
+// ─── KONFLIK PERAN ─────────────────────────────────────
+function ubCheckPeranConflict(newKode,currentList){
+  const isKPA=k=>k==='SATKER_KPA';
+  const isPPK=k=>k==='SATKER_PPK'||k==='SATKER_PPK_DFDD';
+  const isPPSPM=k=>k==='SATKER_PPSPM';
+  const isBend=k=>k.includes('BENDAHARA')||k==='SATKER_OPERATOR_PNBP';
+  const isGLP=k=>k==='SATKER_OPERATOR_PELAPORAN'||k==='SATKER_OPERATOR_SPI';
+  const hasKPA=currentList.some(isKPA),hasPPK=currentList.some(isPPK),
+        hasPPSPM=currentList.some(isPPSPM),hasBend=currentList.some(isBend),hasGLP=currentList.some(isGLP);
+  if(isKPA(newKode)&&hasGLP)return{conflict:true,block:true,warn:'KPA tidak diperkenankan merangkap Operator Pelaporan/GLP.'};
+  if(isGLP(newKode)&&hasKPA)return{conflict:true,block:true,warn:'Operator Pelaporan/GLP tidak diperkenankan merangkap KPA.'};
+  if(isKPA(newKode)&&hasPPK&&hasPPSPM)return{conflict:true,block:true,warn:'KPA tidak dapat merangkap PPK dan PPSPM sekaligus.'};
+  if(isPPK(newKode)&&hasKPA&&hasPPSPM)return{conflict:true,block:true,warn:'Tidak dapat menambahkan PPK karena KPA sudah merangkap PPSPM.'};
+  if(isPPSPM(newKode)&&hasKPA&&hasPPK)return{conflict:true,block:true,warn:'Tidak dapat menambahkan PPSPM karena KPA sudah merangkap PPK.'};
+  if(isBend(newKode)&&(hasKPA||hasPPK||hasPPSPM))return{conflict:true,block:true,warn:'Bendahara tidak diperkenankan merangkap KPA, PPK, atau PPSPM.'};
+  if((isKPA(newKode)||isPPK(newKode)||isPPSPM(newKode))&&hasBend)return{conflict:true,block:true,warn:'KPA/PPK/PPSPM tidak diperkenankan merangkap jabatan Bendahara.'};
+  const KPA_EXC=['SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+  const isKPAExc=(hasKPA&&KPA_EXC.includes(newKode))||(isKPA(newKode)&&currentList.some(k=>KPA_EXC.includes(k)));
+  if(!isKPAExc){
+    const newM=ubGetModul(newKode),exM=currentList.flatMap(k=>ubGetModul(k)),mc=newM.find(m=>exM.includes(m));
+    if(mc){const cp=currentList.find(k=>ubGetModul(k).includes(mc));return{conflict:true,block:true,warn:`Modul "${mc}" sudah dipakai oleh "${ubGetLabel(cp)}".`};}
+  }
+  if((isKPA(newKode)&&hasPPK)||(isPPK(newKode)&&hasKPA))
+    return{conflict:false,block:false,warn:'Plt. KPA tidak diperkenankan merangkap PPK. Pastikan yang bersangkutan adalah KPA Definitif.'};
+  return{conflict:false,block:false,warn:null};
+}
+function ubGetDisabledPeran(currentList){
+  const d=new Set();
+  PERAN_DATA.forEach(p=>{if(currentList.includes(p.kode))return;if(ubCheckPeranConflict(p.kode,currentList).block)d.add(p.kode);});
+  return d;
 }
 
-function renderUserBaru() {
-  return `<div class="page-title"><strong style="font-size:22px">USER SAKTI BARU</strong></div>
-  <div class="page-sub">Pendaftaran pengguna baru aplikasi SAKTI</div>
-  <div id="userBaruBody"><p style="color:var(--gray-400);font-style:italic;text-align:center;padding:40px">⏳ Memuat...</p></div>`;
-}
+// ─── USER STATE ─────────────────────────────────────────
+let ubUserIdSeq=0;
+const ubUsers=[];
+let ubLocked=false;
+let ubLastRefKode='';
+let ubFpSurat=null;
 
-function ubRenderStatusInfo(d) {
-  const status = d.status || 'draft';
-  const locked = ['submitted','diproses','terdaftar'].includes(status.toLowerCase());
-  ubLocked = locked;
-  const clr = status.toLowerCase()==='ditolak'?'red':locked?'orange':'green';
-  const icon = status.toLowerCase()==='ditolak'?'❌':locked?'🔒':'✅';
-  return `<div class="info-box ${clr}" style="margin-bottom:18px">
-    ${icon} Pendaftaran sudah ada — status: <strong>${esc(status)}</strong>.
-    ${locked ? 'Data <strong>tidak dapat diubah</strong> selama sedang diproses KPPN.' : ''}
-    ${status.toLowerCase()==='ditolak' ? '<br/>Perbaiki data lalu submit ulang.' : ''}
+function ubAddUser(data={}){
+  const id=++ubUserIdSeq;
+  ubUsers.push({id,nama:data.nama||'',nipnrp:data.nipnrp||'',nik:data.nik||'',email:data.email||'',hp:data.hp||'',sk:data.sk||'',tglsk:data.tglsk||'',peranList:data.peranList||[]});
+  ubRenderUserCard(id);ubReindexUsers();
+  return id;
+}
+function ubRemoveUser(id){
+  const idx=ubUsers.findIndex(u=>u.id===id);
+  if(idx!==-1)ubUsers.splice(idx,1);
+  document.getElementById(`ubuc-${id}`)?.remove();ubReindexUsers();
+}
+function ubReindexUsers(){
+  ubUsers.forEach((u,i)=>{const el=document.getElementById(`ubucnum-${u.id}`);if(el)el.textContent=`Pengguna ${i+1}`;});
+}
+function ubGetUserById(id){return ubUsers.find(u=>u.id===id);}
+
+function ubRenderUserCard(id){
+  const u=ubGetUserById(id);
+  const wrap=document.getElementById('ubUserList');
+  document.getElementById(`ubuc-${id}`)?.remove();
+  const div=document.createElement('div');
+  div.className='user-card';div.id=`ubuc-${id}`;
+  div.innerHTML=`
+    <div class="user-card-header">
+      <span class="user-card-num" id="ubucnum-${id}">Pengguna</span>
+      <div class="user-card-actions">
+        ${!ubLocked?`<button class="btn btn-outline btn-sm" onclick="ubOpenEditModal(${id})">✏️ Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="ubRemoveUser(${id})">✕ Hapus</button>`:''}
+      </div>
+    </div>
+    <div id="ubucSummary-${id}"></div>`;
+  wrap.appendChild(div);ubRenderUserSummary(id);
+}
+function ubRenderUserSummary(id){
+  const u=ubGetUserById(id);
+  const el=document.getElementById(`ubucSummary-${id}`);
+  if(!el)return;
+  const kelompoks=[...new Set(u.peranList.map(k=>ubGetKelompok(k)).filter(Boolean))];
+  const kbCls=kelompoks.length>1?'kb-M':kelompoks[0]?`kb-${kelompoks[0][0]}`:'';
+  el.innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--gray-700)">
+    <span><strong>Nama:</strong> ${u.nama||'<em style="color:var(--gray-400)">belum diisi</em>'}</span>
+    <span style="color:var(--gray-300)">|</span>
+    <span><strong>NIP/NRP:</strong> ${u.nipnrp||'—'}</span>
+    <span style="color:var(--gray-300)">|</span>
+    <span><strong>Email:</strong> ${u.email||'—'}</span>
+    <span style="color:var(--gray-300)">|</span>
+    <span><strong>Peran:</strong> ${u.peranList.length?u.peranList.map(k=>`<span class="kb ${kbCls}">${ubGetLabel(k)}</span>`).join(''):'<em style="color:var(--red)">belum dipilih</em>'}</span>
   </div>`;
 }
 
-function ubRenderForm(d, kode, nama) {
-  // d = existing data (atau null jika baru)
+// ─── EDIT MODAL ────────────────────────────────────────
+let ubEditingId=null;
+function ubOpenEditModal(id){
+  ubEditingId=id;
+  const u=ubGetUserById(id);
+  const groups={};
+  PERAN_DATA.forEach(p=>{if(!groups[p.kelompok])groups[p.kelompok]=[];groups[p.kelompok].push(p);});
+  let ph='';
+  ['APPROVER','VALIDATOR','OPERATOR','ADMIN'].forEach(k=>{
+    ph+=`<div class="peran-group-title">${k}</div><div class="peran-grid">`;
+    (groups[k]||[]).forEach(p=>{
+      const ck=u.peranList.includes(p.kode);
+      ph+=`<label class="peran-item${ck?' checked':''}" id="ubepi-${p.kode}">
+        <input type="checkbox" value="${p.kode}" ${ck?'checked':''} onchange="ubOnEditPeranChange(this)"/>
+        <span class="peran-item-label">${p.label}<br/><span class="kode">${p.kode}</span></span>
+      </label>`;
+    });
+    ph+='</div>';
+  });
+  document.getElementById('ubEditModalBody').innerHTML=`
+    <div class="ub-form-row">
+      <div class="ub-form-group"><label>Nama <span style="color:var(--red)">*</span></label><input type="text" id="ube-nama" value="${esc(u.nama)}" placeholder="Nama lengkap"/></div>
+      <div class="ub-form-group"><label>NIP / NRP <span style="color:var(--red)">*</span></label><input type="text" id="ube-nipnrp" value="${esc(u.nipnrp)}" placeholder="NIP atau NRP"/></div>
+    </div>
+    <div class="ub-form-row">
+      <div class="ub-form-group"><label>NIK (KTP) <span style="color:var(--red)">*</span></label><input type="text" id="ube-nik" value="${esc(u.nik)}" placeholder="16 digit" maxlength="16"/><div class="ub-hint">NPWP diambil dari NIK secara sistem</div></div>
+      <div class="ub-form-group"><label>Email Kedinasan <span style="color:var(--red)">*</span></label><input type="email" id="ube-email" value="${esc(u.email)}" placeholder="xxx@instansi.go.id atau @mil.id"/><div class="ub-hint">Harus berakhiran .go.id atau .mil.id (TNI)</div><div id="ube-email-err" style="display:none;font-size:11px;color:var(--red);margin-top:3px">Email harus berakhiran .go.id atau .mil.id</div></div>
+    </div>
+    <div class="ub-form-row">
+      <div class="ub-form-group"><label>No. HP</label><input type="text" id="ube-hp" value="${esc(u.hp)}" placeholder="08xxx"/></div>
+      <div class="ub-form-group"><label>Nomor SK <span style="color:var(--red)">*</span></label><input type="text" id="ube-sk" value="${esc(u.sk)}" placeholder="KEP-xx/xx/2024"/></div>
+      <div class="ub-form-group"><label>Tanggal SK <span style="color:var(--red)">*</span></label><input type="text" id="ube-tglsk" value="${esc(u.tglsk)}" placeholder="Pilih tanggal..." readonly style="cursor:pointer"/></div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;margin:14px 0 4px">Peran / Role SAKTI</div>
+    <div class="info-box blue" style="margin-bottom:10px;font-size:11.5px">Centang peran yang sesuai. Peran yang bertentangan akan dinonaktifkan otomatis.</div>
+    ${ph}
+    <div class="warn-box" id="ubEditWarnBox"></div>`;
+  ubRefreshEditCheckboxStates();
+  openModal('modalEditUB');
+  setTimeout(()=>{ ubInitFlatpickrTglsk(document.getElementById('ube-tglsk')); }, 50);
+}
+function ubOnEditPeranChange(cb){
+  document.getElementById(`ubepi-${cb.value}`)?.classList.toggle('checked',cb.checked);
+  ubRefreshEditCheckboxStates();
+}
+function ubGetCheckedPeran(){
+  return Array.from(document.querySelectorAll('#ubEditModalBody input[type=checkbox]:checked')).map(cb=>cb.value);
+}
+function ubRefreshEditCheckboxStates(){
+  const checked=ubGetCheckedPeran();
+  const warnBox=document.getElementById('ubEditWarnBox');
+  const disabledSet=ubGetDisabledPeran(checked);
+  const warnings=new Set();
+  checked.forEach(kode=>{const r=ubCheckPeranConflict(kode,checked.filter(k=>k!==kode));if(r.warn&&!r.block)warnings.add(r.warn);});
+  PERAN_DATA.forEach(p=>{
+    const cb=document.querySelector(`#ubEditModalBody input[value="${p.kode}"]`);
+    const el=document.getElementById(`ubepi-${p.kode}`);
+    if(!cb||!el)return;
+    const isD=!cb.checked&&disabledSet.has(p.kode);
+    cb.disabled=isD;el.classList.toggle('disabled',isD);el.classList.toggle('checked',cb.checked);
+    el.title=isD?(ubCheckPeranConflict(p.kode,checked).warn||''):'';
+  });
+  if(warnings.size>0){warnBox.innerHTML=[...warnings].map(w=>`<div>⚠️ ${w}</div>`).join('');warnBox.classList.add('on');}
+  else{warnBox.innerHTML='';warnBox.classList.remove('on');}
+}
+function ubSaveEdit(){
+  const nama=(document.getElementById('ube-nama')?.value||'').trim();
+  const nipnrp=(document.getElementById('ube-nipnrp')?.value||'').trim();
+  const nik=(document.getElementById('ube-nik')?.value||'').trim();
+  const email=(document.getElementById('ube-email')?.value||'').trim();
+  const hp=(document.getElementById('ube-hp')?.value||'').trim();
+  const sk=(document.getElementById('ube-sk')?.value||'').trim();
+  const tglsk=(document.getElementById('ube-tglsk')?.value||'').trim();
+  const peranList=ubGetCheckedPeran();
+  const emailErr=document.getElementById('ube-email-err');
+  if(email){
+    const el=email.toLowerCase();
+    if(!el.endsWith('.go.id')&&!el.endsWith('.mil.id')){
+      emailErr.style.display='block';
+      document.getElementById('ube-email').classList.add('err');
+      showToast('Email harus berakhiran .go.id atau .mil.id',true);return;
+    }
+  }
+  emailErr.style.display='none';document.getElementById('ube-email')?.classList.remove('err');
+  if(!nama){showToast('Nama wajib diisi',true);return;}
+  if(!nipnrp){showToast('NIP/NRP wajib diisi',true);return;}
+  if(!peranList.length){showToast('Pilih minimal satu peran',true);return;}
+  const dupNIP=ubUsers.find(u=>u.id!==ubEditingId&&u.nipnrp&&u.nipnrp===nipnrp);
+  if(dupNIP){showToast(`❌ NIP/NRP sudah digunakan oleh: ${dupNIP.nama}`,true);return;}
+  if(nik){const dupNIK=ubUsers.find(u=>u.id!==ubEditingId&&u.nik&&u.nik===nik);if(dupNIK){showToast(`❌ NIK sudah digunakan oleh: ${dupNIK.nama}`,true);return;}}
+  if(email){const dupEmail=ubUsers.find(u=>u.id!==ubEditingId&&u.email&&u.email.toLowerCase()===email.toLowerCase());if(dupEmail){showToast(`❌ Email sudah digunakan oleh: ${dupEmail.nama}`,true);return;}}
+  if(hp){const dupHP=ubUsers.find(u=>u.id!==ubEditingId&&u.hp&&u.hp===hp);if(dupHP){showToast(`❌ No. HP sudah digunakan oleh: ${dupHP.nama}`,true);return;}}
+  const u=ubGetUserById(ubEditingId);if(!u)return;
+  u.nama=nama;u.nipnrp=nipnrp;u.nik=nik;u.email=email;u.hp=hp;u.sk=sk;u.tglsk=tglsk;u.peranList=peranList;
+  ubRenderUserSummary(ubEditingId);closeModal('modalEditUB');showToast('✅ Data pengguna berhasil disimpan');
+}
+
+// ─── VALIDASI & SUBMIT ──────────────────────────────────
+function ubTrySubmit(){
+  if(ubLocked){showToast('Data tidak dapat diubah saat sedang diproses KPPN',true);return;}
+  const errors=[];
+  const namaSatker=(document.getElementById('ub_namaSatker')?.value||'').trim();
+  const namaKPA=(document.getElementById('ub_namaKPA')?.value||'').trim();
+  const nipKPA=(document.getElementById('ub_nipKPA')?.value||'').trim();
+  const noHp=(document.getElementById('ub_noHp')?.value||'').trim();
+  if(!namaSatker)errors.push('Nama Satker wajib diisi');
+  if(!namaKPA)errors.push('Nama KPA wajib diisi');
+  if(!nipKPA)errors.push('NIP KPA wajib diisi');
+  if(!noHp)errors.push('No. HP wajib diisi');
+  if(!ubUsers.length)errors.push('Tambahkan minimal satu pengguna');
+  const seenNIK=new Map(),seenNIP=new Map(),seenEmail=new Map(),seenHP=new Map();
+  ubUsers.forEach((u,i)=>{
+    const n=i+1;
+    if(!u.nama)errors.push(`Pengguna ${n}: Nama wajib diisi`);
+    if(!u.nipnrp)errors.push(`Pengguna ${n}: NIP/NRP wajib diisi`);
+    if(!u.sk)errors.push(`Pengguna ${n}: Nomor SK wajib diisi`);
+    if(!u.tglsk)errors.push(`Pengguna ${n}: Tanggal SK wajib diisi`);
+    if(!u.peranList.length)errors.push(`Pengguna ${n}: Pilih minimal satu peran`);
+    if(u.email){const el=u.email.toLowerCase();if(!el.endsWith('.go.id')&&!el.endsWith('.mil.id'))errors.push(`Pengguna ${n}: Email harus berakhiran .go.id atau .mil.id`);}
+    u.peranList.forEach((kode,idx)=>{const r=ubCheckPeranConflict(kode,u.peranList.slice(0,idx));if(r.conflict&&r.block)errors.push(`Pengguna ${n} (${u.nama}): ${r.warn}`);});
+    if(u.nik){if(seenNIK.has(u.nik))errors.push(`Pengguna ${n}: NIK duplikat`);else seenNIK.set(u.nik,i);}
+    if(u.nipnrp){if(seenNIP.has(u.nipnrp))errors.push(`Pengguna ${n}: NIP/NRP duplikat`);else seenNIP.set(u.nipnrp,i);}
+    if(u.email){const ek=u.email.toLowerCase();if(seenEmail.has(ek))errors.push(`Pengguna ${n}: Email duplikat`);else seenEmail.set(ek,i);}
+    if(u.hp){if(seenHP.has(u.hp))errors.push(`Pengguna ${n}: No. HP duplikat`);else seenHP.set(u.hp,i);}
+  });
+  const allPeran=ubUsers.flatMap(u=>u.peranList);
+  if(allPeran.filter(k=>k==='SATKER_KPA').length>1)errors.push('Hanya boleh ada 1 KPA dalam satu formulir.');
+  if(allPeran.filter(k=>k==='SATKER_PPSPM').length>1)errors.push('Hanya boleh ada 1 PPSPM dalam satu formulir.');
+  if(allPeran.filter(k=>k==='SATKER_BENDAHARA_PENGELUARAN').length>1)errors.push('Hanya boleh ada 1 Bendahara Pengeluaran.');
+  if(allPeran.filter(k=>k==='SATKER_BENDAHARA_PENERIMAAN').length>1)errors.push('Hanya boleh ada 1 Bendahara Penerimaan.');
+  const panel=document.getElementById('ubErrPanel'),list=document.getElementById('ubErrList');
+  if(errors.length){panel.style.display='block';list.innerHTML=errors.map(e=>`<li>${e}</li>`).join('');panel.scrollIntoView({behavior:'smooth',block:'center'});return;}
+  panel.style.display='none';openModal('modalPernyataanUB');
+}
+
+// ─── GENERATE EXCEL ─────────────────────────────────────
+function ubGenRefKode(kodeSatker){
+  const now=new Date();
+  const dd=String(now.getDate()).padStart(2,'0'),mm=String(now.getMonth()+1).padStart(2,'0'),yyyy=now.getFullYear();
+  const kode=(kodeSatker||'000000').toString().slice(0,6).padStart(6,'0');
+  const n=Math.floor(Math.random()*100);
+  return `${dd}${mm}${yyyy}-${kode}-${String(n).padStart(2,'0')}`;
+}
+function ubFormatTgl(d){
+  if(!d)return'';
+  if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(d)){const p=d.split('/');return`${p[0].padStart(2,'0')}-${p[1].padStart(2,'0')}-${p[2]}`;}
+  const dt=new Date(d);if(isNaN(dt))return d;
+  return`${String(dt.getDate()).padStart(2,'0')}-${String(dt.getMonth()+1).padStart(2,'0')}-${dt.getFullYear()}`;
+}
+function ubFormatTglIndo(d){
+  if(!d)return'';
+  const B=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  let dt;
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(d)){const p=d.split('/');dt=new Date(Number(p[2]),Number(p[1])-1,Number(p[0]));}
+  else{dt=new Date(d);}
+  if(!dt||isNaN(dt))return d;
+  return`${dt.getDate()} ${B[dt.getMonth()]} ${dt.getFullYear()}`;
+}
+async function ubDoGenerateExcel(){
+  closeModal('modalPernyataanUB');
+  const kodeSatker=currentUser?.username||'';
+  const namaSatker=(document.getElementById('ub_namaSatker')?.value||'').trim();
+  const levelSatker=(document.getElementById('ub_levelSatker')?.value||'Satker');
+  const namaKPA=(document.getElementById('ub_namaKPA')?.value||'').trim();
+  const nipKPA=(document.getElementById('ub_nipKPA')?.value||'').trim();
+  const kota=(document.getElementById('ub_kotaTTD')?.value||'').trim()||'Jayapura';
+  const tglSurat=document.getElementById('ub_tanggalSurat')?.value||'';
+  const tglStr=tglSurat?ubFormatTglIndo(tglSurat):'______';
+  const refKode=ubGenRefKode(kodeSatker);
+  ubLastRefKode=refKode;
+  showToast('⏳ Membuat Excel, mohon tunggu...');
+  let fname;
+  try{
+    const res=await apiPost({
+      action:'generateExcel',
+      kodeSatker,namaSatker,levelSatker,
+      namaKpa:namaKPA,nip:nipKPA,
+      kota,tglStr,refKode,
+      users:ubUsers.map(u=>({
+        nama:u.nama||'',nipnrp:u.nipnrp||'',nik:u.nik||'',
+        email:u.email||'',hp:u.hp||'',sk:u.sk||'',
+        tglsk:ubFormatTgl(u.tglsk)||'',peranList:u.peranList||[]
+      }))
+    });
+    if(!res||!res.success)throw new Error((res&&res.message)||'Server tidak merespons');
+    fname=res.fileName||`Form-SAKTI-${kodeSatker}-${refKode}.xlsx`;
+    const bytes=Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
+    const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=fname;a.click();URL.revokeObjectURL(url);
+  }catch(e){showToast('❌ Gagal buat Excel: '+e.message,true);return;}
+  // Kirim ke server
+  try{
+    apiPost({
+      action:'submitDaftar',
+      refKode,namaSatker,kodeSatker,namaKPA,nip:nipKPA,
+      noHp:document.getElementById('ub_noHp')?.value||'',
+      email:'',alamat:kota,levelSatker,tglSurat,fname,
+      userCount:ubUsers.length,
+      usersJson:JSON.stringify(ubUsers.map(u=>({nama:u.nama,nipnrp:u.nipnrp,nik:u.nik,email:u.email,hp:u.hp,sk:u.sk,tglsk:u.tglsk,peranList:u.peranList})))
+    }).then(res=>{
+      if(res.success)showToast('✅ Data berhasil dikirim ke server');
+      else showToast('⚠️ '+(res.message||'Terjadi kesalahan di server').split('\n')[0],true);
+    }).catch(()=>showToast('⚠️ Gagal kirim ke server',true));
+  }catch(e){}
+  document.getElementById('ubRefKodeDisplay').textContent=refKode;
+  openModal('modalSuksesUB');
+}
+function ubCopyRefKode(){
+  const kode=document.getElementById('ubRefKodeDisplay').textContent;
+  navigator.clipboard?.writeText(kode).then(()=>showToast('✅ Kode berhasil disalin!')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=kode;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();showToast('✅ Kode berhasil disalin!');
+  });
+}
+
+// ─── PANGGIL REKAMAN ─────────────────────────────────────
+async function ubDoPanggilRekaman(){
+  const refInput=document.getElementById('ubInputPanggilRef');
+  const errBox=document.getElementById('ubPanggilErr');
+  const btn=document.getElementById('ubBtnPanggilLoad');
+  const ref=(refInput?.value||'').trim();
+  errBox.style.display='none';
+  if(!ref){errBox.textContent='Kode referensi tidak boleh kosong.';errBox.style.display='block';return;}
+  btn.disabled=true;btn.textContent='⏳ Memuat...';
+  try{
+    const res=await apiPost({action:'getRekamanByRef',refKode:ref});
+    if(!res.success){errBox.textContent=res.message||'Terjadi kesalahan.';errBox.style.display='block';btn.disabled=false;btn.textContent='🔍 Muat Rekaman';return;}
+    if(!confirm(`Ditemukan rekaman:\n\nSatker: ${res.namaSatker}\nKode: ${res.kodeSatker}\nStatus: ${res.status}\n\nMuat data ini ke form?`)){btn.disabled=false;btn.textContent='🔍 Muat Rekaman';return;}
+    const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+    setVal('ub_namaSatker',res.namaSatker);
+    setVal('ub_levelSatker',res.levelSatker);
+    setVal('ub_namaKPA',res.namaKpa);
+    setVal('ub_nipKPA',res.nip);
+    setVal('ub_noHp',res.noHp||'');
+    setVal('ub_kotaTTD',res.alamat||'');
+    ubUsers.length=0;document.getElementById('ubUserList').innerHTML='';
+    document.getElementById('ubErrPanel').style.display='none';
+    (res.users||[]).forEach(u=>{
+      const id=ubAddUser({nama:u.nama||'',nipnrp:u.nipnrp||'',nik:u.nik||'',email:u.email||'',hp:u.hp||'',sk:u.sk||'',tglsk:u.tglsk||'',peranList:u.peranList||[]});
+      ubRenderUserSummary(id);
+    });
+    closeModal('modalPanggilRekamanUB');
+    refInput.value='';
+    showToast(`✅ Rekaman ${ref} berhasil dimuat.`);
+  }catch(err){errBox.textContent='Gagal terhubung ke server.';errBox.style.display='block';}
+  finally{btn.disabled=false;btn.textContent='🔍 Muat Rekaman';}
+}
+
+// ─── FLATPICKR ───────────────────────────────────────────
+function ubInitFlatpickrSurat(){
+  if(ubFpSurat)ubFpSurat.destroy();
+  const el=document.getElementById('ub_tanggalSurat');
+  if(!el)return;
+  ubFpSurat=flatpickr(el,{locale:'id',dateFormat:'d/m/Y',defaultDate:new Date(),allowInput:false,disableMobile:true});
+}
+function ubInitFlatpickrTglsk(el){
+  if(!el)return;
+  if(el._flatpickr)el._flatpickr.destroy();
+  flatpickr(el,{locale:'id',dateFormat:'d/m/Y',allowInput:false,disableMobile:true});
+}
+
+// ─── RENDER ──────────────────────────────────────────────
+function renderUserBaru() {
+  return `<div class="page-title"><strong style="font-size:22px">📝 USER SAKTI BARU</strong></div>
+  <div class="page-sub">Pendaftaran pengguna baru aplikasi SAKTI — KPPN Jayapura</div>
+  <div id="userBaruBody"><p style="color:var(--gray-400);font-style:italic;text-align:center;padding:40px">⏳ Memuat...</p></div>`;
+}
+
+async function initUserBaru() {
+  const body = document.getElementById('userBaruBody');
+  if (!body) return;
+  ubUsers.length=0; ubUserIdSeq=0; ubLocked=false;
+  const kode = currentUser?.username||'';
+
+  try {
+    const res = await apiPost({ action:'getSatkerDashboard' });
+    if (res.success && res.data && res.data.refKode) {
+      const d = res.data;
+      ubLocked = ['submitted','diproses','terdaftar'].includes((d.status||'').toLowerCase());
+      body.innerHTML = ubBuildFormHTML(d, kode);
+      // Load users dari existing data
+      try {
+        const existUsers = JSON.parse(d.usersJson || '[]');
+        existUsers.forEach(u => {
+          const id = ubAddUser({nama:u.nama||'',nipnrp:u.nipnrp||u.nip||'',nik:u.nik||'',
+            email:u.email||'',hp:u.hp||'',sk:u.sk||'',tglsk:u.tglsk||'',peranList:u.peranList||[]});
+          ubRenderUserSummary(id);
+        });
+      } catch(e) {}
+    } else {
+      ubLocked = false;
+      body.innerHTML = ubBuildFormHTML(null, kode);
+      ubAddUser();
+    }
+    ubReindexUsers();
+    setTimeout(()=>ubInitFlatpickrSurat(), 80);
+  } catch(e) {
+    body.innerHTML = `<div class="info-box red">❌ Gagal memuat data. <button class="btn btn-secondary btn-sm" onclick="initUserBaru()">Coba Lagi</button></div>`;
+  }
+}
+
+function ubBuildFormHTML(d, kode) {
   const ro = ubLocked ? 'readonly' : '';
-  const roSel = ubLocked ? 'disabled' : '';
-  const refKode = d ? (d.refKode||'') : ('REF-' + kode + '-' + Date.now().toString(36).toUpperCase());
+  const status = d?.status||'';
+  const isLocked = ubLocked;
+  const statusHtml = d ? (() => {
+    const locked = ['submitted','diproses','terdaftar'].includes(status.toLowerCase());
+    const clr = status.toLowerCase()==='ditolak'?'red':locked?'orange':'green';
+    const icon = status.toLowerCase()==='ditolak'?'❌':locked?'🔒':'✅';
+    return `<div class="info-box ${clr}" style="margin-bottom:18px">${icon} Pendaftaran sudah ada — status: <strong>${esc(status)}</strong>.${locked?' Data <strong>tidak dapat diubah</strong> selama sedang diproses KPPN.':''}${status.toLowerCase()==='ditolak'?'<br/>Perbaiki data lalu unduh ulang Excel.':''}</div>`;
+  })() : '';
 
   return `
-  ${d ? ubRenderStatusInfo(d) : ''}
+  ${statusHtml}
   <div class="info-box blue" style="margin-bottom:18px">
-    ℹ️ Isi data dengan lengkap dan benar. Setelah submit, data <strong>tidak dapat diubah</strong> sampai ada keputusan dari KPPN.
+    <strong>📋 Cara pendaftaran:</strong>
+    <ul style="padding-left:16px;margin-top:6px;line-height:1.9">
+      <li>Isi data satker, data KPA, dan tambahkan daftar pengguna beserta perannya.</li>
+      <li>Centang peran setiap pengguna. Peran yang bertentangan dinonaktifkan otomatis.</li>
+      <li>Klik <strong>"Unduh Excel & Dapatkan Kode Referensi"</strong> → simpan kode referensi yang muncul.</li>
+      <li>Cetak Excel, minta tanda tangan KPA, lalu upload ke KPPN Jayapura.</li>
+    </ul>
   </div>
 
-  <!-- Identitas Satker -->
+  <!-- Panel error -->
+  <div class="error-panel" id="ubErrPanel"><strong>⚠️ Harap perbaiki:</strong><ul id="ubErrList"></ul></div>
+
+  <!-- Data Satker -->
   <div class="card" style="margin-bottom:16px">
-    <div class="card-title">🏢 Identitas Satker</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <div class="form-group" style="margin:0">
+    <div class="card-title">🏢 Data Satker</div>
+    <div class="ub-form-row">
+      <div class="ub-form-group" style="max-width:160px">
         <label>Kode Satker</label>
-        <input type="text" value="${esc(kode)}" readonly style="background:var(--gray-100);font-family:monospace;font-weight:700"/>
+        <input type="text" value="${esc(kode)}" readonly style="background:var(--gray-100);font-family:monospace;font-weight:700;letter-spacing:1px"/>
       </div>
-      <div class="form-group" style="margin:0">
-        <label>Nama Satker</label>
-        <input type="text" id="ub_namaSatker" value="${esc(d?d.namaSatker:nama)}" ${ro} placeholder="Nama lengkap satker"/>
+      <div class="ub-form-group">
+        <label>Nama Satker <span style="color:var(--red)">*</span></label>
+        <input type="text" id="ub_namaSatker" value="${esc(d?d.namaSatker:currentUser?.namaLengkap||'')}" ${ro} placeholder="Nama lengkap satker"/>
       </div>
-      <div class="form-group" style="margin:0;grid-column:1/-1">
+      <div class="ub-form-group" style="max-width:160px">
         <label>Level Satker</label>
-        <select id="ub_levelSatker" ${roSel}>
-          <option value="">— Pilih Level —</option>
-          ${['Pusat','Wilayah','Daerah'].map(l=>`<option value="${l}" ${(d&&d.levelSatker===l)?'selected':''}>${l}</option>`).join('')}
+        <select id="ub_levelSatker" ${ubLocked?'disabled':''}>
+          <option value="Satker" ${(d?.levelSatker==='Satker'||!d)?'selected':''}>Satker</option>
+          <option value="Pusat" ${d?.levelSatker==='Pusat'?'selected':''}>Pusat</option>
+          <option value="Wilayah" ${d?.levelSatker==='Wilayah'?'selected':''}>Wilayah</option>
+          <option value="Daerah" ${d?.levelSatker==='Daerah'?'selected':''}>Daerah</option>
         </select>
       </div>
     </div>
@@ -926,64 +1757,59 @@ function ubRenderForm(d, kode, nama) {
 
   <!-- Data KPA -->
   <div class="card" style="margin-bottom:16px">
-    <div class="card-title">👤 Data Kuasa Pengguna Anggaran (KPA)</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <div class="form-group" style="margin:0">
+    <div class="card-title">🏛️ Data KPA (Penandatangan)</div>
+    <div class="ub-form-row">
+      <div class="ub-form-group">
         <label>Nama KPA <span style="color:var(--red)">*</span></label>
-        <input type="text" id="ub_namaKpa" value="${esc(d?d.namaKpa:'')}" ${ro} placeholder="Nama lengkap KPA"/>
+        <input type="text" id="ub_namaKPA" value="${esc(d?d.namaKpa:'')}" ${ro} placeholder="Nama lengkap KPA"/>
       </div>
-      <div class="form-group" style="margin:0">
+      <div class="ub-form-group">
         <label>NIP KPA <span style="color:var(--red)">*</span></label>
-        <input type="text" id="ub_nip" value="${esc(d?d.nip:'')}" ${ro} placeholder="18 digit NIP" maxlength="18" style="font-family:monospace"/>
+        <input type="text" id="ub_nipKPA" value="${esc(d?d.nip:'')}" ${ro} placeholder="Contoh: 199001012020011001" maxlength="18" style="font-family:monospace"/>
       </div>
-      <div class="form-group" style="margin:0">
+    </div>
+    <div class="ub-form-row">
+      <div class="ub-form-group">
         <label>No. HP / WA <span style="color:var(--red)">*</span></label>
         <input type="text" id="ub_noHp" value="${esc(d?d.noHp:'')}" ${ro} placeholder="08xx-xxxx-xxxx"/>
       </div>
-      <div class="form-group" style="margin:0">
-        <label>Email KPA</label>
-        <input type="text" id="ub_email" value="${esc(d?d.email:'')}" ${ro} placeholder="email@satker.go.id"/>
+      <div class="ub-form-group">
+        <label>Kota / Tempat TTD</label>
+        <input type="text" id="ub_kotaTTD" value="${esc(d?d.alamat:'Jayapura')}" ${ro} placeholder="Jayapura"/>
       </div>
-      <div class="form-group" style="margin:0;grid-column:1/-1">
-        <label>Alamat Kantor</label>
-        <textarea id="ub_alamat" rows="2" ${ro} placeholder="Alamat lengkap kantor satker" style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:8px 12px;font-size:13px;font-family:'Inter',sans-serif;resize:vertical">${esc(d?d.alamat:'')}</textarea>
+      <div class="ub-form-group">
+        <label>Tanggal Surat</label>
+        <input type="text" id="ub_tanggalSurat" value="${esc(d?d.tglSurat:'')}" placeholder="Pilih tanggal..." ${ro} style="cursor:${ubLocked?'default':'pointer'}"/>
       </div>
     </div>
   </div>
 
-  <!-- Daftar User -->
+  <!-- Daftar Pengguna -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
       <span>👥 Daftar Pengguna yang Didaftarkan</span>
-      ${!ubLocked?`<button class="btn btn-outline btn-sm" onclick="ubTambahBaris()">+ Tambah Baris</button>`:''}
+      ${!isLocked?`<div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="openModal('modalPanggilRekamanUB')">🔍 Panggil Rekaman</button>
+      </div>`:''}
     </div>
-    <div style="overflow-x:auto">
-      <table class="tbl" style="min-width:700px">
-        <thead><tr>
-          <th style="width:36px">#</th>
-          <th>Nama Lengkap <span style="color:var(--red)">*</span></th>
-          <th>NIP / NRP <span style="color:var(--red)">*</span></th>
-          <th>NIK (16 digit)</th>
-          <th>Jabatan</th>
-          <th>Status Kepegawaian</th>
-          ${!ubLocked?'<th style="width:36px"></th>':''}
-        </tr></thead>
-        <tbody id="ubTbody"></tbody>
-      </table>
-    </div>
-    <div style="font-size:11px;color:var(--gray-500);margin-top:8px">
-      Status: 1=TNI · 2=POLRI · 3=PNS · 4=PPNPN · 5=PPPK
-    </div>
+    <div id="ubUserList"></div>
+    ${!isLocked?`<button class="btn-add-user" onclick="ubAddUser()">+ Tambah Pengguna Baru</button>`:''}
   </div>
 
-  <!-- Aksi -->
-  ${!ubLocked ? `
-  <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
-    <button class="btn btn-secondary" onclick="ubReset()">↺ Reset Form</button>
-    <button class="btn btn-primary" onclick="ubSubmit()" id="btnUbSubmit">📤 Submit Pendaftaran</button>
+  <!-- Unduh Excel -->
+  ${!isLocked?`
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">📥 Unduh Excel & Kirim Pendaftaran</div>
+    <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">
+      Setelah semua data terisi, klik tombol di bawah. File Excel akan terunduh dan Anda akan mendapat
+      <strong>kode referensi unik</strong> yang diperlukan untuk penyelesaian pendaftaran.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-success" onclick="ubTrySubmit()">⬇️ Unduh Excel &amp; Dapatkan Kode Referensi</button>
+      <button class="btn btn-secondary" onclick="ubResetForm()">↺ Reset Form</button>
+    </div>
   </div>
-  <input type="hidden" id="ub_refKode" value="${esc(refKode)}"/>
-  ` : `
+  `:`
   <div style="display:flex;gap:10px;margin-top:4px">
     <button class="btn btn-outline btn-sm" onclick="switchTab('user-riwayat')">📋 Lihat Riwayat</button>
   </div>
@@ -991,129 +1817,12 @@ function ubRenderForm(d, kode, nama) {
   `;
 }
 
-function ubRenderTbody() {
-  const statusOpts = [1,2,3,4,5].map(v=>
-    `<option value="${v}">${v} – ${{1:'TNI',2:'POLRI',3:'PNS',4:'PPNPN',5:'PPPK'}[v]}</option>`
-  ).join('');
-
-  const tbody = document.getElementById('ubTbody');
-  if (!tbody) return;
-  if (ubLocked) {
-    tbody.innerHTML = ubRows.map((r,i)=>`<tr>
-      <td style="text-align:center;color:var(--gray-400);font-size:12px">${i+1}</td>
-      <td>${esc(r.nama)}</td>
-      <td style="font-family:monospace">${esc(r.nipnrp)}</td>
-      <td style="font-family:monospace">${esc(r.nik)}</td>
-      <td>${esc(r.jabatan)}</td>
-      <td>${{1:'TNI',2:'POLRI',3:'PNS',4:'PPNPN',5:'PPPK'}[r.status]||r.status}</td>
-    </tr>`).join('') || `<tr class="tbl-empty"><td colspan="6">Tidak ada data</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = ubRows.map((r,i)=>`<tr>
-    <td style="text-align:center;color:var(--gray-400);font-size:12px;padding:4px 6px">${i+1}</td>
-    <td style="padding:4px 6px"><input class="inline-input" placeholder="Nama lengkap" value="${esc(r.nama)}"
-      oninput="ubRows[${i}].nama=this.value"/></td>
-    <td style="padding:4px 6px"><input class="inline-input" placeholder="NIP/NRP" maxlength="20" value="${esc(r.nipnrp)}"
-      style="font-family:monospace" oninput="ubRows[${i}].nipnrp=this.value"/></td>
-    <td style="padding:4px 6px"><input class="inline-input" placeholder="16 digit" maxlength="16" value="${esc(r.nik)}"
-      style="font-family:monospace" oninput="ubRows[${i}].nik=this.value"/></td>
-    <td style="padding:4px 6px"><input class="inline-input" placeholder="Jabatan" value="${esc(r.jabatan)}"
-      oninput="ubRows[${i}].jabatan=this.value"/></td>
-    <td style="padding:4px 6px">
-      <select class="inline-select" onchange="ubRows[${i}].status=this.value">
-        ${statusOpts.replace(`value="${r.status||'3'}"`,`value="${r.status||'3'}" selected`)}
-      </select>
-    </td>
-    <td style="padding:4px 6px;text-align:center">
-      <button onclick="ubHapusBaris(${i})" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:17px">✕</button>
-    </td>
-  </tr>`).join('') || `<tr class="tbl-empty"><td colspan="7">Klik "+ Tambah Baris" untuk menambah pengguna</td></tr>`;
-}
-
-function ubTambahBaris() { ubRows.push(ubEmptyRow()); ubRenderTbody(); }
-function ubHapusBaris(i) {
-  if (ubRows.length <= 1) { showToast('Minimal 1 baris user', true); return; }
-  ubRows.splice(i,1); ubRenderTbody();
-}
-function ubReset() {
-  if (!confirm('Reset semua data form?')) return;
-  ubRows = [ubEmptyRow()];
+function ubResetForm(){
+  if(!confirm('Reset semua data form? Data yang belum diunduh akan hilang.'))return;
   initUserBaru();
 }
 
-async function ubSubmit() {
-  const btn = document.getElementById('btnUbSubmit');
-  // Validasi
-  const namaSatker = document.getElementById('ub_namaSatker')?.value.trim();
-  const namaKpa    = document.getElementById('ub_namaKpa')?.value.trim();
-  const nip        = document.getElementById('ub_nip')?.value.trim();
-  const noHp       = document.getElementById('ub_noHp')?.value.trim();
-  const email      = document.getElementById('ub_email')?.value.trim();
-  const alamat     = document.getElementById('ub_alamat')?.value.trim();
-  const levelSatker= document.getElementById('ub_levelSatker')?.value;
-  const refKode    = document.getElementById('ub_refKode')?.value;
-
-  if (!namaSatker) { showToast('Nama satker wajib diisi', true); return; }
-  if (!namaKpa)    { showToast('Nama KPA wajib diisi', true); return; }
-  if (!nip)        { showToast('NIP KPA wajib diisi', true); return; }
-  if (!noHp)       { showToast('No. HP wajib diisi', true); return; }
-
-  const filled = ubRows.filter(r => r.nama && r.nipnrp);
-  if (!filled.length) { showToast('Minimal 1 data pengguna (nama & NIP wajib)', true); return; }
-
-  if (!confirm(`Submit pendaftaran ${filled.length} pengguna ke KPPN Jayapura?\n\nSetelah submit, data TIDAK dapat diubah sampai ada keputusan dari KPPN.`)) return;
-
-  btn.disabled = true; btn.textContent = '⏳ Mengirim...';
-  try {
-    const res = await apiPost({
-      action: 'submitDaftar',
-      refKode, namaSatker,
-      kodeSatker: currentUser.username,
-      namaKpa, nip, noHp, email, alamat, levelSatker,
-      usersJson: JSON.stringify(filled)
-    });
-    if (!res.success) {
-      showToast(res.message || 'Gagal submit', true);
-      btn.disabled=false; btn.textContent='📤 Submit Pendaftaran';
-      return;
-    }
-    showToast('✅ Pendaftaran berhasil dikirim ke KPPN!', false, true);
-    setTimeout(() => switchTab('user-riwayat'), 1500);
-  } catch(e) {
-    showToast('❌ Gagal terhubung ke server', true);
-    btn.disabled=false; btn.textContent='📤 Submit Pendaftaran';
-  }
-}
-
-async function initUserBaru() {
-  const body = document.getElementById('userBaruBody');
-  if (!body) return;
-  ubRows = [ubEmptyRow()];
-  ubLocked = false;
-  try {
-    const res = await apiPost({ action:'getSatkerDashboard' });
-    const kode = currentUser?.username || '';
-    const namaUser = currentUser?.namaLengkap || '';
-    if (res.success && res.data && res.data.refKode) {
-      const d = res.data;
-      ubLocked = ['submitted','diproses','terdaftar'].includes((d.status||'').toLowerCase());
-      // Load existing users into table
-      try {
-        const users = JSON.parse(d.usersJson || '[]');
-        if (users.length) ubRows = users.map(u=>({
-          nama: u.nama||'', nipnrp: u.nipnrp||u.nip||'',
-          nik: u.nik||'', jabatan: u.jabatan||'', status: String(u.status||'3')
-        }));
-      } catch(e) {}
-      body.innerHTML = ubRenderForm(d, kode, namaUser);
-    } else {
-      body.innerHTML = ubRenderForm(null, kode, namaUser);
-    }
-    ubRenderTbody();
-  } catch(e) {
-    body.innerHTML = `<div class="info-box red">❌ Gagal memuat data. <button class="btn btn-secondary btn-sm" onclick="initUserBaru()">Coba Lagi</button></div>`;
-  }
-}
+// (old ub* functions removed — replaced by full card-based implementation above)
 
 // ════════════════════════════════════════════════════════
 // USER SAKTI — PERGANTIAN
@@ -1227,7 +1936,7 @@ function showToast(msg, isErr=false, isOk=false) {
 function openModal(id)  { document.getElementById(id)?.classList.add('on'); }
 function closeModal(id) { document.getElementById(id)?.classList.remove('on'); }
 document.addEventListener('click', e => {
-  ['modalKonfirmasiEmail','modalDetailEmail','modalPassword'].forEach(mid => {
+  ['modalKonfirmasiEmail','modalDetailEmail','modalPassword','modalPernyataanUB','modalSuksesUB','modalEditUB','modalPanggilRekamanUB'].forEach(mid => {
     const m = document.getElementById(mid);
     if (m && e.target === m) closeModal(mid);
   });
