@@ -1018,12 +1018,12 @@ async function doHapus(){
   const btn=document.getElementById('btnDoHapus');
   btn.disabled=true; btn.textContent='⏳...';
   try{
-    const res=await apiPost({action:'hapusData',refKode:activeHapusRef});
+    const res=await apiPost({action:'hapusData',refs:[activeHapusRef],refKode:activeHapusRef});
     if(!res.success){showToast(res.message||'Gagal',true);btn.disabled=false;btn.innerHTML='🗑️ Hapus';return;}
     showToast('✅ Data berhasil dihapus',false,true);
     closeModal('modalHapus');
     loadSubmissions();
-  }catch(e){showToast('Gagal',true);}
+  }catch(e){showToast('Gagal: '+e.message,true);}
   btn.disabled=false; btn.innerHTML='🗑️ Hapus';
 }
 
