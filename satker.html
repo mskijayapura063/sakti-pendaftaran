@@ -1595,20 +1595,29 @@ async function ubDoGenerateExcel(){
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;a.download=fname;a.click();URL.revokeObjectURL(url);
   }catch(e){showToast('❌ Gagal buat Excel: '+e.message,true);return;}
-  // Kirim ke server
-  try{
-    apiPost({
+  // Kirim ke server dan tunggu hasilnya sebelum buka modal sukses
+  try {
+    const res2 = await apiPost({
       action:'submitDaftar',
-      refKode,namaSatker,kodeSatker,namaKPA,nip:nipKPA,
-      noHp:document.getElementById('ub_noHp')?.value||'',
-      email:'',alamat:kota,levelSatker,tglSurat,fname,
-      userCount:ubUsers.length,
-      usersJson:JSON.stringify(ubUsers.map(u=>({nama:u.nama,nipnrp:u.nipnrp,nik:u.nik,email:u.email,hp:u.hp,sk:u.sk,tglsk:u.tglsk,peranList:u.peranList})))
-    }).then(res=>{
-      if(res.success)showToast('✅ Data berhasil dikirim ke server');
-      else showToast('⚠️ '+(res.message||'Terjadi kesalahan di server').split('\n')[0],true);
-    }).catch(()=>showToast('⚠️ Gagal kirim ke server',true));
-  }catch(e){}
+      refKode, namaSatker, kodeSatker,
+      namaKPA, nip: nipKPA,
+      noHp: document.getElementById('ub_noHp')?.value||'',
+      email:'', alamat: kota, levelSatker,
+      tglSurat, fname,
+      userCount: ubUsers.length,
+      usersJson: JSON.stringify(ubUsers.map(u=>({
+        nama:u.nama, nipnrp:u.nipnrp, nik:u.nik,
+        email:u.email, hp:u.hp, sk:u.sk,
+        tglsk:u.tglsk, peranList:u.peranList
+      })))
+    });
+    if (!res2.success) {
+      showToast('⚠️ Excel diunduh, tapi gagal kirim ke server: ' + (res2.message||''), true);
+    }
+  } catch(e) {
+    showToast('⚠️ Excel diunduh, tapi gagal kirim ke server. Cek koneksi.', true);
+  }
+
   document.getElementById('ubRefKodeDisplay').textContent=refKode;
   openModal('modalSuksesUB');
 }
@@ -1843,52 +1852,98 @@ function renderUserRiwayat() {
 async function initUserRiwayat() {
   const body = document.getElementById('userRiwayatBody');
   if (!body) return;
+  body.innerHTML = '<p style="color:var(--gray-400);font-size:13px;text-align:center;padding:24px">⏳ Memuat data...</p>';
   try {
     const res = await apiPost({ action:'getSatkerDashboard' });
-    if (!res.success || !res.data || !res.data.refKode) {
-      body.innerHTML = `<div class="card"><p style="color:var(--gray-400);font-style:italic;text-align:center;padding:24px">Belum ada pendaftaran User SAKTI yang diajukan.</p>
-      <div style="text-align:center;margin-top:8px"><button class="btn btn-primary btn-sm" onclick="switchTab('user-baru')">📝 Mulai Pendaftaran</button></div></div>`;
+    // Ambil semua pendaftaran (array) bukan hanya data terbaru
+    const daftarAll = (res.pendaftaran || (res.data ? [res.data] : []));
+
+    if (!res.success || !daftarAll.length) {
+      body.innerHTML = `<div class="card" style="text-align:center;padding:32px">
+        <p style="color:var(--gray-400);font-style:italic;margin-bottom:16px">Belum ada pendaftaran User SAKTI yang diajukan.</p>
+        <button class="btn btn-primary" onclick="switchTab('user-baru')">📝 Mulai Pendaftaran</button>
+      </div>`;
       return;
     }
-    const d = res.data;
-    const steps = [
-      { key:'rekam',    label:'Rekam Data',       done: !!d.refKode },
-      { key:'upload',   label:'Upload Dokumen',    done: d.hasFiles },
-      { key:'submit',   label:'Submit ke KPPN',    done: ['submitted','diproses','terdaftar'].includes((d.status||'').toLowerCase()) },
-      { key:'diproses', label:'Diproses KPPN',     done: ['diproses','terdaftar'].includes((d.status||'').toLowerCase()) },
-      { key:'otp',      label:'Aktivasi OTP',      done: d.otpAktif },
-      { key:'selesai',  label:'Terdaftar',         done: (d.status||'').toLowerCase()==='terdaftar' },
-    ];
-    const status = d.status || 'draft';
-    const locked = ['submitted','diproses','terdaftar'].includes(status.toLowerCase());
 
+    // Urutkan dari terbaru
+    const daftar = [...daftarAll].reverse();
+
+    // Render tabel riwayat
     body.innerHTML = `
-    <div class="card">
-      <div class="card-title">Status Pendaftaran</div>
-      <div style="display:flex;align-items:center;gap:0;margin-bottom:24px;overflow-x:auto;padding-bottom:8px">
-        ${steps.map((s,i)=>`
-          <div style="display:flex;align-items:center;flex-shrink:0">
-            <div style="text-align:center;min-width:90px">
-              <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;margin:0 auto 4px;
-                background:${s.done?'var(--green)':'var(--gray-200)'};color:${s.done?'#fff':'var(--gray-500)'}">
-                ${s.done?'✓':i+1}</div>
-              <div style="font-size:11px;font-weight:600;color:${s.done?'var(--green)':'var(--gray-500)'}">${s.label}</div>
-            </div>
-            ${i<steps.length-1?`<div style="height:2px;width:24px;background:${steps[i+1].done?'var(--green)':'var(--gray-200)'};flex-shrink:0"></div>`:''}
-          </div>`).join('')}
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;margin-bottom:16px">
-        <div><span style="color:var(--gray-500)">Kode Referensi:</span><br/><strong style="font-family:monospace">${esc(d.refKode||'—')}</strong></div>
-        <div><span style="color:var(--gray-500)">Status Saat Ini:</span><br/>${badgeStatus(status)}</div>
-        <div><span style="color:var(--gray-500)">Nama Satker:</span><br/><strong>${esc(d.namaSatker||'—')}</strong></div>
-        <div><span style="color:var(--gray-500)">Nama KPA:</span><br/><strong>${esc(d.namaKpa||'—')}</strong></div>
-        ${d.catatanAdmin?`<div style="grid-column:1/-1"><span style="color:var(--red)">Catatan KPPN:</span><br/><strong style="color:var(--red)">${esc(d.catatanAdmin)}</strong></div>`:''}
-      </div>
-      ${!locked?`<button class="btn btn-primary btn-sm" onclick="switchTab('user-baru')">✏️ Lengkapi / Edit Data</button>`:''}
-      ${status.toLowerCase()==='ditolak'?`<div class="info-box red" style="margin-top:12px">❌ Pendaftaran ditolak. Perbaiki data dan ajukan kembali.</div>`:''}
-    </div>`;
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:13px;color:var(--gray-500)">Total: <strong>${daftar.length}</strong> pengajuan</div>
+      <button class="btn btn-primary btn-sm" onclick="switchTab('user-baru')">📝 Pendaftaran Baru</button>
+    </div>
+    ${daftar.map((d,i) => {
+      const status = d.status || 'Menunggu';
+      const locked = ['submitted','diproses','terdaftar','menunggu'].includes(status.toLowerCase());
+      const isDitolak = status.toLowerCase()==='ditolak';
+      const steps = [
+        { label:'Rekam Data',    done: !!d.refKode },
+        { label:'Upload Dokumen',done: d.sudahUpload||d.hasFiles },
+        { label:'Diproses KPPN', done: ['diproses','terdaftar','selesai'].includes(status.toLowerCase()) },
+        { label:'Terdaftar',     done: ['terdaftar','selesai'].includes(status.toLowerCase()) },
+      ];
+      let usersArr = [];
+      if (Array.isArray(d.usersJson)) usersArr = d.usersJson;
+      else if (typeof d.usersJson === 'string') { try { usersArr = JSON.parse(d.usersJson)||[]; } catch(e){} }
+      return `
+      <div class="card" style="margin-bottom:16px;${i===0?'border-left:4px solid var(--blue)':''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+          <div>
+            <div style="font-size:12px;color:var(--gray-500);margin-bottom:2px">Kode Referensi</div>
+            <div style="font-family:monospace;font-weight:700;font-size:15px;color:var(--blue)">${esc(d.refKode||'—')}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            ${i===0?'<span style="font-size:11px;font-weight:700;background:var(--blue-pale);color:var(--blue);padding:2px 8px;border-radius:20px">TERBARU</span>':''}
+            ${badgeStatus(status)}
+          </div>
+        </div>
+        <!-- Progress bar -->
+        <div style="display:flex;align-items:center;gap:0;margin-bottom:16px;overflow-x:auto;padding-bottom:4px">
+          ${steps.map((s,si)=>`
+            <div style="display:flex;align-items:center;flex-shrink:0">
+              <div style="text-align:center;min-width:80px">
+                <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;margin:0 auto 4px;
+                  background:${s.done?'var(--green)':'var(--gray-200)'};color:${s.done?'#fff':'var(--gray-500)'}">
+                  ${s.done?'✓':si+1}</div>
+                <div style="font-size:10px;font-weight:600;color:${s.done?'var(--green)':'var(--gray-500)'}">${s.label}</div>
+              </div>
+              ${si<steps.length-1?`<div style="height:2px;width:20px;background:${steps[si+1].done?'var(--green)':'var(--gray-200)'};flex-shrink:0;margin-bottom:16px"></div>`:''}
+            </div>`).join('')}
+        </div>
+        <!-- Info grid -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px">
+          <div><span style="color:var(--gray-500)">Nama Satker:</span><br/><strong>${esc(d.namaSatker||'—')}</strong></div>
+          <div><span style="color:var(--gray-500)">Nama KPA:</span><br/><strong>${esc(d.namaKpa||'—')}</strong></div>
+          <div><span style="color:var(--gray-500)">Jumlah Pengguna:</span><br/><strong>${usersArr.length} pengguna</strong></div>
+          <div><span style="color:var(--gray-500)">Tanggal Daftar:</span><br/><strong>${fmtTgl(d.tanggalDaftar)}</strong></div>
+          ${d.catatanAdmin?`<div style="grid-column:1/-1"><span style="color:var(--red);font-weight:600">Catatan KPPN:</span><br/><span style="color:var(--red)">${esc(d.catatanAdmin)}</span></div>`:''}
+        </div>
+        ${isDitolak?`<div class="info-box red" style="margin-bottom:12px;font-size:12px">❌ Pendaftaran ditolak. Perbaiki data dan ajukan kembali melalui menu <strong>User SAKTI Baru</strong>.</div>`:''}
+        ${usersArr.length?`
+        <details style="margin-bottom:12px">
+          <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--blue);padding:6px 0">👥 Lihat daftar pengguna (${usersArr.length})</summary>
+          <div style="overflow-x:auto;margin-top:8px">
+            <table class="tbl" style="font-size:12px">
+              <thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Email</th><th>Peran</th></tr></thead>
+              <tbody>
+                ${usersArr.map((u,ui)=>`<tr>
+                  <td style="text-align:center;color:var(--gray-400)">${ui+1}</td>
+                  <td>${esc(u.nama||'—')}</td>
+                  <td style="font-family:monospace">${esc(u.nipnrp||'—')}</td>
+                  <td style="font-family:monospace;font-size:11px">${esc(u.email||'—')}</td>
+                  <td>${(u.peranList||[]).map(k=>`<span style="font-size:10px;background:var(--blue-pale);color:var(--blue);padding:1px 6px;border-radius:10px;margin:1px;display:inline-block">${esc(k.replace('SATKER_',''))}</span>`).join('')||'—'}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </details>`:''}
+      </div>`;
+    }).join('')}`;
   } catch(e) {
-    body.innerHTML = '<div class="card"><p style="color:var(--red)">❌ Gagal memuat data.</p></div>';
+    body.innerHTML = '<div class="card"><p style="color:var(--red)">❌ Gagal memuat data. Periksa koneksi internet.</p></div>';
   }
 }
 

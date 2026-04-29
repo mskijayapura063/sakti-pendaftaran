@@ -553,7 +553,7 @@ function renderDashboard(){
     ${sc('blue','📧','—','Total Email SAKTI')}
     ${sc('orange','⏳','—','Menunggu Proses')}
     ${sc('green','✅','—','Selesai')}
-    ${sc('red','❌','—','Ditolak')}
+    ${sc('red','❌','—','Ditolak Email')}
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px">
     <div class="card">
@@ -591,7 +591,7 @@ async function loadDashboard(){
     upd('Total-Email-SAKTI', d.emailTotal||0);
     upd('Menunggu-Proses',   d.emailMenunggu||0);
     upd('Selesai',           d.emailSelesai||0);
-    upd('Ditolak',           d.emailDitolak||0, true);
+    upd('Ditolak-Email',     d.emailDitolak||0);
     // Early warning
     renderEarlyWarning(d);
     // Recent tables
