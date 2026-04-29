@@ -888,24 +888,34 @@ function renderSubTable(list){
   if(!body) return;
   if(!list.length){body.innerHTML='<tr class="tbl-empty"><td colspan="6">Tidak ada data.</td></tr>';return;}
   const isAdmin=['Admin','SuperAdmin'].includes(currentUser?.role);
-  body.innerHTML=list.map(s=>`
+  body.innerHTML=list.map(s=>{
+    const belumUpload = !s.sudahUpload && ['submitted','Menunggu'].includes(s.status);
+    return `
     <tr>
       <td style="font-family:monospace;font-size:11px">${esc(s.refKode)}</td>
       <td><strong>${esc(s.namaSatker)}</strong><br/><span style="font-size:11px;color:var(--gray-500)">${esc(s.kodeSatker)}</span></td>
       <td>${esc(s.namaKpa||'—')}</td>
       <td style="white-space:nowrap">${fmtTgl(s.tanggalDaftar||s.createdAt||'')}</td>
-      <td>${bstat(s.status)}${s.revisiKe>0?`<br/><span style="font-size:10px;color:var(--orange)">Revisi ke-${s.revisiKe}</span>`:''}</td>
+      <td>
+        ${bstat(s.status)}
+        ${s.revisiKe>0?`<br/><span style="font-size:10px;color:var(--orange)">Revisi ke-${s.revisiKe}</span>`:''}
+        ${belumUpload?`<br/><span style="font-size:10px;color:var(--red);font-weight:600">⚠️ Belum upload</span>`:''}
+      </td>
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="lihatDetail('${esc(s.refKode)}')">🔍 Detail</button>
           ${['submitted','Menunggu'].includes(s.status)?`
-            <button class="btn btn-success btn-sm" onclick="bukaProses('${esc(s.refKode)}')">✅ Proses</button>
+            ${belumUpload
+              ? `<button class="btn btn-secondary btn-sm" title="Dokumen belum diupload satker" disabled style="opacity:.5;cursor:not-allowed">🔒 Proses</button>`
+              : `<button class="btn btn-success btn-sm" onclick="bukaProses('${esc(s.refKode)}')">✅ Proses</button>`
+            }
             <button class="btn btn-danger btn-sm" onclick="bukaTolak('${esc(s.refKode)}')">❌ Tolak</button>
           `:''}
           ${isAdmin&&!s.sudahTerdaftar?`<button class="btn btn-secondary btn-sm" onclick="bukaHapus('${esc(s.refKode)}')">🗑️</button>`:''}
         </div>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 async function lihatDetail(refKode){
@@ -926,15 +936,32 @@ async function lihatDetail(refKode){
         <div><span style="color:var(--gray-500)">Email:</span><br/><strong>${esc(s.email||'—')}</strong></div>
         ${s.catatanAdmin?`<div style="grid-column:1/-1"><span style="color:var(--red)">Catatan KPPN:</span><br/><strong style="color:var(--red)">${esc(s.catatanAdmin)}</strong></div>`:''}
       </div>
-      ${(s.usersJson||[]).length?`
-      <div class="card-title" style="margin-bottom:10px">Data Pengguna (${s.usersJson.length} orang)</div>
+      ${(s.users||[]).length?`
+      <div class="card-title" style="margin-bottom:10px">Data Pengguna (${s.users.length} orang)</div>
       <table class="tbl" style="margin-bottom:14px">
         <thead><tr><th>Nama</th><th>NIP/NRP</th><th>NIK</th><th>Peran</th></tr></thead>
-        <tbody>${s.usersJson.map(u=>`<tr><td>${esc(u.nama||u.namaLengkap||'')}</td><td style="font-family:monospace">${esc(u.nipnrp||u.nip||'')}</td><td style="font-family:monospace">${esc(u.nik||'')}</td><td>${esc(u.peran||u.role||'')}</td></tr>`).join('')}</tbody>
+        <tbody>${s.users.map(u=>{
+          const peranList = u.peranList || (u.peran ? [u.peran] : []);
+          const PERAN_OTP_UI = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+          return `<tr>
+            <td>${esc(u.nama||u.namaLengkap||'')}</td>
+            <td style="font-family:monospace">${esc(u.nipnrp||u.nip||'')}</td>
+            <td style="font-family:monospace">${esc(u.nik||'')}</td>
+            <td>${peranList.map(p=>`<span style="font-size:10px;background:${PERAN_OTP_UI.includes(p)?'#fef9c3':'var(--blue-pale)'};color:${PERAN_OTP_UI.includes(p)?'#854d0e':'var(--blue)'};padding:1px 6px;border-radius:10px;margin:1px;display:inline-block">${esc(p.replace('SATKER_',''))}</span>`).join('')||esc(u.peran||u.role||'—')}</td>
+          </tr>`;
+        }).join('')}</tbody>
       </table>`:''}
       ${['submitted','Menunggu'].includes(s.status)?`
+      ${!s.sudahUpload?`
+      <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#991b1b;display:flex;align-items:flex-start;gap:8px">
+        <span style="font-size:18px;flex-shrink:0">🔒</span>
+        <div><strong>Dokumen belum diupload.</strong><br/>Satker belum mengunggah dokumen pendaftaran. Tombol Proses dikunci sampai dokumen tersedia.</div>
+      </div>`:''}
       <div style="display:flex;gap:8px;margin-top:4px">
-        <button class="btn btn-success btn-sm" onclick="closeModal('modalDetail');bukaProses('${esc(s.refKode)}')">✅ Proses</button>
+        ${!s.sudahUpload
+          ? `<button class="btn btn-secondary btn-sm" disabled style="opacity:.5;cursor:not-allowed" title="Dokumen belum diupload">🔒 Proses</button>`
+          : `<button class="btn btn-success btn-sm" onclick="closeModal('modalDetail');bukaProses('${esc(s.refKode)}')">✅ Proses</button>`
+        }
         <button class="btn btn-danger btn-sm" onclick="closeModal('modalDetail');bukaTolak('${esc(s.refKode)}')">❌ Tolak</button>
       </div>`:''}`;
     openModal('modalDetail');

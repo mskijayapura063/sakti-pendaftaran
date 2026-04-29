@@ -1952,17 +1952,33 @@ async function initUserRiwayat() {
     </div>
     ${daftar.map((d,i) => {
       const status = d.status || 'Menunggu';
-      const locked = ['submitted','diproses','terdaftar','menunggu'].includes(status.toLowerCase());
       const isDitolak = status.toLowerCase()==='ditolak';
-      const steps = [
-        { label:'Rekam Data',    done: !!d.refKode },
-        { label:'Upload Dokumen',done: d.sudahUpload||d.hasFiles },
-        { label:'Diproses KPPN', done: ['diproses','terdaftar','selesai'].includes(status.toLowerCase()) },
-        { label:'Terdaftar',     done: ['terdaftar','selesai'].includes(status.toLowerCase()) },
-      ];
+      const isTerdaftar = ['terdaftar','selesai'].includes(status.toLowerCase());
+      const isDiproses = status.toLowerCase()==='diproses';
+      const sudahUpload = !!(d.sudahUpload || d.hasFiles);
+
+      // Deteksi apakah ada user KPA/PPK/PPSPM (butuh tahap aktivasi OTP)
       let usersArr = [];
       if (Array.isArray(d.usersJson)) usersArr = d.usersJson;
       else if (typeof d.usersJson === 'string') { try { usersArr = JSON.parse(d.usersJson)||[]; } catch(e){} }
+      const PERAN_OTP = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+      const butuhOTP = d.butuhAktivasiOTP !== undefined
+        ? d.butuhAktivasiOTP
+        : usersArr.some(u => (u.peranList||[]).some(p => PERAN_OTP.includes(p)));
+      const otpSelesai = !!(d.otpSelesai || d.sudahTerdaftar);
+
+      // Susun steps — tahap 5 hanya muncul jika ada KPA/PPK/PPSPM
+      const steps = [
+        { label:'Rekam Data',      done: !!d.refKode },
+        { label:'Upload Dokumen',  done: sudahUpload },
+        { label:'Diproses KPPN',   done: isDiproses || isTerdaftar },
+        { label:'Terdaftar',       done: isTerdaftar },
+        ...(butuhOTP ? [{ label:'Aktivasi OTP', done: otpSelesai }] : []),
+      ];
+
+      // Apakah dokumen belum upload dan status masih menunggu (info ke satker)
+      const belumUpload = !sudahUpload && !isDitolak && !isTerdaftar;
+
       return `
       <div class="card" style="margin-bottom:16px;${i===0?'border-left:4px solid var(--blue)':''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:14px">
@@ -1975,19 +1991,30 @@ async function initUserRiwayat() {
             ${badgeStatus(status)}
           </div>
         </div>
-        <!-- Progress bar -->
+        <!-- Progress stepper -->
         <div style="display:flex;align-items:center;gap:0;margin-bottom:16px;overflow-x:auto;padding-bottom:4px">
           ${steps.map((s,si)=>`
             <div style="display:flex;align-items:center;flex-shrink:0">
-              <div style="text-align:center;min-width:80px">
+              <div style="text-align:center;min-width:${butuhOTP?'72px':'80px'}">
                 <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;margin:0 auto 4px;
                   background:${s.done?'var(--green)':'var(--gray-200)'};color:${s.done?'#fff':'var(--gray-500)'}">
                   ${s.done?'✓':si+1}</div>
-                <div style="font-size:10px;font-weight:600;color:${s.done?'var(--green)':'var(--gray-500)'}">${s.label}</div>
+                <div style="font-size:${butuhOTP?'9px':'10px'};font-weight:600;color:${s.done?'var(--green)':'var(--gray-500)'}">${s.label}</div>
               </div>
-              ${si<steps.length-1?`<div style="height:2px;width:20px;background:${steps[si+1].done?'var(--green)':'var(--gray-200)'};flex-shrink:0;margin-bottom:16px"></div>`:''}
+              ${si<steps.length-1?`<div style="height:2px;width:${butuhOTP?'12px':'20px'};background:${steps[si+1].done?'var(--green)':'var(--gray-200)'};flex-shrink:0;margin-bottom:16px"></div>`:''}
             </div>`).join('')}
         </div>
+        ${belumUpload?`
+        <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#92400e;display:flex;align-items:flex-start;gap:8px">
+          <span style="font-size:16px;flex-shrink:0">⚠️</span>
+          <div><strong>Dokumen belum diupload.</strong> Pendaftaran tidak dapat diproses oleh KPPN sebelum dokumen diunggah.
+          Silakan upload melalui <a href="https://mskijayapura063.github.io/sakti-pendaftaran/upload.html" target="_blank" style="color:var(--blue)">halaman Upload Dokumen</a> menggunakan kode referensi di atas.</div>
+        </div>`:''}
+        ${butuhOTP && isTerdaftar && !otpSelesai?`
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#166534;display:flex;align-items:flex-start;gap:8px">
+          <span style="font-size:16px;flex-shrink:0">🔑</span>
+          <div><strong>Menunggu Aktivasi OTP.</strong> Pengguna dengan peran KPA/PPK/PPSPM perlu melakukan aktivasi OTP. Hubungi KPPN Jayapura untuk proses aktivasi.</div>
+        </div>`:''}
         <!-- Info grid -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px">
           <div><span style="color:var(--gray-500)">Nama Satker:</span><br/><strong>${esc(d.namaSatker||'—')}</strong></div>
@@ -2009,7 +2036,7 @@ async function initUserRiwayat() {
                   <td>${esc(u.nama||'—')}</td>
                   <td style="font-family:monospace">${esc(u.nipnrp||'—')}</td>
                   <td style="font-family:monospace;font-size:11px">${esc(u.email||'—')}</td>
-                  <td>${(u.peranList||[]).map(k=>`<span style="font-size:10px;background:var(--blue-pale);color:var(--blue);padding:1px 6px;border-radius:10px;margin:1px;display:inline-block">${esc(k.replace('SATKER_',''))}</span>`).join('')||'—'}</td>
+                  <td>${(u.peranList||[]).map(k=>`<span style="font-size:10px;background:${PERAN_OTP.includes(k)?'#fef9c3':'var(--blue-pale)'};color:${PERAN_OTP.includes(k)?'#854d0e':'var(--blue)'};padding:1px 6px;border-radius:10px;margin:1px;display:inline-block">${esc(k.replace('SATKER_',''))}</span>`).join('')||'—'}</td>
                 </tr>`).join('')}
               </tbody>
             </table>
