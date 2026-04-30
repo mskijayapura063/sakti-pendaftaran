@@ -367,6 +367,27 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
   </div>
 </div>
 
+<!-- ══ MODAL ROLLBACK STATUS ══ -->
+<div class="modal-overlay" id="modalRollback">
+  <div class="modal-box narrow">
+    <div class="modal-title">↩️ Rollback Status</div>
+    <p style="font-size:13px;color:var(--gray-700);margin-bottom:4px">
+      Ref: <strong id="rollbackRefKode" style="font-family:monospace">—</strong>
+    </p>
+    <p style="font-size:13px;color:var(--gray-700);margin-bottom:14px">
+      Status saat ini: <strong id="rollbackStatusSaatIni">—</strong>
+      &nbsp;→&nbsp; <strong id="rollbackStatusTujuan" style="color:var(--blue)">—</strong>
+    </p>
+    <div class="info-box" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;margin-bottom:14px;font-size:12px">
+      ⚠️ Rollback hanya mengubah status di sistem. Pastikan koordinasi dengan satker sudah dilakukan.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalRollback')">Batal</button>
+      <button class="btn btn-primary" onclick="doRollback()" id="btnDoRollback">↩️ Konfirmasi Rollback</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL PROSES EMAIL SAKTI ══ -->
 <div class="modal-overlay" id="modalProsesEmail">
   <div class="modal-box wide">
@@ -427,6 +448,7 @@ let activeProsesEmailId = null;
 let activeTolakEmailId  = null;
 let emailHasilTemp    = [];   // buffer isi email hasil saat modal proses email
 let activeDetailData  = null; // data detail pendaftaran yg sedang dibuka di modal
+let activeRollbackRef = null; // ref untuk rollback status
 
 // ════════════════════════════════════════════════════════
 // API
@@ -1021,6 +1043,7 @@ function renderSubTable(list){
             <button class="btn btn-danger btn-sm" onclick="bukaTolak('${esc(s.refKode)}')">❌ Tolak</button>
           `:''}
           ${isAdmin&&!s.sudahTerdaftar?`<button class="btn btn-secondary btn-sm" onclick="bukaHapus('${esc(s.refKode)}')">🗑️</button>`:''}
+          ${isAdmin&&['Diproses','Terdaftar'].includes(s.status)?`<button class="btn btn-outline btn-sm" style="color:var(--orange);border-color:var(--orange)" onclick="bukaRollback('${esc(s.refKode)}','${esc(s.status)}')">↩️</button>`:''}
         </div>
       </td>
     </tr>`;
@@ -1109,7 +1132,15 @@ async function lihatDetail(refKode){
         }
         <button class="btn btn-danger btn-sm" onclick="closeModal('modalDetail');bukaTolak('${esc(s.refKode)}')">❌ Tolak</button>
       </div>
-      ${!s.sudahUpload?`<div style="margin-top:8px;font-size:11px;color:#991b1b">🔒 Dokumen belum diupload — tombol Proses dikunci sampai dokumen tersedia.</div>`:''}`:''}`;
+      ${!s.sudahUpload?`<div style="margin-top:8px;font-size:11px;color:#991b1b">🔒 Dokumen belum diupload — tombol Proses dikunci sampai dokumen tersedia.</div>`:''}`:''}
+      ${['Admin','SuperAdmin'].includes(currentUser?.role)&&['Diproses','Terdaftar'].includes(s.status)?`
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gray-200)">
+        <button class="btn btn-outline btn-sm" style="color:var(--orange);border-color:var(--orange);font-size:12px" onclick="closeModal('modalDetail');bukaRollback('${esc(s.refKode)}','${esc(s.status)}')">
+          ↩️ Rollback Status ke ${s.status==='Terdaftar'?'Diproses':'Menunggu'}
+        </button>
+        <div style="font-size:11px;color:var(--gray-500);margin-top:4px">Kembalikan status pendaftaran ke tahap sebelumnya jika diperlukan.</div>
+      </div>`:''}`;
+
     openModal('modalDetail');
   }catch(e){showToast('Gagal memuat detail',true);}
 }
@@ -1171,6 +1202,35 @@ async function doHapus(){
     loadSubmissions();
   }catch(e){showToast('Gagal: '+e.message,true);}
   btn.disabled=false; btn.innerHTML='🗑️ Hapus';
+}
+
+// ════════════════════════════════════════════════════════
+// ROLLBACK STATUS
+// ════════════════════════════════════════════════════════
+const ROLLBACK_MAP = { 'Terdaftar':'Diproses', 'Diproses':'Menunggu' };
+
+function bukaRollback(refKode, statusSaatIni) {
+  const statusTujuan = ROLLBACK_MAP[statusSaatIni];
+  if (!statusTujuan) { showToast('Status ini tidak bisa di-rollback', true); return; }
+  activeRollbackRef = refKode;
+  document.getElementById('rollbackRefKode').textContent     = refKode;
+  document.getElementById('rollbackStatusSaatIni').textContent = statusSaatIni;
+  document.getElementById('rollbackStatusTujuan').textContent  = statusTujuan;
+  openModal('modalRollback');
+}
+
+async function doRollback() {
+  const btn = document.getElementById('btnDoRollback');
+  btn.disabled = true; btn.textContent = '⏳...';
+  try {
+    const statusTujuan = document.getElementById('rollbackStatusTujuan').textContent;
+    const res = await apiPost({ action:'rollbackStatus', refKode:activeRollbackRef, statusTujuan });
+    if (!res.success) { showToast(res.message||'Gagal rollback', true); btn.disabled=false; btn.textContent='↩️ Konfirmasi Rollback'; return; }
+    showToast(`✅ Status berhasil di-rollback ke "${statusTujuan}"`, false, true);
+    closeModal('modalRollback');
+    loadSubmissions();
+  } catch(e) { showToast('Gagal: '+e.message, true); }
+  btn.disabled=false; btn.textContent='↩️ Konfirmasi Rollback';
 }
 
 // ════════════════════════════════════════════════════════
@@ -1523,7 +1583,7 @@ function showToast(msg,isErr=false,isOk=false){
 function openModal(id){document.getElementById(id)?.classList.add('on');}
 function closeModal(id){document.getElementById(id)?.classList.remove('on');}
 document.addEventListener('click',e=>{
-  ['modalDetail','modalTolak','modalProses','modalHapus',
+  ['modalDetail','modalTolak','modalProses','modalHapus','modalRollback',
    'modalProsesEmail','modalTolakEmail','modalDetailEmail'].forEach(mid=>{
     const m=document.getElementById(mid);
     if(m&&e.target===m) closeModal(mid);
