@@ -666,6 +666,7 @@ function renderEmailDaftar(){
           <th>Tgl Submit</th><th>ID</th><th>Satker</th><th>Pegawai</th><th>Status</th><th>Aksi</th>
         </tr></thead>
         <tbody id="emailDaftarBody"><tr class="tbl-empty"><td colspan="6">Memuat data...</td></tr></tbody>
+
       </table>
     </div>
   </div>`;
@@ -697,42 +698,72 @@ function filterEmailDaftar(){
 function renderEmailDaftarTable(list){
   const body=document.getElementById('emailDaftarBody');
   if(!body) return;
-  if(!list.length){body.innerHTML='<tr class="tbl-empty"><td colspan="6">Tidak ada data ditemukan.</td></tr>';return;}
+  if(!list.length){body.innerHTML='<tr class="tbl-empty"><td colspan="7">Tidak ada data ditemukan.</td></tr>';return;}
   const isAdmin=['Admin','SuperAdmin'].includes(currentUser?.role);
-  body.innerHTML=list.map(e=>`
+  body.innerHTML=list.map(e=>{
+    const belumPdf = !e.sudahUploadPdf;
+    return `
     <tr>
       <td style="white-space:nowrap">${fmtTgl(e.tanggalSubmit)}</td>
       <td style="font-family:monospace;font-size:11px;color:var(--gray-600)">${esc(e.id)}</td>
       <td><strong>${esc(e.namaSatker||e.kodeSatker)}</strong><br/><span style="font-size:11px;color:var(--gray-500)">${esc(e.kodeSatker)}</span></td>
       <td style="text-align:center"><strong>${e.jumlahPegawai}</strong> org</td>
-      <td>${bstat(e.status)}</td>
+      <td>${belumPdf&&e.status==='Menunggu'?`<span style="font-size:10px;color:var(--orange);font-weight:700">⚠️ Belum upload PDF<br/></span>`:''}${bstat(e.status)}</td>
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="lihatDetailEmail('${esc(e.id)}')">🔍 Detail</button>
+          <button class="btn btn-outline btn-sm" onclick="adminDownloadEmailExcel('${esc(e.id)}')" title="Download Excel">📥 XLS</button>
+          ${e.sudahUploadPdf?`<button class="btn btn-outline btn-sm" onclick="adminDownloadEmailPdf('${esc(e.id)}')" title="Download PDF">📄 PDF</button>`:''}
           ${e.status==='Menunggu'?`
-            <button class="btn btn-success btn-sm" onclick="bukaModalProsesEmail('${esc(e.id)}')">✅ Proses</button>
+            ${belumPdf
+              ? `<button class="btn btn-secondary btn-sm" disabled style="opacity:.5;cursor:not-allowed" title="Satker belum upload PDF">🔒 Proses</button>`
+              : `<button class="btn btn-success btn-sm" onclick="bukaModalProsesEmail('${esc(e.id)}')">✅ Proses</button>`
+            }
             <button class="btn btn-danger btn-sm" onclick="bukaModalTolakEmail('${esc(e.id)}')">❌ Tolak</button>
           `:''}
           ${isAdmin&&e.status==='Menunggu'?`<button class="btn btn-secondary btn-sm" onclick="hapusEmailSakti('${esc(e.id)}')">🗑️</button>`:''}
         </div>
       </td>
-    </tr>`).join('');
+    </tr>`}).join('');
 }
 
 function lihatDetailEmail(id){
   const e=cachedEmailDaftar.find(x=>x.id===id);
   if(!e) return;
   const body=document.getElementById('detailEmailBody');
+  const belumPdf = !e.sudahUploadPdf;
   body.innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px">
       <div><span style="color:var(--gray-500)">ID:</span><br/><strong style="font-family:monospace;font-size:12px">${esc(e.id)}</strong></div>
       <div><span style="color:var(--gray-500)">Status:</span><br/>${bstat(e.status)}</div>
       <div><span style="color:var(--gray-500)">Satker:</span><br/><strong>${esc(e.namaSatker)}</strong> (${esc(e.kodeSatker)})</div>
       <div><span style="color:var(--gray-500)">Tgl Submit:</span><br/><strong>${fmtTglWaktu(e.tanggalSubmit)}</strong></div>
+      ${e.namaKpa?`<div><span style="color:var(--gray-500)">Nama KPA:</span><br/><strong>${esc(e.namaKpa)}</strong></div>`:''}
+      ${e.nipKpa?`<div><span style="color:var(--gray-500)">NIP KPA:</span><br/><strong style="font-family:monospace">${esc(e.nipKpa)}</strong></div>`:''}
+      ${e.noHp?`<div><span style="color:var(--gray-500)">No. HP:</span><br/><strong>${esc(e.noHp)}</strong></div>`:''}
       ${e.diprosesTgl?`<div><span style="color:var(--gray-500)">Diproses:</span><br/><strong>${fmtTglWaktu(e.diprosesTgl)}</strong></div>`:''}
       ${e.diprosesoleh?`<div><span style="color:var(--gray-500)">Oleh:</span><br/><strong>${esc(e.diprosesoleh)}</strong></div>`:''}
     </div>
+    ${e.keterangan?`<div class="info-box blue" style="margin-bottom:10px"><strong>Keterangan:</strong> ${esc(e.keterangan)}</div>`:''}
     ${e.alasanTolak?`<div class="info-box red" style="margin-bottom:12px"><strong>Alasan Penolakan:</strong> ${esc(e.alasanTolak)}</div>`:''}
+
+    <!-- Status Dokumen PDF -->
+    <div style="background:${e.sudahUploadPdf?'var(--green-pale)':'#FFF3E0'};border:1px solid ${e.sudahUploadPdf?'#A5D6A7':'#FFCC80'};border-radius:8px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:22px">${e.sudahUploadPdf?'📄':'⚠️'}</span>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:700;color:${e.sudahUploadPdf?'var(--green)':'var(--orange)'}">
+          ${e.sudahUploadPdf?'Dokumen PDF tersedia':'Dokumen PDF belum diupload satker'}
+        </div>
+        ${e.pdfFileName?`<div style="font-size:11px;color:var(--gray-600)">${esc(e.pdfFileName)}</div>`:'<div style="font-size:11px;color:var(--gray-500)">Satker harus upload PDF sebelum dapat diproses</div>'}
+      </div>
+      ${e.sudahUploadPdf?`<button class="btn btn-outline btn-sm" onclick="adminDownloadEmailPdf('${esc(e.id)}')">📥 Download PDF</button>`:''}
+    </div>
+
+    <!-- Download Excel -->
+    <div style="margin-bottom:14px">
+      <button class="btn btn-outline btn-sm" onclick="adminDownloadEmailExcel('${esc(e.id)}')">📥 Download Form Excel</button>
+    </div>
+
     ${e.emailHasil&&e.emailHasil.length?`
       <div class="card-title" style="margin-bottom:10px">Email yang Diberikan</div>
       <table class="tbl" style="margin-bottom:14px">
@@ -752,9 +783,14 @@ function lihatDetailEmail(id){
     </table>
     ${e.status==='Menunggu'?`
     <div class="modal-actions" style="border:none;padding:0;margin-top:14px;justify-content:flex-start;gap:8px">
-      <button class="btn btn-success btn-sm" onclick="closeModal('modalDetailEmail');bukaModalProsesEmail('${esc(e.id)}')">✅ Proses</button>
+      ${belumPdf
+        ? `<button class="btn btn-secondary btn-sm" disabled style="opacity:.5;cursor:not-allowed">🔒 Proses (Tunggu Upload PDF)</button>`
+        : `<button class="btn btn-success btn-sm" onclick="closeModal('modalDetailEmail');bukaModalProsesEmail('${esc(e.id)}')">✅ Proses</button>`
+      }
       <button class="btn btn-danger btn-sm" onclick="closeModal('modalDetailEmail');bukaModalTolakEmail('${esc(e.id)}')">❌ Tolak</button>
-    </div>`:''}`;
+    </div>
+    ${belumPdf?`<div class="info-box" style="margin-top:10px;border-color:#FFCC80;background:#FFF3E0;color:var(--orange)">⚠️ <strong>Dokumen PDF belum diupload.</strong> Proses tidak dapat dilakukan. Minta satker untuk mengupload dokumen PDF terlebih dahulu.</div>`:''}
+    `:''}`;
   openModal('modalDetailEmail');
 }
 
@@ -830,6 +866,34 @@ async function hapusEmailSakti(id){
     showToast('✅ Data berhasil dihapus',false,true);
     loadEmailDaftar();
   }catch(e){showToast('Gagal terhubung ke server',true);}
+}
+
+async function adminDownloadEmailExcel(id){
+  showToast('⏳ Menyiapkan Excel...');
+  try{
+    const res=await apiPost({action:'getEmailFile',id,fileType:'excel'});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    const bytes=Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
+    const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=res.fileName||'Form_Email_SAKTI.xlsx';a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ Form Excel berhasil didownload',false,true);
+  }catch(e){showToast('❌ Gagal download Excel',true);}
+}
+
+async function adminDownloadEmailPdf(id){
+  showToast('⏳ Menyiapkan PDF...');
+  try{
+    const res=await apiPost({action:'getEmailFile',id,fileType:'pdf'});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    const bytes=Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
+    const blob=new Blob([bytes],{type:'application/pdf'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=res.fileName||'Dokumen_Email_SAKTI.pdf';a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ PDF berhasil didownload',false,true);
+  }catch(e){showToast('❌ Gagal download PDF',true);}
 }
 
 // ════════════════════════════════════════════════════════
