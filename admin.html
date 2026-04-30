@@ -986,7 +986,7 @@ async function lihatDetail(refKode){
   try{
     const res=await apiPost({action:'getDetail',refKode});
     if(!res.success){showToast(res.message||'Gagal',true);return;}
-    const s=res.data;
+    const s=res;
     const body=document.getElementById('detailBody');
     body.innerHTML=`
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px">

@@ -888,57 +888,73 @@ function ebStepBar(current) {
 
 // ── Step 1: Informasi Pengajuan ──
 function ebRenderStep1(existing) {
-  const kode = currentUser?.username || '';
+  const kode      = currentUser?.username || '';
+  const namaSatkerAuto = currentUser?.namaSatker || currentUser?.namaLengkap || '';
   const d = existing || {};
+  // Auto-fill nama satker dari akun
+  const nsFill = d.namaSatker || namaSatkerAuto;
   return `
   ${ebStepBar(1)}
-  <div class="info-box blue" style="margin-bottom:18px">
-    ℹ️ Lengkapi informasi pengajuan email SAKTI. Kode KPPN <strong>063</strong> dan Kode Satker diisi otomatis dari akun Anda.
-  </div>
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title">🏢 Identitas Satker</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <div class="form-group" style="margin:0">
-        <label>Kode KPPN</label>
-        <input type="text" value="063 — KPPN Jayapura" readonly style="background:var(--gray-100);font-weight:600"/>
+
+  <!-- Blok identitas satker — read-only -->
+  <div style="background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:20px;box-shadow:var(--shadow)">
+    <div style="background:var(--blue);padding:12px 20px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:16px">🏛️</span>
+      <span style="color:#fff;font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase">Identitas Satker</span>
+    </div>
+    <div style="padding:20px;display:grid;grid-template-columns:160px 1fr 1fr;gap:0;border-bottom:1px solid var(--gray-100)">
+      <div style="border-right:1px solid var(--gray-100);padding-right:20px">
+        <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Kode KPPN</div>
+        <div style="font-size:15px;font-weight:800;color:var(--blue);font-family:monospace">063</div>
+        <div style="font-size:11px;color:var(--gray-500);margin-top:2px">KPPN Jayapura</div>
       </div>
-      <div class="form-group" style="margin:0">
-        <label>Kode Satker</label>
-        <input type="text" value="${esc(kode)}" readonly style="background:var(--gray-100);font-family:monospace;font-weight:700"/>
+      <div style="padding:0 20px;border-right:1px solid var(--gray-100)">
+        <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Kode Satker</div>
+        <div style="font-size:15px;font-weight:800;color:var(--blue);font-family:monospace">${esc(kode)}</div>
+        <div style="font-size:11px;color:var(--gray-500);margin-top:2px">Otomatis dari akun</div>
       </div>
-      <div class="form-group" style="margin:0;grid-column:1/-1">
-        <label>Nama Satker <span style="color:var(--red)">*</span></label>
-        <input type="text" id="eb_namaSatker" value="${esc(d.namaSatker||'')}" placeholder="Nama lengkap satker"/>
+      <div style="padding:0 0 0 20px">
+        <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Nama Satker</div>
+        <div style="font-size:13px;font-weight:700;color:var(--gray-900);line-height:1.4">${esc(nsFill)||'<span style="color:var(--gray-400);font-weight:400;font-style:italic">Belum tersedia</span>'}</div>
+        <input type="hidden" id="eb_namaSatker" value="${esc(nsFill)}"/>
       </div>
     </div>
   </div>
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title">👤 Penanggung Jawab / KPA</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <div class="form-group" style="margin:0">
-        <label>Nama KPA <span style="color:var(--red)">*</span></label>
-        <input type="text" id="eb_namaKpa" value="${esc(d.namaKpa||'')}" placeholder="Nama lengkap KPA"/>
-      </div>
-      <div class="form-group" style="margin:0">
-        <label>NIP KPA <span style="color:var(--red)">*</span></label>
-        <input type="text" id="eb_nipKpa" value="${esc(d.nipKpa||'')}" placeholder="18 digit NIP" maxlength="18" style="font-family:monospace"/>
-      </div>
-      <div class="form-group" style="margin:0">
-        <label>No. HP / WA <span style="color:var(--red)">*</span></label>
-        <input type="text" id="eb_noHp" value="${esc(d.noHp||'')}" placeholder="08xx-xxxx-xxxx"/>
-      </div>
-      <div class="form-group" style="margin:0">
-        <label>Email KPA</label>
-        <input type="text" id="eb_emailKpa" value="${esc(d.emailKpa||'')}" placeholder="email@satker.go.id"/>
-      </div>
-      <div class="form-group" style="margin:0;grid-column:1/-1">
-        <label>Keterangan / Catatan</label>
-        <textarea id="eb_keterangan" rows="2" placeholder="Keterangan tambahan jika ada..." style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:8px 12px;font-size:13px;font-family:'Inter',sans-serif;resize:vertical">${esc(d.keterangan||'')}</textarea>
+
+  <!-- Blok penanggung jawab / KPA -->
+  <div style="background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:20px;box-shadow:var(--shadow)">
+    <div style="background:var(--blue);padding:12px 20px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:16px">👤</span>
+      <span style="color:#fff;font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase">Penanggung Jawab / KPA</span>
+    </div>
+    <div style="padding:20px 24px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group" style="margin:0">
+          <label style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.5px">Nama KPA <span style="color:var(--red)">*</span></label>
+          <input type="text" id="eb_namaKpa" value="${esc(d.namaKpa||'')}" placeholder="Nama lengkap KPA"
+            style="margin-top:6px;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:10px 14px;font-size:14px;font-family:'Inter',sans-serif;width:100%;transition:border-color .15s"
+            onfocus="this.style.borderColor='var(--blue-light)'" onblur="this.style.borderColor='var(--gray-300)'"/>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.5px">NIP KPA <span style="color:var(--red)">*</span></label>
+          <input type="text" id="eb_nipKpa" value="${esc(d.nipKpa||'')}" placeholder="18 digit NIP" maxlength="18"
+            style="margin-top:6px;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:10px 14px;font-size:14px;font-family:monospace;width:100%;letter-spacing:.5px;transition:border-color .15s"
+            onfocus="this.style.borderColor='var(--blue-light)'" onblur="this.style.borderColor='var(--gray-300)'"/>
+        </div>
+        <div class="form-group" style="margin:0;grid-column:1/-1">
+          <label style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.5px">No. HP / WhatsApp <span style="color:var(--red)">*</span></label>
+          <input type="text" id="eb_noHp" value="${esc(d.noHp||'')}" placeholder="08xx-xxxx-xxxx"
+            style="margin-top:6px;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:10px 14px;font-size:14px;font-family:'Inter',sans-serif;width:100%;max-width:320px;transition:border-color .15s"
+            onfocus="this.style.borderColor='var(--blue-light)'" onblur="this.style.borderColor='var(--gray-300)'"/>
+        </div>
       </div>
     </div>
   </div>
+
   <div style="display:flex;gap:10px;justify-content:flex-end">
-    <button class="btn btn-primary" onclick="ebNextStep()">Selanjutnya → Data Pegawai</button>
+    <button class="btn btn-primary" onclick="ebNextStep()" style="padding:11px 28px;font-size:14px">
+      Selanjutnya &rarr; Data Pegawai
+    </button>
   </div>`;
 }
 
@@ -983,10 +999,10 @@ function ebRenderStep2() {
 // ── Step 3: Review & Submit ──
 function ebRenderStep3() {
   const kode = currentUser?.username || '';
-  const ns = document.getElementById('eb_namaSatker')?.value||ebTempData.namaSatker||'';
-  const kpa = document.getElementById('eb_namaKpa')?.value||ebTempData.namaKpa||'';
-  const nip = document.getElementById('eb_nipKpa')?.value||ebTempData.nipKpa||'';
-  const hp  = document.getElementById('eb_noHp')?.value||ebTempData.noHp||'';
+  const ns  = ebTempData.namaSatker || currentUser?.namaSatker || '';
+  const kpa = ebTempData.namaKpa || '';
+  const nip = ebTempData.nipKpa  || '';
+  const hp  = ebTempData.noHp    || '';
   const filled = emailRows.filter(r=>r.nama&&r.nipnrp);
   return `
   ${ebStepBar(3)}
@@ -1116,12 +1132,12 @@ function ebHapusSemua()   {
 }
 
 function ebSaveStep1() {
-  ebTempData.namaSatker = document.getElementById('eb_namaSatker')?.value.trim()||'';
+  ebTempData.namaSatker = document.getElementById('eb_namaSatker')?.value.trim()||currentUser?.namaSatker||'';
   ebTempData.namaKpa    = document.getElementById('eb_namaKpa')?.value.trim()||'';
   ebTempData.nipKpa     = document.getElementById('eb_nipKpa')?.value.trim()||'';
   ebTempData.noHp       = document.getElementById('eb_noHp')?.value.trim()||'';
-  ebTempData.emailKpa   = document.getElementById('eb_emailKpa')?.value.trim()||'';
-  ebTempData.keterangan = document.getElementById('eb_keterangan')?.value.trim()||'';
+  ebTempData.emailKpa   = '';
+  ebTempData.keterangan = '';
 }
 
 function ebNextStep() {
@@ -1129,7 +1145,6 @@ function ebNextStep() {
   if (!body) return;
   if (ebStep === 1) {
     ebSaveStep1();
-    if (!ebTempData.namaSatker) { showToast('Nama satker wajib diisi', true); return; }
     if (!ebTempData.namaKpa)    { showToast('Nama KPA wajib diisi', true); return; }
     if (!ebTempData.nipKpa)     { showToast('NIP KPA wajib diisi', true); return; }
     if (!ebTempData.noHp)       { showToast('No. HP wajib diisi', true); return; }
