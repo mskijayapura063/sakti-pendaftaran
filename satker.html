@@ -506,6 +506,18 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
   </div>
 </div>
 
+<!-- ══ MODAL PERBAIKI DATA (saat Ditolak) ══ -->
+<div class="modal-overlay" id="modalPerbaikiData">
+  <div class="modal-box" style="max-width:640px;max-height:92vh;overflow-y:auto">
+    <div class="modal-title">✏️ Perbaiki Data Pendaftaran</div>
+    <div id="perbaikiDataBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalPerbaikiData')">Batal</button>
+      <button class="btn btn-primary" id="btnSimpanPerbaikan" onclick="doSimpanPerbaikan()">💾 Simpan &amp; Unduh Form Baru</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL EDIT USER (User SAKTI Baru) ══ -->
 <div class="modal-overlay" id="modalEditUB">
   <div class="modal-box wide">
@@ -2358,14 +2370,14 @@ async function initUserRiwayat() {
             <span style="font-size:18px;flex-shrink:0">⚠️</span>
             <div><strong>Dokumen belum diupload.</strong> Pendaftaran tidak dapat diproses oleh KPPN sebelum dokumen diunggah.</div>
           </div>
-          <button class="btn btn-primary btn-sm" style="flex-shrink:0;font-size:12px" onclick="bukaModalUploadDokumen(${JSON.stringify({refKode:d.refKode,namaSatker:d.namaSatker,usersJson:usersArr}).replace(/</g,'\\u003c')})">
+          <button class="btn btn-primary btn-sm" style="flex-shrink:0;font-size:12px" onclick="bukaModalUploadDokumen(${JSON.stringify({refKode:d.refKode,namaSatker:d.namaSatker,usersJson:usersArr,filesJson:d.filesJson||{}}).replace(/</g,'\\u003c')})">
             📤 Upload Dokumen
           </button>
         </div>`:''}
         ${sudahUpload && !isDiproses && !isTerdaftar && !isDitolak?`
         <div style="background:var(--green-pale);border:1px solid #A5D6A7;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:12px;color:var(--green);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
           <div><strong>✅ Dokumen terupload.</strong> Menunggu verifikasi KPPN Jayapura.</div>
-          <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:12px;color:var(--green);border-color:var(--green)" onclick="bukaModalUploadDokumen(${JSON.stringify({refKode:d.refKode,namaSatker:d.namaSatker,usersJson:usersArr}).replace(/</g,'\\u003c')})">
+          <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:12px;color:var(--green);border-color:var(--green)" onclick="bukaModalUploadDokumen(${JSON.stringify({refKode:d.refKode,namaSatker:d.namaSatker,usersJson:usersArr,filesJson:d.filesJson||{}}).replace(/</g,'\\u003c')})">
             📎 Tambah/Ganti Dokumen
           </button>
         </div>`:''}
@@ -2380,9 +2392,38 @@ async function initUserRiwayat() {
           <div><span style="color:var(--gray-500)">Nama KPA:</span><br/><strong>${esc(d.namaKpa||'—')}</strong></div>
           <div><span style="color:var(--gray-500)">Jumlah Pengguna:</span><br/><strong>${usersArr.length} pengguna</strong></div>
           <div><span style="color:var(--gray-500)">Tanggal Daftar:</span><br/><strong>${fmtTgl(d.tanggalDaftar)}</strong></div>
-          ${d.catatanAdmin?`<div style="grid-column:1/-1"><span style="color:var(--red);font-weight:600">Catatan KPPN:</span><br/><span style="color:var(--red)">${esc(d.catatanAdmin)}</span></div>`:''}
+          ${d.catatanAdmin && !isDitolak?`<div style="grid-column:1/-1"><span style="color:var(--red);font-weight:600">Catatan KPPN:</span><br/><span style="color:var(--red)">${esc(d.catatanAdmin)}</span></div>`:''}
         </div>
-        ${isDitolak?`<div class="info-box red" style="margin-bottom:12px;font-size:12px">❌ Pendaftaran ditolak. Perbaiki data dan ajukan kembali melalui menu <strong>User SAKTI Baru</strong>.</div>`:''}
+        ${isDitolak?`
+        <div style="background:#fff1f2;border:1.5px solid #fca5a5;border-radius:10px;padding:14px 16px;margin-bottom:12px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:#b91c1c;margin-bottom:4px">❌ Pendaftaran Ditolak</div>
+              ${d.catatanAdmin?`<div style="font-size:12px;color:#7f1d1d;background:#fee2e2;border-radius:6px;padding:6px 10px;margin-bottom:8px"><strong>Alasan:</strong> ${esc(d.catatanAdmin)}</div>`:''}
+              <div style="font-size:12px;color:#991b1b">Silakan perbaiki data lalu upload ulang dokumen pendukung.</div>
+            </div>
+            <button class="btn btn-sm" onclick="bukaPerbaikiData(${JSON.stringify({refKode:d.refKode,namaSatker:d.namaSatker,namaKpa:d.namaKpa,nip:d.nip,noHp:d.noHp,levelSatker:d.levelSatker,usersJson:usersArr}).replace(/</g,'\\u003c')})"
+              style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap">
+              ✏️ Perbaiki Data
+            </button>
+          </div>
+        </div>`:''}
+        ${sudahUpload?`
+        <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:12px 16px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:700;color:var(--gray-700);margin-bottom:8px">📎 Dokumen yang Diupload</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${Object.entries(d.filesJson||{}).map(([key,f])=>{
+              const LABEL={formPendaftaran:'Form Pendaftaran',skPengguna:'SK Pengguna SAKTI',ktpKpa:'KTP KPA/Pimpinan',skPejabat:'SK Pejabat Perbendaharaan',formOTP:'Form Aktivasi OTP',spesimen:'Spesimen Tanda Tangan',dokumenLain:'Dokumen Lainnya'};
+              const label=LABEL[key]||key;
+              return `<button onclick="satkerDownloadDokumen('${esc(f.url||'')}','${esc(label)}')"
+                style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--gray-300);color:var(--gray-700);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:.15s"
+                onmouseover="this.style.background='var(--blue-pale)';this.style.color='var(--blue)';this.style.borderColor='var(--blue-pale2)'"
+                onmouseout="this.style.background='#fff';this.style.color='var(--gray-700)';this.style.borderColor='var(--gray-300)'">
+                📥 ${esc(label)}
+              </button>`;
+            }).join('')}
+          </div>
+        </div>`:''}
         ${usersArr.length?`
         <details style="margin-bottom:12px">
           <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--blue);padding:6px 0">👥 Lihat daftar pengguna (${usersArr.length})</summary>
@@ -2435,69 +2476,70 @@ function bukaModalUploadDokumen(info) {
   udFiles      = {};
   udUploading  = {};
 
-  // Deteksi peran dari usersJson
-  const users = info.usersJson || [];
+  const users      = info.usersJson  || [];
+  const filesExist = info.filesJson  || {}; // { key: {url,name} } dari data existing
   const semuaPeran = users.flatMap(u => u.peranList || []);
-  const butuhSK  = semuaPeran.some(p => PERAN_BUTUH_SK.includes(p));
-  const butuhOTP = semuaPeran.some(p => PERAN_BUTUH_OTP.includes(p));
+  const butuhSK    = semuaPeran.some(p => PERAN_BUTUH_SK.includes(p));
+  const butuhOTP   = semuaPeran.some(p => PERAN_BUTUH_OTP.includes(p));
 
-  // Definisi dokumen yang dibutuhkan
   const dokumen = [
-    { key:'formPendaftaran',  label:'Form Pendaftaran User SAKTI', desc:'Form pendaftaran yang sudah ditandatangani KPA', required:true },
-    { key:'skPengguna',       label:'SK Pengguna SAKTI',           desc:'Surat Keputusan penetapan pengguna SAKTI dari pimpinan satker', required:true },
-    { key:'ktpKpa',           label:'Scan KTP KPA/Pimpinan',       desc:'KTP Kuasa Pengguna Anggaran atau pimpinan satker', required:true },
+    { key:'formPendaftaran', label:'Form Pendaftaran User SAKTI',    desc:'Form pendaftaran yang sudah ditandatangani KPA', required:true },
+    { key:'skPengguna',      label:'SK Pengguna SAKTI',              desc:'Surat Keputusan penetapan pengguna SAKTI dari pimpinan satker', required:true },
+    { key:'ktpKpa',          label:'Scan KTP KPA/Pimpinan',          desc:'KTP Kuasa Pengguna Anggaran atau pimpinan satker', required:true },
     ...(butuhSK ? [
-      { key:'skPejabat',      label:'SK Pejabat Perbendaharaan',   desc:'SK pengangkatan KPA, PPK, PPSPM, atau Bendahara yang masih berlaku', required:true },
+      { key:'skPejabat',     label:'SK Pejabat Perbendaharaan',      desc:'SK pengangkatan KPA, PPK, PPSPM, atau Bendahara yang masih berlaku', required:true },
     ] : []),
     ...(butuhOTP ? [
-      { key:'formOTP',        label:'Form Aktivasi OTP',           desc:'Form permohonan aktivasi OTP untuk KPA/PPK/PPSPM', required:true },
-      { key:'spesimen',       label:'Spesimen Tanda Tangan',       desc:'Lembar spesimen tanda tangan untuk KPA/PPK/PPSPM', required:true },
+      { key:'formOTP',       label:'Form Aktivasi OTP',              desc:'Form permohonan aktivasi OTP untuk KPA/PPK/PPSPM', required:true },
+      { key:'spesimen',      label:'Spesimen Tanda Tangan',          desc:'Lembar spesimen tanda tangan untuk KPA/PPK/PPSPM', required:true },
     ] : []),
-    { key:'dokumenLain',      label:'Dokumen Lainnya (opsional)',  desc:'Dokumen pendukung tambahan jika ada', required:false },
+    { key:'dokumenLain',     label:'Dokumen Lainnya (opsional)',     desc:'Dokumen pendukung tambahan jika ada', required:false },
   ];
 
   const body = document.getElementById('uploadDokumenBody');
   body.innerHTML = `
-    <div style="background:var(--blue-pale);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--blue)">
-      <strong>Kode Referensi:</strong> <span style="font-family:monospace;font-weight:700">${esc(udRefKode)}</span>
-      &nbsp;·&nbsp; <strong>Satker:</strong> ${esc(udNamaSatker)}
+    <div style="background:var(--blue-pale);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">
+      <strong>Ref:</strong> <span style="font-family:monospace;font-weight:700">${esc(udRefKode)}</span>
+      &nbsp;·&nbsp; ${esc(udNamaSatker)}
     </div>
-    <p style="font-size:12px;color:var(--gray-600);margin-bottom:16px">
-      Upload setiap dokumen dalam format <strong>PDF</strong>, maksimal <strong>5 MB</strong> per file.
-      ${butuhSK||butuhOTP ? `<br/>Terdeteksi peran ${butuhSK?'yang membutuhkan SK Pejabat':''}${butuhSK&&butuhOTP?' dan ':''}${butuhOTP?'aktivasi OTP':''}.` : ''}
-    </p>
+    <p style="font-size:12px;color:var(--gray-600);margin-bottom:14px">Format <strong>PDF</strong>, maks. <strong>5 MB</strong> per file. Klik ✅ di setiap dokumen yang sudah diupload untuk mendownloadnya.</p>
     <div id="udDokGrid">
-      ${dokumen.map(dok => `
-      <div id="ud_row_${dok.key}" style="border:1px solid var(--gray-200);border-radius:8px;padding:14px 16px;margin-bottom:10px;transition:.15s">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:700;color:var(--gray-800)">
-              ${dok.required?'<span style="color:var(--red)">*</span> ':''}${esc(dok.label)}
+      ${dokumen.map(dok => {
+        const existing = filesExist[dok.key];
+        const sudahAda = !!(existing && existing.url);
+        return `
+        <div id="ud_row_${dok.key}" style="border:1px solid ${sudahAda?'#A5D6A7':'var(--gray-200)'};border-radius:8px;padding:12px 14px;margin-bottom:8px;background:${sudahAda?'#f0fdf4':'#fff'};transition:.15s">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:700;color:var(--gray-800)">
+                ${dok.required?'<span style="color:var(--red)">*</span> ':''}${esc(dok.label)}
+              </div>
+              <div style="font-size:11px;color:var(--gray-500);margin-top:1px">${esc(dok.desc)}</div>
             </div>
-            <div style="font-size:11px;color:var(--gray-500);margin-top:2px">${esc(dok.desc)}</div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              ${sudahAda ? `
+                <span style="font-size:11px;color:var(--green);font-weight:600">✅ Terupload</span>
+                <button onclick="satkerDownloadDokumen('${esc(existing.url||'')}','${esc(dok.label)}')"
+                  style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid #A5D6A7;color:var(--green);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">
+                  📥 Download
+                </button>` : ''}
+              <label style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">
+                <input type="file" accept=".pdf,application/pdf" style="display:none" onchange="udSelectFile('${dok.key}',this)"/>
+                ${sudahAda ? '🔄 Ganti' : '📄 Pilih PDF'}
+              </label>
+            </div>
           </div>
-          <div id="ud_state_${dok.key}" style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-            <label style="display:inline-flex;align-items:center;gap:5px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">
-              <input type="file" accept=".pdf,application/pdf" style="display:none" onchange="udSelectFile('${dok.key}',this)"/>
-              📄 Pilih PDF
-            </label>
+          <div id="ud_preview_${dok.key}" style="display:none;margin-top:8px;background:#e0f2fe;border:1px solid #7dd3fc;border-radius:6px;padding:7px 10px;align-items:center;gap:8px">
+            <span style="font-size:14px;flex-shrink:0">📄</span>
+            <div style="flex:1;font-size:11px;font-weight:600;color:var(--gray-700)" id="ud_flabel_${dok.key}"></div>
+            <div style="font-size:10px;color:var(--gray-500)" id="ud_fsize_${dok.key}"></div>
+            <button onclick="udClearFile('${dok.key}')" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--gray-400);padding:0" title="Batal">✕</button>
+            <button id="ud_btn_${dok.key}" onclick="udUploadFile('${dok.key}')" class="btn btn-primary btn-sm" style="font-size:11px;padding:4px 10px;flex-shrink:0">📤 Upload</button>
           </div>
-        </div>
-        <div id="ud_preview_${dok.key}" style="display:none;margin-top:10px;background:var(--green-pale);border:1px solid #A5D6A7;border-radius:6px;padding:8px 12px;display:none;align-items:center;gap:8px">
-          <span style="font-size:16px">📄</span>
-          <div style="flex:1;min-width:0">
-            <div id="ud_fname_${dok.key}" style="font-size:12px;font-weight:600;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-            <div id="ud_fsize_${dok.key}" style="font-size:11px;color:var(--gray-500)"></div>
-          </div>
-          <button onclick="udClearFile('${dok.key}')" style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--gray-400);padding:0" title="Hapus">✕</button>
-          <button id="ud_btn_${dok.key}" onclick="udUploadFile('${dok.key}')"
-            class="btn btn-primary btn-sm" style="font-size:11px;padding:5px 12px;flex-shrink:0">
-            📤 Upload
-          </button>
-        </div>
-        <div id="ud_done_${dok.key}" style="display:none;margin-top:8px;font-size:11px;color:var(--green);font-weight:600">✅ Berhasil diupload</div>
-        <div id="ud_err_${dok.key}" style="display:none;margin-top:6px;font-size:11px;color:var(--red)"></div>
-      </div>`).join('')}
+          <div id="ud_done_${dok.key}" style="display:none;margin-top:6px;font-size:11px;color:var(--green);font-weight:600">✅ Berhasil diupload sesi ini</div>
+          <div id="ud_err_${dok.key}" style="display:none;margin-top:5px;font-size:11px;color:var(--red)"></div>
+        </div>`;
+      }).join('')}
     </div>`;
 
   openModal('modalUploadDokumen');
@@ -2519,7 +2561,13 @@ function udSelectFile(key, input) {
   }
 
   udFiles[key] = file;
-  document.getElementById('ud_fname_'+key).textContent = file.name;
+  // Tampilkan label dokumen (bukan nama file asli)
+  const labelEl = document.getElementById('ud_flabel_'+key);
+  if (labelEl) {
+    const rowEl = document.getElementById('ud_row_'+key);
+    const labelText = rowEl?.querySelector('div[style*="font-weight:700"]')?.innerText?.replace(/^\*/,'').trim() || key;
+    labelEl.textContent = labelText + ' — siap diupload';
+  }
   document.getElementById('ud_fsize_'+key).textContent = (file.size/1024).toFixed(1)+' KB';
   const prev = document.getElementById('ud_preview_'+key);
   prev.style.display='flex';
@@ -2595,6 +2643,176 @@ function udSelesai() {
   if (Object.keys(udUploading).length > 0) {
     udUploading = {};
     initUserRiwayat(); // refresh kartu riwayat agar status dokumen terupdate
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// DOWNLOAD DOKUMEN SATKER
+// ════════════════════════════════════════════════════════
+async function satkerDownloadDokumen(fileUrl, labelDokumen) {
+  if (!fileUrl) { showToast('URL dokumen tidak tersedia', true); return; }
+  showToast('⏳ Mengunduh '+labelDokumen+'...');
+  try {
+    const res = await apiPost({ action:'getDriveFile', fileUrl });
+    if (!res.success) { showToast(res.message || 'Gagal mengunduh dokumen', true); return; }
+    const bytes = Uint8Array.from(atob(res.fileBase64), c => c.charCodeAt(0));
+    const blob  = new Blob([bytes], { type: res.mimeType || 'application/pdf' });
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement('a');
+    a.href = url; a.download = labelDokumen + '.pdf'; a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ '+labelDokumen+' berhasil diunduh', false, true);
+  } catch(e) { showToast('❌ Gagal mengunduh dokumen', true); }
+}
+
+// ════════════════════════════════════════════════════════
+// PERBAIKI DATA (saat Ditolak)
+// ════════════════════════════════════════════════════════
+let pdData = null; // data pendaftaran yang sedang diperbaiki
+
+function bukaPerbaikiData(info) {
+  pdData = info;
+  const LEVEL_OPT = ['Satker','Satker BLU','Satker PNBP','Kantor Pusat','Kantor Wilayah'];
+  const users = info.usersJson || [];
+
+  document.getElementById('perbaikiDataBody').innerHTML = `
+    <div style="background:#fff1f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#991b1b">
+      <strong>Pendaftaran Ditolak — Ref: ${esc(info.refKode)}</strong><br/>
+      Perbaiki data di bawah, lalu klik <strong>Simpan & Unduh Form Baru</strong>.
+      Form Excel baru akan otomatis terunduh dan Anda diarahkan ke halaman upload dokumen.
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div class="form-group" style="margin:0">
+        <label>Level Satker</label>
+        <select id="pd_levelSatker" style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 10px;font-size:13px;font-family:inherit">
+          ${LEVEL_OPT.map(v=>`<option value="${v}" ${v===(info.levelSatker||'Satker')?'selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Nama Satker</label>
+        <input id="pd_namaSatker" type="text" value="${esc(info.namaSatker||currentUser?.namaSatker||'')}" readonly
+          style="width:100%;border:1.5px solid var(--gray-200);border-radius:var(--radius);padding:9px 10px;font-size:13px;font-family:inherit;background:var(--gray-50);color:var(--gray-500)"/>
+      </div>
+    </div>
+
+    <!-- KPA -->
+    <div style="background:var(--blue-pale);border-left:3px solid var(--blue);padding:8px 14px;margin-bottom:12px;font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.4px;text-transform:uppercase;border-radius:0 6px 6px 0">
+      👤 Data KPA / Pimpinan Satker
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="form-group" style="margin:0">
+        <label>Nama KPA</label>
+        <input id="pd_namaKpa" type="text" value="${esc(info.namaKpa||'')}" placeholder="Nama lengkap KPA"
+          style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 10px;font-size:13px;font-family:inherit"/>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>NIP KPA</label>
+        <input id="pd_nip" type="text" value="${esc(info.nip||'')}" placeholder="18 digit NIP"
+          style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 10px;font-size:13px;font-family:inherit"/>
+      </div>
+      <div class="form-group" style="grid-column:1/-1;margin:0">
+        <label>No. HP KPA (WhatsApp)</label>
+        <input id="pd_noHp" type="tel" value="${esc(info.noHp||'')}" placeholder="Contoh: 08123456789"
+          style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 10px;font-size:13px;font-family:inherit"/>
+      </div>
+    </div>
+
+    <!-- Daftar pengguna (read-only, bisa dilihat) -->
+    ${users.length ? `
+    <details style="margin-bottom:12px">
+      <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--blue);padding:4px 0">
+        👥 ${users.length} Pengguna terdaftar (klik untuk lihat)
+      </summary>
+      <div style="margin-top:8px;overflow-x:auto">
+        <table class="tbl" style="font-size:11px">
+          <thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Peran</th></tr></thead>
+          <tbody>${users.map((u,i)=>`<tr>
+            <td style="text-align:center">${i+1}</td>
+            <td>${esc(u.nama||'')}</td>
+            <td style="font-family:monospace">${esc(u.nipnrp||'')}</td>
+            <td>${(u.peranList||[]).map(p=>`<span style="font-size:10px;background:var(--blue-pale);color:var(--blue);padding:1px 5px;border-radius:8px;margin:1px;display:inline-block">${esc(p.replace('SATKER_',''))}</span>`).join('')}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </details>` : ''}
+
+    <div id="pdErrBox" style="display:none;background:var(--red-pale);border:1px solid #FFCDD2;border-radius:6px;padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:8px"></div>`;
+
+  openModal('modalPerbaikiData');
+}
+
+async function doSimpanPerbaikan() {
+  if (!pdData) return;
+  const namaKpa = (document.getElementById('pd_namaKpa')?.value||'').trim();
+  const nip     = (document.getElementById('pd_nip')?.value||'').trim();
+  const noHp    = (document.getElementById('pd_noHp')?.value||'').trim();
+  const levelSatker = document.getElementById('pd_levelSatker')?.value || 'Satker';
+  const errBox  = document.getElementById('pdErrBox');
+  errBox.style.display='none';
+
+  if (!namaKpa) { errBox.textContent='Nama KPA wajib diisi.'; errBox.style.display='block'; return; }
+  if (!nip)     { errBox.textContent='NIP KPA wajib diisi.'; errBox.style.display='block'; return; }
+  if (!noHp)    { errBox.textContent='No. HP KPA wajib diisi.'; errBox.style.display='block'; return; }
+
+  const btn = document.getElementById('btnSimpanPerbaikan');
+  btn.disabled = true; btn.textContent = '⏳ Menyimpan...';
+
+  try {
+    const kodeSatker = currentUser?.username || '';
+    const namaSatker = pdData.namaSatker || currentUser?.namaSatker || '';
+    const tglStr = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+
+    // 1. Generate Excel baru
+    showToast('⏳ Membuat form Excel baru...');
+    const resXls = await apiPost({
+      action:'generateExcel',
+      refKode: pdData.refKode, kodeSatker, namaSatker, levelSatker,
+      namaKpa, nip, kota:'Jayapura', tglStr,
+      users: (pdData.usersJson||[]).map(u=>({
+        nama:u.nama||'',nipnrp:u.nipnrp||'',nik:u.nik||'',
+        email:u.email||'',hp:u.hp||'',sk:u.sk||'',
+        tglsk:u.tglsk||'',peranList:u.peranList||[]
+      }))
+    });
+    if (!resXls.success) throw new Error(resXls.message || 'Gagal generate Excel');
+    const bytes = Uint8Array.from(atob(resXls.fileBase64),c=>c.charCodeAt(0));
+    const blob  = new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const xlsUrl= URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=xlsUrl; a.download=resXls.fileName||`Form-SAKTI-${kodeSatker}.xlsx`; a.click();
+    URL.revokeObjectURL(xlsUrl);
+
+    // 2. Update data di server (nama KPA, NIP, noHp, levelSatker, reset status jadi Menunggu)
+    showToast('⏳ Menyimpan perbaikan...');
+    const resUpd = await apiPost({
+      action: 'updatePendaftaran',
+      refKode: pdData.refKode,
+      namaKpa, nip, noHp, levelSatker,
+      namaSatker, kodeSatker,
+      resetStatus: true, // reset ke Menunggu agar bisa diproses ulang
+    });
+    if (!resUpd.success) throw new Error(resUpd.message || 'Gagal menyimpan perbaikan');
+
+    closeModal('modalPerbaikiData');
+    showToast('✅ Data disimpan! Silakan upload ulang dokumen pendukung.', false, true);
+
+    // 3. Buka langsung modal upload dengan data terbaru
+    setTimeout(() => {
+      initUserRiwayat(); // refresh riwayat
+      const uploadInfo = {
+        refKode:    pdData.refKode,
+        namaSatker: namaSatker,
+        usersJson:  pdData.usersJson || [],
+        filesJson:  {},  // kosongkan — harus upload ulang
+      };
+      bukaModalUploadDokumen(uploadInfo);
+    }, 800);
+
+  } catch(e) {
+    errBox.textContent = '❌ ' + (e.message||'Terjadi kesalahan. Coba lagi.');
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 Simpan & Unduh Form Baru';
   }
 }
 

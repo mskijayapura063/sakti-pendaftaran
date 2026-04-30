@@ -879,9 +879,11 @@ async function adminDownloadDriveFile(fileUrl, fileName){
     const bytes=Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
     const blob=new Blob([bytes],{type:mime});
     const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');a.href=url;a.download=res.fileName||fileName;a.click();
+    // Pakai label dokumen (fileName param) sebagai nama download, bukan nama file asli dari Drive
+    const dlName = (fileName || res.fileName || 'dokumen') + (mime==='application/pdf'?'.pdf':'');
+    const a=document.createElement('a');a.href=url;a.download=dlName;a.click();
     URL.revokeObjectURL(url);
-    showToast('✅ '+( res.fileName||fileName)+' berhasil didownload',false,true);
+    showToast('✅ '+dlName+' berhasil didownload',false,true);
   }catch(e){showToast('❌ Gagal download file',true);}
 }
 
@@ -1036,8 +1038,16 @@ async function lihatDetail(refKode){
     const filesObj = s.files || {};
     const fileEntries = Object.entries(filesObj);
     const LABEL_MAP = {
-      ktp:'KTP KPA/PPK', skPejabat:'SK Pejabat', suratPermohonan:'Surat Permohonan',
-      pakta:'Pakta Integritas', suratKuasa:'Surat Kuasa', lainnya:'Dokumen Lainnya'
+      formPendaftaran:'Form Pendaftaran User SAKTI',
+      skPengguna:     'SK Pengguna SAKTI',
+      ktpKpa:         'KTP KPA/Pimpinan',
+      skPejabat:      'SK Pejabat Perbendaharaan',
+      formOTP:        'Form Aktivasi OTP',
+      spesimen:       'Spesimen Tanda Tangan',
+      dokumenLain:    'Dokumen Lainnya',
+      // legacy keys
+      ktp:'KTP KPA', suratPermohonan:'Surat Permohonan',
+      pakta:'Pakta Integritas', suratKuasa:'Surat Kuasa', lainnya:'Dokumen Lainnya',
     };
     body.innerHTML=`
       <!-- Info utama -->
@@ -1058,10 +1068,10 @@ async function lihatDetail(refKode){
       ${fileEntries.length ? `
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
         ${fileEntries.map(([key,f])=>`
-          <button onclick="adminDownloadDriveFile('${esc(f.url||'')}','${esc(f.name||key+'.pdf')}')"
+          <button onclick="adminDownloadDriveFile('${esc(f.url||'')}','${esc(LABEL_MAP[key]||key)}')"
             style="display:inline-flex;align-items:center;gap:6px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;font-family:'Inter',sans-serif"
             onmouseover="this.style.background='var(--blue-pale2)'" onmouseout="this.style.background='var(--blue-pale)'">
-            📥 ${esc(f.name||LABEL_MAP[key]||key)}
+            📥 ${esc(LABEL_MAP[key]||key)}
           </button>`).join('')}
       </div>` : `
       <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#991b1b;display:flex;align-items:center;gap:8px">
