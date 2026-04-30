@@ -552,6 +552,42 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
   </div>
 </div>
 
+<!-- ══ MODAL EDIT KPA (riwayat) ══ -->
+<div class="modal-overlay" id="modalEditKpa">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-title">✏️ Edit Data KPA</div>
+    <div id="editKpaBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalEditKpa')">Batal</button>
+      <button class="btn btn-primary" id="btnSimpanEditKpa" onclick="doSimpanEditKpa()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL EDIT PENGGUNA (riwayat) ══ -->
+<div class="modal-overlay" id="modalEditPengguna">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-title">✏️ Edit Data Pengguna</div>
+    <div id="editPenggunaBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalEditPengguna')">Batal</button>
+      <button class="btn btn-primary" id="btnSimpanEditPengguna" onclick="doSimpanEditPengguna()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL HAPUS PENGGUNA (riwayat) ══ -->
+<div class="modal-overlay" id="modalHapusPengguna">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-title">🗑️ Hapus Pengguna</div>
+    <div id="hapusPenggunaBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalHapusPengguna')">Batal</button>
+      <button class="btn btn-danger" id="btnKonfirmHapusPengguna" onclick="doHapusPengguna()">🗑️ Ya, Hapus</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ TOAST ══ -->
 <div id="toast"></div>
 
@@ -2315,7 +2351,11 @@ async function initUserRiwayat() {
       const isDitolak = status.toLowerCase()==='ditolak';
       const isTerdaftar = ['terdaftar','selesai'].includes(status.toLowerCase());
       const isDiproses = status.toLowerCase()==='diproses';
+      const isMenunggu = status.toLowerCase()==='menunggu';
       const sudahUpload = !!(d.sudahUpload || d.hasFiles);
+      // Boleh edit/hapus: hanya sebelum dokumen disubmit ke KPPN, atau setelah ditolak/rollback
+      // = (Menunggu & belum upload) ATAU Ditolak
+      const bolehEdit = isDitolak || (isMenunggu && !sudahUpload);
 
       // Deteksi apakah ada user KPA/PPK/PPSPM (butuh tahap aktivasi OTP)
       let usersArr = [];
@@ -2356,6 +2396,13 @@ async function initUserRiwayat() {
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             ${i===0?'<span style="font-size:11px;font-weight:700;background:var(--blue-pale);color:var(--blue);padding:2px 8px;border-radius:20px">TERBARU</span>':''}
             ${badgeStatus(status)}
+            <button onclick="satkerUnduhFormExcel('${esc(d.refKode)}')"
+              title="Unduh Form Pendaftaran Excel"
+              style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1.5px solid var(--green);color:var(--green);border-radius:6px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;transition:.15s"
+              onmouseover="this.style.background='var(--green-pale)'"
+              onmouseout="this.style.background='#fff'">
+              📥 Form Excel
+            </button>
           </div>
         </div>
         <!-- Progress stepper -->
@@ -2396,7 +2443,13 @@ async function initUserRiwayat() {
         <!-- Info grid -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px">
           <div><span style="color:var(--gray-500)">Nama Satker:</span><br/><strong>${esc(d.namaSatker||'—')}</strong></div>
-          <div><span style="color:var(--gray-500)">Nama KPA:</span><br/><strong>${esc(d.namaKpa||'—')}</strong></div>
+          <div>
+            <span style="color:var(--gray-500)">Nama KPA:</span>
+            ${bolehEdit?`<button onclick="bukaEditKpa('${esc(d.refKode)}')" title="Edit Nama KPA & NIP"
+              style="background:none;border:none;cursor:pointer;color:var(--blue-light);font-size:13px;padding:0 4px;vertical-align:middle;line-height:1" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--blue-light)'">✏️</button>`:''}
+            <br/><strong>${esc(d.namaKpa||'—')}</strong>
+            ${d.nip?`<span style="font-size:11px;color:var(--gray-500);margin-left:4px">NIP: ${esc(d.nip)}</span>`:''}
+          </div>
           <div><span style="color:var(--gray-500)">Jumlah Pengguna:</span><br/><strong>${usersArr.length} pengguna</strong></div>
           <div><span style="color:var(--gray-500)">Tanggal Daftar:</span><br/><strong>${fmtTgl(d.tanggalDaftar)}</strong></div>
           ${d.catatanAdmin && !isDitolak?`<div style="grid-column:1/-1"><span style="color:var(--red);font-weight:600">Catatan KPPN:</span><br/><span style="color:var(--red)">${esc(d.catatanAdmin)}</span></div>`:''}
@@ -2432,11 +2485,11 @@ async function initUserRiwayat() {
           </div>
         </div>`:''}
         ${usersArr.length?`
-        <details style="margin-bottom:12px">
+        <details style="margin-bottom:12px" ${i===0?'open':''}>
           <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--blue);padding:6px 0">👥 Lihat daftar pengguna (${usersArr.length})</summary>
           <div style="overflow-x:auto;margin-top:8px">
             <table class="tbl" style="font-size:12px">
-              <thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Email</th><th>Peran</th></tr></thead>
+              <thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Email</th><th>Peran</th>${bolehEdit?'<th style="text-align:center;width:56px">Aksi</th>':''}</tr></thead>
               <tbody>
                 ${usersArr.map((u,ui)=>`<tr>
                   <td style="text-align:center;color:var(--gray-400)">${ui+1}</td>
@@ -2444,6 +2497,12 @@ async function initUserRiwayat() {
                   <td style="font-family:monospace">${esc(u.nipnrp||'—')}</td>
                   <td style="font-family:monospace;font-size:11px">${esc(u.email||'—')}</td>
                   <td>${(u.peranList||[]).map(k=>`<span style="font-size:10px;background:${PERAN_OTP.includes(k)?'#fef9c3':'var(--blue-pale)'};color:${PERAN_OTP.includes(k)?'#854d0e':'var(--blue)'};padding:1px 6px;border-radius:10px;margin:1px;display:inline-block">${esc(k.replace('SATKER_',''))}</span>`).join('')||'—'}</td>
+                  ${bolehEdit?`<td style="text-align:center;white-space:nowrap">
+                    <button onclick="bukaEditPengguna('${esc(d.refKode)}',${ui})" title="Edit pengguna"
+                      style="background:none;border:none;cursor:pointer;font-size:15px;padding:2px 4px;color:var(--blue-light);transition:.1s" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--blue-light)'">✏️</button>
+                    ${usersArr.length>1?`<button onclick="bukaHapusPengguna('${esc(d.refKode)}',${ui})" title="Hapus pengguna"
+                      style="background:none;border:none;cursor:pointer;font-size:15px;padding:2px 4px;color:var(--gray-400);transition:.1s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--gray-400)'">🗑️</button>`:''}
+                  </td>`:''}
                 </tr>`).join('')}
               </tbody>
             </table>
@@ -2691,6 +2750,190 @@ function bukaUploadDokumenByRef(refKode) {
   bukaModalUploadDokumen(info);
 }
 
+// ── Unduh Form Excel dari riwayat ──────────────────────────────
+async function satkerUnduhFormExcel(refKode) {
+  const info = _pdCache[refKode];
+  if (!info) { showToast('Data tidak tersedia', true); return; }
+  showToast('⏳ Menyiapkan Form Excel...');
+  try {
+    const users = (info.usersJson || []).map(u => ({
+      nama: u.nama || '', nipnrp: u.nipnrp || '', email: u.email || '',
+      peranList: u.peranList || [], jabatan: u.jabatan || ''
+    }));
+    const res = await apiPost({
+      action: 'generateExcel',
+      refKode: info.refKode,
+      kodeSatker: info.kodeSatker || '',
+      namaSatker: info.namaSatker || '',
+      levelSatker: info.levelSatker || '',
+      namaKpa: info.namaKpa || '',
+      nip: info.nip || '',
+      kota: 'Jayapura',
+      tglStr: new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),
+      users,
+    });
+    if (!res.success) { showToast(res.message || 'Gagal generate Excel', true); return; }
+    const bytes = Uint8Array.from(atob(res.fileBase64), c => c.charCodeAt(0));
+    const blob  = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement('a');
+    a.href = url;
+    a.download = 'Form_Pendaftaran_SAKTI_' + info.refKode + '.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ Form Excel berhasil diunduh', false, true);
+  } catch(e) { showToast('❌ Gagal mengunduh form Excel', true); }
+}
+
+// ── Edit KPA ────────────────────────────────────────────────────
+let _editKpaRef = null;
+function bukaEditKpa(refKode) {
+  const info = _pdCache[refKode];
+  if (!info) { showToast('Data tidak ditemukan', true); return; }
+  _editKpaRef = refKode;
+  document.getElementById('editKpaBody').innerHTML = `
+    <div class="form-group">
+      <label>Nama KPA / Pimpinan</label>
+      <input type="text" id="ekNamaKpa" value="${esc(info.namaKpa||'')}" placeholder="Nama lengkap KPA/Pimpinan"/>
+    </div>
+    <div class="form-group">
+      <label>NIP / NRP KPA</label>
+      <input type="text" id="ekNip" value="${esc(info.nip||'')}" placeholder="NIP/NRP KPA" style="font-family:monospace"/>
+    </div>
+    <div class="form-group">
+      <label>No. HP / WhatsApp</label>
+      <input type="tel" id="ekNoHp" value="${esc(info.noHp||'')}" placeholder="08xxxxxxxxxx" style="font-family:monospace"/>
+    </div>`;
+  openModal('modalEditKpa');
+  setTimeout(()=>document.getElementById('ekNamaKpa')?.focus(), 150);
+}
+
+async function doSimpanEditKpa() {
+  const info = _pdCache[_editKpaRef];
+  if (!info) return;
+  const namaKpa = document.getElementById('ekNamaKpa')?.value.trim() || '';
+  const nip     = document.getElementById('ekNip')?.value.trim() || '';
+  const noHp    = document.getElementById('ekNoHp')?.value.trim() || '';
+  if (!namaKpa) { showToast('Nama KPA wajib diisi', true); return; }
+  const btn = document.getElementById('btnSimpanEditKpa');
+  btn.disabled = true; btn.textContent = '⏳ Menyimpan...';
+  try {
+    const res = await apiPost({ action:'editPendaftaran', refKode: info.refKode, namaKpa, nip, noHp });
+    if (!res.success) { showToast(res.message||'Gagal menyimpan', true); return; }
+    // Update cache
+    _pdCache[_editKpaRef].namaKpa = namaKpa;
+    _pdCache[_editKpaRef].nip     = nip;
+    _pdCache[_editKpaRef].noHp    = noHp;
+    showToast('✅ Data KPA berhasil diperbarui', false, true);
+    closeModal('modalEditKpa');
+    initUserRiwayat();
+  } catch(e) { showToast('❌ Gagal menyimpan data', true); }
+  finally { btn.disabled = false; btn.textContent = '💾 Simpan'; }
+}
+
+// ── Edit Pengguna ────────────────────────────────────────────────
+let _editPgRef = null, _editPgIdx = -1;
+const PERAN_OPTS = [
+  'KPA','PPK','PPSPM','BP','BPP',
+  'OPERATOR_ANGGARAN','OPERATOR_PERSEDIAAN','OPERATOR_ASET','VALIDATOR_ASET','ADMIN'
+];
+function bukaEditPengguna(refKode, idx) {
+  const info = _pdCache[refKode];
+  if (!info) { showToast('Data tidak ditemukan', true); return; }
+  _editPgRef = refKode; _editPgIdx = idx;
+  const u = (info.usersJson || [])[idx] || {};
+  const peranSet = new Set(u.peranList || []);
+  document.getElementById('editPenggunaBody').innerHTML = `
+    <div class="form-group">
+      <label>Nama Lengkap</label>
+      <input type="text" id="epNama" value="${esc(u.nama||'')}" placeholder="Nama lengkap pengguna"/>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label>NIP / NRP</label>
+        <input type="text" id="epNipnrp" value="${esc(u.nipnrp||'')}" placeholder="NIP/NRP" style="font-family:monospace"/>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="epEmail" value="${esc(u.email||'')}" placeholder="nama@instansi.go.id"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Peran (pilih satu atau lebih)</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px">
+        ${PERAN_OPTS.map(p=>`
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;background:${peranSet.has(p)?'var(--blue-pale)':'#fff'};border:1px solid ${peranSet.has(p)?'var(--blue-pale2)':'var(--gray-300)'};border-radius:20px;padding:4px 10px;transition:.15s">
+            <input type="checkbox" name="epPeran" value="${p}" ${peranSet.has(p)?'checked':''} style="accent-color:var(--blue)"/>
+            ${p.replace('SATKER_','')}
+          </label>`).join('')}
+      </div>
+    </div>`;
+  openModal('modalEditPengguna');
+  setTimeout(()=>document.getElementById('epNama')?.focus(), 150);
+}
+
+async function doSimpanEditPengguna() {
+  const info = _pdCache[_editPgRef];
+  if (!info) return;
+  const nama   = document.getElementById('epNama')?.value.trim() || '';
+  const nipnrp = document.getElementById('epNipnrp')?.value.trim() || '';
+  const email  = document.getElementById('epEmail')?.value.trim() || '';
+  const peranList = [...document.querySelectorAll('input[name="epPeran"]:checked')].map(c=>c.value);
+  if (!nama)   { showToast('Nama wajib diisi', true); return; }
+  if (!peranList.length) { showToast('Pilih minimal satu peran', true); return; }
+  const usersJson = (info.usersJson || []).map((u,i) =>
+    i === _editPgIdx ? { ...u, nama, nipnrp, email, peranList } : u
+  );
+  const btn = document.getElementById('btnSimpanEditPengguna');
+  btn.disabled = true; btn.textContent = '⏳ Menyimpan...';
+  try {
+    const res = await apiPost({ action:'editPendaftaran', refKode: info.refKode, usersJson });
+    if (!res.success) { showToast(res.message||'Gagal menyimpan', true); return; }
+    _pdCache[_editPgRef].usersJson = usersJson;
+    showToast('✅ Data pengguna berhasil diperbarui', false, true);
+    closeModal('modalEditPengguna');
+    initUserRiwayat();
+  } catch(e) { showToast('❌ Gagal menyimpan data', true); }
+  finally { btn.disabled = false; btn.textContent = '💾 Simpan'; }
+}
+
+// ── Hapus Pengguna ───────────────────────────────────────────────
+let _hapusPgRef = null, _hapusPgIdx = -1;
+function bukaHapusPengguna(refKode, idx) {
+  const info = _pdCache[refKode];
+  if (!info) { showToast('Data tidak ditemukan', true); return; }
+  _hapusPgRef = refKode; _hapusPgIdx = idx;
+  const u = (info.usersJson || [])[idx] || {};
+  document.getElementById('hapusPenggunaBody').innerHTML = `
+    <p style="font-size:13px;color:var(--gray-700);margin-bottom:14px">
+      Yakin ingin menghapus pengguna berikut dari daftar?
+    </p>
+    <div style="background:var(--red-pale);border:1px solid #FFCDD2;border-radius:8px;padding:12px 16px;font-size:13px">
+      <strong>${esc(u.nama||'—')}</strong><br/>
+      <span style="color:var(--gray-600);font-size:12px">NIP/NRP: ${esc(u.nipnrp||'—')} · Email: ${esc(u.email||'—')}</span>
+    </div>
+    <p style="font-size:12px;color:var(--gray-500);margin-top:10px">⚠️ Perubahan ini langsung tersimpan ke data pendaftaran.</p>`;
+  openModal('modalHapusPengguna');
+}
+
+async function doHapusPengguna() {
+  const info = _pdCache[_hapusPgRef];
+  if (!info) return;
+  const usersJson = (info.usersJson || []).filter((_,i) => i !== _hapusPgIdx);
+  if (usersJson.length === 0) { showToast('Minimal harus ada 1 pengguna', true); return; }
+  const btn = document.getElementById('btnKonfirmHapusPengguna');
+  btn.disabled = true; btn.textContent = '⏳ Menghapus...';
+  try {
+    const res = await apiPost({ action:'editPendaftaran', refKode: info.refKode, usersJson });
+    if (!res.success) { showToast(res.message||'Gagal menghapus', true); return; }
+    _pdCache[_hapusPgRef].usersJson = usersJson;
+    showToast('✅ Pengguna berhasil dihapus', false, true);
+    closeModal('modalHapusPengguna');
+    initUserRiwayat();
+  } catch(e) { showToast('❌ Gagal menghapus pengguna', true); }
+  finally { btn.disabled = false; btn.textContent = '🗑️ Ya, Hapus'; }
+}
+
 function bukaPerbaikiData(refKode) {
   const info = _pdCache[refKode];
   if (!info) { showToast('Data tidak ditemukan', true); return; }
@@ -2888,7 +3131,8 @@ function showToast(msg, isErr=false, isOk=false) {
 function openModal(id)  { document.getElementById(id)?.classList.add('on'); }
 function closeModal(id) { document.getElementById(id)?.classList.remove('on'); }
 document.addEventListener('click', e => {
-  ['modalKonfirmasiEmail','modalDetailEmail','modalPassword','modalPernyataanUB','modalSuksesUB','modalEditUB','modalPanggilRekamanUB'].forEach(mid => {
+  ['modalKonfirmasiEmail','modalDetailEmail','modalPassword','modalPernyataanUB','modalSuksesUB','modalEditUB','modalPanggilRekamanUB',
+   'modalEditKpa','modalEditPengguna','modalHapusPengguna'].forEach(mid => {
     const m = document.getElementById(mid);
     if (m && e.target === m) closeModal(mid);
   });
