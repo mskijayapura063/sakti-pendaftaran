@@ -868,6 +868,31 @@ async function hapusEmailSakti(id){
   }catch(e){showToast('Gagal terhubung ke server',true);}
 }
 
+async function adminDownloadPendaftaranExcel(s){
+  showToast('⏳ Menyiapkan Excel...');
+  try{
+    const res=await apiPost({
+      action:'generateExcel',
+      refKode:     s.refKode     ||'',
+      kodeSatker:  s.kodeSatker  ||'',
+      namaSatker:  s.namaSatker  ||'',
+      levelSatker: s.levelSatker ||'Satker',
+      namaKpa:     s.namaKpa     ||'',
+      nip:         s.nip         ||'',
+      kota:        'Jayapura',
+      tglStr:      new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),
+      users:       s.users       ||[],
+    });
+    if(!res.success){showToast(res.message||'Gagal generate Excel',true);return;}
+    const bytes=Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
+    const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=res.fileName||'Form_SAKTI.xlsx';a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ Excel berhasil didownload',false,true);
+  }catch(e){showToast('❌ Gagal download Excel',true);}
+}
+
 async function adminDownloadEmailExcel(id){
   showToast('⏳ Menyiapkan Excel...');
   try{
@@ -988,7 +1013,15 @@ async function lihatDetail(refKode){
     if(!res.success){showToast(res.message||'Gagal',true);return;}
     const s=res;
     const body=document.getElementById('detailBody');
+    // Kumpulkan daftar dokumen yang diupload
+    const filesObj = s.files || {};
+    const fileEntries = Object.entries(filesObj);
+    const LABEL_MAP = {
+      ktp:'KTP KPA/PPK', skPejabat:'SK Pejabat', suratPermohonan:'Surat Permohonan',
+      pakta:'Pakta Integritas', suratKuasa:'Surat Kuasa', lainnya:'Dokumen Lainnya'
+    };
     body.innerHTML=`
+      <!-- Info utama -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px">
         <div><span style="color:var(--gray-500)">Ref Kode:</span><br/><strong style="font-family:monospace">${esc(s.refKode)}</strong></div>
         <div><span style="color:var(--gray-500)">Status:</span><br/>${bstat(s.status)}</div>
@@ -1000,8 +1033,31 @@ async function lihatDetail(refKode){
         <div><span style="color:var(--gray-500)">Email:</span><br/><strong>${esc(s.email||'—')}</strong></div>
         ${s.catatanAdmin?`<div style="grid-column:1/-1"><span style="color:var(--red)">Catatan KPPN:</span><br/><strong style="color:var(--red)">${esc(s.catatanAdmin)}</strong></div>`:''}
       </div>
+
+      <!-- Dokumen yang diupload -->
+      <div class="card-title" style="margin-bottom:8px">📎 Dokumen Pendaftaran</div>
+      ${fileEntries.length ? `
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        ${fileEntries.map(([key,f])=>`
+          <a href="${esc(f.url||'#')}" target="_blank" rel="noopener"
+            style="display:inline-flex;align-items:center;gap:6px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;transition:.15s"
+            onmouseover="this.style.background='var(--blue-pale2)'" onmouseout="this.style.background='var(--blue-pale)'">
+            📄 ${esc(LABEL_MAP[key]||f.name||key)}
+          </a>`).join('')}
+        ${s.driveFolder?`
+          <a href="${esc(s.driveFolder)}" target="_blank" rel="noopener"
+            style="display:inline-flex;align-items:center;gap:6px;background:#f0fdf4;border:1px solid #bbf7d0;color:var(--green);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;transition:.15s"
+            onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
+            📁 Buka Folder Drive
+          </a>`:''}
+      </div>` : `
+      <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#991b1b;display:flex;align-items:center;gap:8px">
+        <span>⚠️</span> Belum ada dokumen yang diupload satker.
+      </div>`}
+
+      <!-- Data Pengguna -->
       ${(s.users||[]).length?`
-      <div class="card-title" style="margin-bottom:10px">Data Pengguna (${s.users.length} orang)</div>
+      <div class="card-title" style="margin-bottom:10px">👥 Data Pengguna (${s.users.length} orang)</div>
       <table class="tbl" style="margin-bottom:14px">
         <thead><tr><th>Nama</th><th>NIP/NRP</th><th>NIK</th><th>Peran</th></tr></thead>
         <tbody>${s.users.map(u=>{
@@ -1015,19 +1071,22 @@ async function lihatDetail(refKode){
           </tr>`;
         }).join('')}</tbody>
       </table>`:''}
+
+      <!-- Download Excel -->
+      <div style="margin-bottom:14px">
+        <button class="btn btn-outline btn-sm" onclick="adminDownloadPendaftaranExcel(${JSON.stringify(s).replace(/</g,'\\u003c')})">📥 Download Form Excel</button>
+      </div>
+
+      <!-- Aksi proses/tolak -->
       ${['submitted','Menunggu'].includes(s.status)?`
-      ${!s.sudahUpload?`
-      <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#991b1b;display:flex;align-items:flex-start;gap:8px">
-        <span style="font-size:18px;flex-shrink:0">🔒</span>
-        <div><strong>Dokumen belum diupload.</strong><br/>Satker belum mengunggah dokumen pendaftaran. Tombol Proses dikunci sampai dokumen tersedia.</div>
-      </div>`:''}
-      <div style="display:flex;gap:8px;margin-top:4px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${!s.sudahUpload
           ? `<button class="btn btn-secondary btn-sm" disabled style="opacity:.5;cursor:not-allowed" title="Dokumen belum diupload">🔒 Proses</button>`
           : `<button class="btn btn-success btn-sm" onclick="closeModal('modalDetail');bukaProses('${esc(s.refKode)}')">✅ Proses</button>`
         }
         <button class="btn btn-danger btn-sm" onclick="closeModal('modalDetail');bukaTolak('${esc(s.refKode)}')">❌ Tolak</button>
-      </div>`:''}`;
+      </div>
+      ${!s.sudahUpload?`<div style="margin-top:8px;font-size:11px;color:#991b1b">🔒 Dokumen belum diupload — tombol Proses dikunci sampai dokumen tersedia.</div>`:''}`:''}`;
     openModal('modalDetail');
   }catch(e){showToast('Gagal memuat detail',true);}
 }
