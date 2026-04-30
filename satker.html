@@ -494,6 +494,18 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
   </div>
 </div>
 
+<!-- ══ MODAL UPLOAD DOKUMEN PENDAFTARAN ══ -->
+<div class="modal-overlay" id="modalUploadDokumen">
+  <div class="modal-box" style="max-width:680px;max-height:90vh;overflow-y:auto">
+    <div class="modal-title">📎 Upload Dokumen Pendaftaran</div>
+    <div id="uploadDokumenBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalUploadDokumen')">Tutup</button>
+      <button class="btn btn-primary" onclick="udSelesai()">✅ Selesai &amp; Perbarui Riwayat</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL EDIT USER (User SAKTI Baru) ══ -->
 <div class="modal-overlay" id="modalEditUB">
   <div class="modal-box wide">
@@ -1982,9 +1994,10 @@ async function ubDoGenerateExcel(){
     return; // JANGAN buka modal sukses
   }
 
-  // Sukses — buka modal
-  document.getElementById('ubRefKodeDisplay').textContent=refKode;
-  openModal('modalSuksesUB');
+  // Sukses — langsung ke riwayat
+  showToast('✅ Data berhasil disimpan! Silakan upload dokumen pendukung.', false, true);
+  closeModal('modalSuksesUB');
+  switchTab('user-riwayat');
 }
 function ubCopyRefKode(){
   const kode=document.getElementById('ubRefKodeDisplay').textContent;
@@ -2340,10 +2353,21 @@ async function initUserRiwayat() {
             </div>`).join('')}
         </div>
         ${belumUpload?`
-        <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#92400e;display:flex;align-items:flex-start;gap:8px">
-          <span style="font-size:16px;flex-shrink:0">⚠️</span>
-          <div><strong>Dokumen belum diupload.</strong> Pendaftaran tidak dapat diproses oleh KPPN sebelum dokumen diunggah.
-          Silakan upload melalui <a href="https://mskijayapura063.github.io/sakti-pendaftaran/upload.html" target="_blank" style="color:var(--blue)">halaman Upload Dokumen</a> menggunakan kode referensi di atas.</div>
+        <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:12px;color:#92400e;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1">
+            <span style="font-size:18px;flex-shrink:0">⚠️</span>
+            <div><strong>Dokumen belum diupload.</strong> Pendaftaran tidak dapat diproses oleh KPPN sebelum dokumen diunggah.</div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="flex-shrink:0;font-size:12px" onclick="bukaModalUploadDokumen(${JSON.stringify({refKode:d.refKode,namaSatker:d.namaSatker,usersJson:usersArr}).replace(/</g,'\\u003c')})">
+            📤 Upload Dokumen
+          </button>
+        </div>`:''}
+        ${sudahUpload && !isDiproses && !isTerdaftar && !isDitolak?`
+        <div style="background:var(--green-pale);border:1px solid #A5D6A7;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:12px;color:var(--green);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div><strong>✅ Dokumen terupload.</strong> Menunggu verifikasi KPPN Jayapura.</div>
+          <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:12px;color:var(--green);border-color:var(--green)" onclick="bukaModalUploadDokumen(${JSON.stringify({refKode:d.refKode,namaSatker:d.namaSatker,usersJson:usersArr}).replace(/</g,'\\u003c')})">
+            📎 Tambah/Ganti Dokumen
+          </button>
         </div>`:''}
         ${butuhOTP && isTerdaftar && !otpSelesai?`
         <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#166534;display:flex;align-items:flex-start;gap:8px">
@@ -2390,6 +2414,187 @@ async function initUserRiwayat() {
     </details>`;
   } catch(e) {
     body.innerHTML = `<div class="card"><p style="color:var(--red)">❌ Gagal memuat data. Periksa koneksi internet.</p><p style="color:var(--gray-500);font-size:12px;margin-top:8px">Error: ${esc(e.message||String(e))}</p></div>`;
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// UPLOAD DOKUMEN PENDAFTARAN USER SAKTI
+// ════════════════════════════════════════════════════════
+let udRefKode   = '';
+let udNamaSatker= '';
+let udFiles     = {}; // { fileKey: File }
+let udUploading = {};
+
+const PERAN_BUTUH_SK   = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM',
+                           'SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU','SATKER_BENDAHARA_PENERIMAAN'];
+const PERAN_BUTUH_OTP  = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+
+function bukaModalUploadDokumen(info) {
+  udRefKode    = info.refKode    || '';
+  udNamaSatker = info.namaSatker || '';
+  udFiles      = {};
+  udUploading  = {};
+
+  // Deteksi peran dari usersJson
+  const users = info.usersJson || [];
+  const semuaPeran = users.flatMap(u => u.peranList || []);
+  const butuhSK  = semuaPeran.some(p => PERAN_BUTUH_SK.includes(p));
+  const butuhOTP = semuaPeran.some(p => PERAN_BUTUH_OTP.includes(p));
+
+  // Definisi dokumen yang dibutuhkan
+  const dokumen = [
+    { key:'formPendaftaran',  label:'Form Pendaftaran User SAKTI', desc:'Form pendaftaran yang sudah ditandatangani KPA', required:true },
+    { key:'skPengguna',       label:'SK Pengguna SAKTI',           desc:'Surat Keputusan penetapan pengguna SAKTI dari pimpinan satker', required:true },
+    { key:'ktpKpa',           label:'Scan KTP KPA/Pimpinan',       desc:'KTP Kuasa Pengguna Anggaran atau pimpinan satker', required:true },
+    ...(butuhSK ? [
+      { key:'skPejabat',      label:'SK Pejabat Perbendaharaan',   desc:'SK pengangkatan KPA, PPK, PPSPM, atau Bendahara yang masih berlaku', required:true },
+    ] : []),
+    ...(butuhOTP ? [
+      { key:'formOTP',        label:'Form Aktivasi OTP',           desc:'Form permohonan aktivasi OTP untuk KPA/PPK/PPSPM', required:true },
+      { key:'spesimen',       label:'Spesimen Tanda Tangan',       desc:'Lembar spesimen tanda tangan untuk KPA/PPK/PPSPM', required:true },
+    ] : []),
+    { key:'dokumenLain',      label:'Dokumen Lainnya (opsional)',  desc:'Dokumen pendukung tambahan jika ada', required:false },
+  ];
+
+  const body = document.getElementById('uploadDokumenBody');
+  body.innerHTML = `
+    <div style="background:var(--blue-pale);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--blue)">
+      <strong>Kode Referensi:</strong> <span style="font-family:monospace;font-weight:700">${esc(udRefKode)}</span>
+      &nbsp;·&nbsp; <strong>Satker:</strong> ${esc(udNamaSatker)}
+    </div>
+    <p style="font-size:12px;color:var(--gray-600);margin-bottom:16px">
+      Upload setiap dokumen dalam format <strong>PDF</strong>, maksimal <strong>5 MB</strong> per file.
+      ${butuhSK||butuhOTP ? `<br/>Terdeteksi peran ${butuhSK?'yang membutuhkan SK Pejabat':''}${butuhSK&&butuhOTP?' dan ':''}${butuhOTP?'aktivasi OTP':''}.` : ''}
+    </p>
+    <div id="udDokGrid">
+      ${dokumen.map(dok => `
+      <div id="ud_row_${dok.key}" style="border:1px solid var(--gray-200);border-radius:8px;padding:14px 16px;margin-bottom:10px;transition:.15s">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;color:var(--gray-800)">
+              ${dok.required?'<span style="color:var(--red)">*</span> ':''}${esc(dok.label)}
+            </div>
+            <div style="font-size:11px;color:var(--gray-500);margin-top:2px">${esc(dok.desc)}</div>
+          </div>
+          <div id="ud_state_${dok.key}" style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+            <label style="display:inline-flex;align-items:center;gap:5px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">
+              <input type="file" accept=".pdf,application/pdf" style="display:none" onchange="udSelectFile('${dok.key}',this)"/>
+              📄 Pilih PDF
+            </label>
+          </div>
+        </div>
+        <div id="ud_preview_${dok.key}" style="display:none;margin-top:10px;background:var(--green-pale);border:1px solid #A5D6A7;border-radius:6px;padding:8px 12px;display:none;align-items:center;gap:8px">
+          <span style="font-size:16px">📄</span>
+          <div style="flex:1;min-width:0">
+            <div id="ud_fname_${dok.key}" style="font-size:12px;font-weight:600;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+            <div id="ud_fsize_${dok.key}" style="font-size:11px;color:var(--gray-500)"></div>
+          </div>
+          <button onclick="udClearFile('${dok.key}')" style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--gray-400);padding:0" title="Hapus">✕</button>
+          <button id="ud_btn_${dok.key}" onclick="udUploadFile('${dok.key}')"
+            class="btn btn-primary btn-sm" style="font-size:11px;padding:5px 12px;flex-shrink:0">
+            📤 Upload
+          </button>
+        </div>
+        <div id="ud_done_${dok.key}" style="display:none;margin-top:8px;font-size:11px;color:var(--green);font-weight:600">✅ Berhasil diupload</div>
+        <div id="ud_err_${dok.key}" style="display:none;margin-top:6px;font-size:11px;color:var(--red)"></div>
+      </div>`).join('')}
+    </div>`;
+
+  openModal('modalUploadDokumen');
+}
+
+function udSelectFile(key, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const errEl = document.getElementById('ud_err_'+key);
+  errEl.style.display='none';
+
+  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+    errEl.textContent='File harus berformat PDF.'; errEl.style.display='block';
+    input.value=''; return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    errEl.textContent=`Ukuran file ${(file.size/1024/1024).toFixed(1)} MB melebihi batas 5 MB.`;
+    errEl.style.display='block'; input.value=''; return;
+  }
+
+  udFiles[key] = file;
+  document.getElementById('ud_fname_'+key).textContent = file.name;
+  document.getElementById('ud_fsize_'+key).textContent = (file.size/1024).toFixed(1)+' KB';
+  const prev = document.getElementById('ud_preview_'+key);
+  prev.style.display='flex';
+  // Reset done state jika upload ulang
+  document.getElementById('ud_done_'+key).style.display='none';
+  document.getElementById('ud_btn_'+key).disabled=false;
+  document.getElementById('ud_btn_'+key).textContent='📤 Upload';
+  // Highlight row
+  document.getElementById('ud_row_'+key).style.borderColor='var(--blue-pale2)';
+}
+
+function udClearFile(key) {
+  delete udFiles[key];
+  document.getElementById('ud_preview_'+key).style.display='none';
+  document.getElementById('ud_done_'+key).style.display='none';
+  document.getElementById('ud_err_'+key).style.display='none';
+  document.getElementById('ud_row_'+key).style.borderColor='var(--gray-200)';
+}
+
+async function udUploadFile(key) {
+  const file = udFiles[key];
+  if (!file) return;
+  const btn   = document.getElementById('ud_btn_'+key);
+  const errEl = document.getElementById('ud_err_'+key);
+  errEl.style.display='none';
+  btn.disabled=true; btn.textContent='⏳ Mengupload...';
+
+  try {
+    const b64 = await new Promise((res,rej) => {
+      const fr = new FileReader();
+      fr.onload  = () => res(fr.result.split(',')[1]);
+      fr.onerror = rej;
+      fr.readAsDataURL(file);
+    });
+
+    const result = await apiPost({
+      action:      'uploadFile',
+      refKode:     udRefKode,
+      namaSatker:  udNamaSatker,
+      fileKey:     key,
+      fileName:    file.name,
+      fileData:    b64,
+      mimeType:    'application/pdf',
+    });
+
+    if (!result.success) {
+      errEl.textContent = result.message || 'Gagal upload. Coba lagi.';
+      errEl.style.display='block';
+      btn.disabled=false; btn.textContent='📤 Upload';
+      return;
+    }
+
+    // Sukses
+    btn.style.display='none';
+    document.getElementById('ud_done_'+key).style.display='block';
+    document.getElementById('ud_row_'+key).style.borderColor='#A5D6A7';
+    document.getElementById('ud_row_'+key).style.background='#f0fdf4';
+    showToast('✅ '+file.name+' berhasil diupload', false, true);
+
+    // Mark uploaded
+    udUploading[key] = true;
+
+  } catch(e) {
+    errEl.textContent='Gagal terhubung ke server.';
+    errEl.style.display='block';
+    btn.disabled=false; btn.textContent='📤 Upload';
+  }
+}
+
+function udSelesai() {
+  closeModal('modalUploadDokumen');
+  // Refresh riwayat jika ada yang terupload
+  if (Object.keys(udUploading).length > 0) {
+    udUploading = {};
+    initUserRiwayat(); // refresh kartu riwayat agar status dokumen terupdate
   }
 }
 

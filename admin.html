@@ -426,6 +426,7 @@ let activeHapusRef    = null;
 let activeProsesEmailId = null;
 let activeTolakEmailId  = null;
 let emailHasilTemp    = [];   // buffer isi email hasil saat modal proses email
+let activeDetailData  = null; // data detail pendaftaran yg sedang dibuka di modal
 
 // ════════════════════════════════════════════════════════
 // API
@@ -885,6 +886,7 @@ async function adminDownloadDriveFile(fileUrl, fileName){
 }
 
 async function adminDownloadPendaftaranExcel(s){
+  if(!s){showToast('Data tidak tersedia',true);return;}
   showToast('⏳ Menyiapkan Excel...');
   try{
     const res=await apiPost({
@@ -1028,6 +1030,7 @@ async function lihatDetail(refKode){
     const res=await apiPost({action:'getDetail',refKode});
     if(!res.success){showToast(res.message||'Gagal',true);return;}
     const s=res;
+    activeDetailData=s; // simpan untuk download Excel
     const body=document.getElementById('detailBody');
     // Kumpulkan daftar dokumen yang diupload
     const filesObj = s.files || {};
@@ -1084,7 +1087,7 @@ async function lihatDetail(refKode){
 
       <!-- Download Excel -->
       <div style="margin-bottom:14px">
-        <button class="btn btn-outline btn-sm" onclick="adminDownloadPendaftaranExcel(${JSON.stringify(s).replace(/</g,'\\u003c')})">📥 Download Form Excel</button>
+        <button class="btn btn-outline btn-sm" onclick="adminDownloadPendaftaranExcel(activeDetailData)">📥 Download Form Excel</button>
       </div>
 
       <!-- Aksi proses/tolak -->
