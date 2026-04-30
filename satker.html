@@ -2483,9 +2483,10 @@ function bukaModalUploadDokumen(info) {
   udFiles      = {};
   udUploading  = {};
 
-  const users      = info.usersJson  || [];
-  const filesExist = info.filesJson  || {}; // { key: {url,name} } dari data existing
-  const semuaPeran = users.flatMap(u => u.peranList || []);
+  const users        = info.usersJson    || [];
+  const filesExist   = info.filesJson    || {}; // { key: {url,name} } dari data existing
+  const needsReupload= !!info.needsReupload;    // true saat habis perbaikan → harus upload ulang
+  const semuaPeran   = users.flatMap(u => u.peranList || []);
   const butuhSK    = semuaPeran.some(p => PERAN_BUTUH_SK.includes(p));
   const butuhOTP   = semuaPeran.some(p => PERAN_BUTUH_OTP.includes(p));
 
@@ -2509,13 +2510,19 @@ function bukaModalUploadDokumen(info) {
       <strong>Ref:</strong> <span style="font-family:monospace;font-weight:700">${esc(udRefKode)}</span>
       &nbsp;·&nbsp; ${esc(udNamaSatker)}
     </div>
-    <p style="font-size:12px;color:var(--gray-600);margin-bottom:14px">Format <strong>PDF</strong>, maks. <strong>5 MB</strong> per file. Klik ✅ di setiap dokumen yang sudah diupload untuk mendownloadnya.</p>
+    ${needsReupload ? `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#9a3412">
+      ⚠️ <strong>Upload ulang semua dokumen</strong> — dokumen lama ditampilkan sebagai referensi dan bisa didownload, tapi harus diupload ulang karena data pendaftaran sudah diperbaiki.
+    </div>` : ''}
+    <p style="font-size:12px;color:var(--gray-600);margin-bottom:14px">Format <strong>PDF</strong>, maks. <strong>2 MB</strong> per file. Klik 📥 di setiap dokumen yang sudah diupload untuk mendownloadnya.</p>
     <div id="udDokGrid">
       ${dokumen.map(dok => {
         const existing = filesExist[dok.key];
         const sudahAda = !!(existing && existing.url);
+        // Warna baris: hijau jika sudah ada & tidak perlu reupload, kuning jika perlu reupload, putih jika kosong
+        const rowBg     = sudahAda ? (needsReupload ? '#fffbeb' : '#f0fdf4') : '#fff';
+        const rowBorder = sudahAda ? (needsReupload ? '#fcd34d' : '#A5D6A7') : 'var(--gray-200)';
         return `
-        <div id="ud_row_${dok.key}" style="border:1px solid ${sudahAda?'#A5D6A7':'var(--gray-200)'};border-radius:8px;padding:12px 14px;margin-bottom:8px;background:${sudahAda?'#f0fdf4':'#fff'};transition:.15s">
+        <div id="ud_row_${dok.key}" style="border:1px solid ${rowBorder};border-radius:8px;padding:12px 14px;margin-bottom:8px;background:${rowBg};transition:.15s">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
             <div style="flex:1;min-width:0">
               <div style="font-size:12px;font-weight:700;color:var(--gray-800)">
@@ -2525,9 +2532,9 @@ function bukaModalUploadDokumen(info) {
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
               ${sudahAda ? `
-                <span style="font-size:11px;color:var(--green);font-weight:600">✅ Terupload</span>
+                <span style="font-size:11px;color:${needsReupload?'#92400e':'var(--green)'};font-weight:600">${needsReupload?'⚠️ Upload ulang':'✅ Terupload'}</span>
                 <button onclick="satkerDownloadDokumen('${esc(existing.url||'')}','${esc(dok.label)}')"
-                  style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid #A5D6A7;color:var(--green);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">
+                  style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid ${needsReupload?'#fcd34d':'#A5D6A7'};color:${needsReupload?'#92400e':'var(--green)'};border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">
                   📥 Download
                 </button>` : ''}
               <label style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">
@@ -2562,8 +2569,8 @@ function udSelectFile(key, input) {
     errEl.textContent='File harus berformat PDF.'; errEl.style.display='block';
     input.value=''; return;
   }
-  if (file.size > 5 * 1024 * 1024) {
-    errEl.textContent=`Ukuran file ${(file.size/1024/1024).toFixed(1)} MB melebihi batas 5 MB.`;
+  if (file.size > 2 * 1024 * 1024) {
+    errEl.textContent=`Ukuran file ${(file.size/1024/1024).toFixed(1)} MB melebihi batas maksimal 2 MB. Kompres file PDF terlebih dahulu.`;
     errEl.style.display='block'; input.value=''; return;
   }
 
@@ -2812,16 +2819,21 @@ async function doSimpanPerbaikan() {
     closeModal('modalPerbaikiData');
     showToast('✅ Data disimpan! Silakan upload ulang dokumen pendukung.', false, true);
 
-    // 3. Buka langsung modal upload dengan data terbaru
+    // 3. Update cache dan buka langsung modal upload
+    // Tetap tampilkan filesJson lama agar satker bisa lihat & download dokumen sebelumnya,
+    // tapi GAS sudah reset filesJson di server → satker harus upload ulang semua dokumen
+    const filesJsonLama = pdData.filesJson || {};
+    _pdCache[pdData.refKode] = {
+      refKode:       pdData.refKode,
+      namaSatker:    namaSatker,
+      usersJson:     pdData.usersJson || [],
+      filesJson:     filesJsonLama,   // tampilkan dokumen lama sebagai referensi download
+      needsReupload: true,            // tandai: harus upload ulang semua dokumen
+      namaKpa, nip, noHp, levelSatker,
+    };
     setTimeout(() => {
-      initUserRiwayat(); // refresh riwayat
-      const uploadInfo = {
-        refKode:    pdData.refKode,
-        namaSatker: namaSatker,
-        usersJson:  pdData.usersJson || [],
-        filesJson:  {},  // kosongkan — harus upload ulang
-      };
-      bukaModalUploadDokumen(uploadInfo);
+      initUserRiwayat(); // refresh riwayat di background
+      bukaModalUploadDokumen(_pdCache[pdData.refKode]);
     }, 800);
 
   } catch(e) {
