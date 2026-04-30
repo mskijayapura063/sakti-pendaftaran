@@ -868,6 +868,22 @@ async function hapusEmailSakti(id){
   }catch(e){showToast('Gagal terhubung ke server',true);}
 }
 
+async function adminDownloadDriveFile(fileUrl, fileName){
+  if(!fileUrl){showToast('URL file tidak tersedia',true);return;}
+  showToast('⏳ Mengunduh '+fileName+'...');
+  try{
+    const res=await apiPost({action:'getDriveFile',fileUrl});
+    if(!res.success){showToast(res.message||'Gagal mengunduh file',true);return;}
+    const mime=res.mimeType||'application/octet-stream';
+    const bytes=Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
+    const blob=new Blob([bytes],{type:mime});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=res.fileName||fileName;a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ '+( res.fileName||fileName)+' berhasil didownload',false,true);
+  }catch(e){showToast('❌ Gagal download file',true);}
+}
+
 async function adminDownloadPendaftaranExcel(s){
   showToast('⏳ Menyiapkan Excel...');
   try{
@@ -1039,17 +1055,11 @@ async function lihatDetail(refKode){
       ${fileEntries.length ? `
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
         ${fileEntries.map(([key,f])=>`
-          <a href="${esc(f.url||'#')}" target="_blank" rel="noopener"
-            style="display:inline-flex;align-items:center;gap:6px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;transition:.15s"
+          <button onclick="adminDownloadDriveFile('${esc(f.url||'')}','${esc(f.name||key+'.pdf')}')"
+            style="display:inline-flex;align-items:center;gap:6px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;font-family:'Inter',sans-serif"
             onmouseover="this.style.background='var(--blue-pale2)'" onmouseout="this.style.background='var(--blue-pale)'">
-            📄 ${esc(LABEL_MAP[key]||f.name||key)}
-          </a>`).join('')}
-        ${s.driveFolder?`
-          <a href="${esc(s.driveFolder)}" target="_blank" rel="noopener"
-            style="display:inline-flex;align-items:center;gap:6px;background:#f0fdf4;border:1px solid #bbf7d0;color:var(--green);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;transition:.15s"
-            onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
-            📁 Buka Folder Drive
-          </a>`:''}
+            📥 ${esc(f.name||LABEL_MAP[key]||key)}
+          </button>`).join('')}
       </div>` : `
       <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#991b1b;display:flex;align-items:center;gap:8px">
         <span>⚠️</span> Belum ada dokumen yang diupload satker.
