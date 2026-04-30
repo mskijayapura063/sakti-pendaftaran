@@ -2339,6 +2339,13 @@ async function initUserRiwayat() {
       // Apakah dokumen belum upload dan status masih menunggu (info ke satker)
       const belumUpload = !sudahUpload && !isDitolak && !isTerdaftar;
 
+      // Simpan data ke cache agar bisa dipanggil dari onclick tanpa embed JSON di HTML
+      _pdCache[d.refKode] = {
+        refKode: d.refKode, namaSatker: d.namaSatker, namaKpa: d.namaKpa,
+        nip: d.nip, noHp: d.noHp, levelSatker: d.levelSatker, usersJson: usersArr,
+        filesJson: d.filesJson || {},
+      };
+
       return `
       <div class="card" style="margin-bottom:16px;${i===0?'border-left:4px solid var(--blue)':''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:14px">
@@ -2370,14 +2377,14 @@ async function initUserRiwayat() {
             <span style="font-size:18px;flex-shrink:0">⚠️</span>
             <div><strong>Dokumen belum diupload.</strong> Pendaftaran tidak dapat diproses oleh KPPN sebelum dokumen diunggah.</div>
           </div>
-          <button class="btn btn-primary btn-sm" style="flex-shrink:0;font-size:12px" onclick="bukaModalUploadDokumen(${JSON.stringify({refKode:d.refKode,namaSatker:d.namaSatker,usersJson:usersArr,filesJson:d.filesJson||{}}).replace(/</g,'\\u003c')})">
+          <button class="btn btn-primary btn-sm" style="flex-shrink:0;font-size:12px" onclick="bukaUploadDokumenByRef('${esc(d.refKode)}')">
             📤 Upload Dokumen
           </button>
         </div>`:''}
         ${sudahUpload && !isDiproses && !isTerdaftar && !isDitolak?`
         <div style="background:var(--green-pale);border:1px solid #A5D6A7;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:12px;color:var(--green);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
           <div><strong>✅ Dokumen terupload.</strong> Menunggu verifikasi KPPN Jayapura.</div>
-          <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:12px;color:var(--green);border-color:var(--green)" onclick="bukaModalUploadDokumen(${JSON.stringify({refKode:d.refKode,namaSatker:d.namaSatker,usersJson:usersArr,filesJson:d.filesJson||{}}).replace(/</g,'\\u003c')})">
+          <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:12px;color:var(--green);border-color:var(--green)" onclick="bukaUploadDokumenByRef('${esc(d.refKode)}')">
             📎 Tambah/Ganti Dokumen
           </button>
         </div>`:''}
@@ -2402,7 +2409,7 @@ async function initUserRiwayat() {
               ${d.catatanAdmin?`<div style="font-size:12px;color:#7f1d1d;background:#fee2e2;border-radius:6px;padding:6px 10px;margin-bottom:8px"><strong>Alasan:</strong> ${esc(d.catatanAdmin)}</div>`:''}
               <div style="font-size:12px;color:#991b1b">Silakan perbaiki data lalu upload ulang dokumen pendukung.</div>
             </div>
-            <button class="btn btn-sm" onclick="bukaPerbaikiData(${JSON.stringify({refKode:d.refKode,namaSatker:d.namaSatker,namaKpa:d.namaKpa,nip:d.nip,noHp:d.noHp,levelSatker:d.levelSatker,usersJson:usersArr}).replace(/</g,'\\u003c')})"
+            <button class="btn btn-sm" onclick="bukaPerbaikiData('${esc(d.refKode)}')"
               style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap">
               ✏️ Perbaiki Data
             </button>
@@ -2669,8 +2676,17 @@ async function satkerDownloadDokumen(fileUrl, labelDokumen) {
 // PERBAIKI DATA (saat Ditolak)
 // ════════════════════════════════════════════════════════
 let pdData = null; // data pendaftaran yang sedang diperbaiki
+const _pdCache = {}; // cache data per refKode agar aman dari HTML injection
 
-function bukaPerbaikiData(info) {
+function bukaUploadDokumenByRef(refKode) {
+  const info = _pdCache[refKode];
+  if (!info) { showToast('Data tidak ditemukan', true); return; }
+  bukaModalUploadDokumen(info);
+}
+
+function bukaPerbaikiData(refKode) {
+  const info = _pdCache[refKode];
+  if (!info) { showToast('Data tidak ditemukan', true); return; }
   pdData = info;
   const LEVEL_OPT = ['Satker','Satker BLU','Satker PNBP','Kantor Pusat','Kantor Wilayah'];
   const users = info.usersJson || [];
