@@ -171,11 +171,82 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
 .disclaimer-body{font-size:13px;color:var(--gray-700);line-height:1.7;margin-bottom:20px}
 .disclaimer-body strong{color:var(--gray-900)}
 
+/* ── DASHBOARD ENHANCEMENTS (SATKER) ── */
+.welcome-banner{background:linear-gradient(135deg,#0D47A1 0%,#1565C0 60%,#1976D2 100%);border-radius:var(--radius-lg);padding:22px 26px;color:#fff;margin-bottom:20px;box-shadow:var(--shadow-lg);position:relative;overflow:hidden}
+.welcome-banner::after{content:'';position:absolute;right:-30px;top:-30px;width:200px;height:200px;background:radial-gradient(circle,rgba(255,255,255,.12) 0%,transparent 70%);pointer-events:none}
+.welcome-banner .wb-greeting{font-size:13px;opacity:.85;margin-bottom:4px;font-weight:500}
+.welcome-banner .wb-name{font-size:20px;font-weight:800;line-height:1.2;margin-bottom:6px}
+.welcome-banner .wb-kode{font-family:monospace;font-size:13px;opacity:.85;margin-bottom:8px;letter-spacing:1px}
+.welcome-banner .wb-date{font-size:12px;opacity:.8}
+.welcome-banner .wb-actions{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+.welcome-banner .wb-btn{background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:7px 13px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:.15s;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.welcome-banner .wb-btn:hover{background:rgba(255,255,255,.3)}
+.welcome-banner .wb-btn.primary{background:#fff;color:var(--blue);border-color:#fff}
+.welcome-banner .wb-btn.primary:hover{background:var(--blue-pale)}
+
+.section-title{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--gray-700);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--blue-pale)}
+.section-title .st-icon{font-size:14px}
+.section-title .st-count{background:var(--blue-pale);color:var(--blue);border-radius:10px;font-size:10px;font-weight:700;padding:2px 9px;margin-left:auto}
+
+.quick-actions{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+.qa-card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px 16px;cursor:pointer;transition:.18s;display:flex;align-items:center;gap:12px;text-align:left;text-decoration:none;color:inherit}
+.qa-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px);border-color:var(--blue-pale2)}
+.qa-card .qa-icon{font-size:24px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:8px;flex-shrink:0;background:var(--blue-pale);color:var(--blue)}
+.qa-card.green .qa-icon{background:var(--green-pale);color:var(--green)}
+.qa-card.orange .qa-icon{background:var(--orange-pale);color:var(--orange)}
+.qa-card.purple .qa-icon{background:var(--purple-pale);color:var(--purple)}
+.qa-card.teal .qa-icon{background:var(--teal-pale);color:var(--teal)}
+.qa-title{font-size:13px;font-weight:700;color:var(--gray-900);line-height:1.3;margin-bottom:2px}
+.qa-sub{font-size:11px;color:var(--gray-500)}
+.qa-card .qa-arrow{margin-left:auto;font-size:14px;color:var(--gray-400);opacity:0;transition:.2s}
+.qa-card:hover .qa-arrow{opacity:1;transform:translateX(3px)}
+
+/* Info tips card */
+.tips-card{background:linear-gradient(135deg,var(--blue-pale) 0%,#fff 100%);border:1px solid var(--blue-pale2);border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;display:flex;gap:12px;align-items:flex-start}
+.tips-icon{font-size:22px;flex-shrink:0}
+.tips-body{font-size:12px;color:var(--gray-700);line-height:1.6}
+.tips-body strong{color:var(--blue)}
+
+/* ── MOBILE HAMBURGER ── */
+.mobile-toggle{display:none;background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:6px 10px;font-size:16px;cursor:pointer;margin-right:6px}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:90}
+.sidebar-overlay.on{display:block}
+
+@media(max-width:1024px){
+  .quick-actions{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+}
+
 @media(max-width:768px){
-  .app-body{flex-direction:column}
-  .sidebar{width:100%;border-right:none;border-bottom:1px solid var(--gray-200)}
-  .main-content{padding:16px}
-  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .mobile-toggle{display:inline-flex}
+  .header-top{padding:10px 14px;flex-wrap:wrap;gap:8px}
+  .header-main{font-size:13px}
+  .header-sub{font-size:10px}
+  .header-user{margin-left:auto;gap:4px;flex-wrap:wrap}
+  .user-chip{font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .btn-logout{padding:4px 10px;font-size:11px}
+
+  .app-body{flex-direction:column;position:relative}
+  .sidebar{position:fixed;left:-280px;top:0;bottom:0;width:260px;height:100vh;z-index:100;transition:left .25s ease;box-shadow:4px 0 20px rgba(0,0,0,.15);padding-top:18px}
+  .sidebar.on{left:0}
+  .main-content{padding:14px;width:100%}
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .stat-card{padding:12px 14px}
+  .stat-num{font-size:22px}
+  .stat-icon{font-size:18px}
+  .quick-actions{grid-template-columns:1fr 1fr}
+  .qa-card{padding:11px 12px}
+  .qa-card .qa-icon{width:36px;height:36px;font-size:20px}
+  .qa-title{font-size:12px}
+  .welcome-banner{padding:16px 18px}
+  .welcome-banner .wb-name{font-size:17px}
+  .page-title{font-size:17px}
+}
+
+@media(max-width:480px){
+  .stats-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .stat-card{padding:10px 12px}
+  .stat-num{font-size:20px}
+  .quick-actions{grid-template-columns:1fr}
 }
 
 /* ── USER CARD (User SAKTI Baru) ── */
@@ -297,6 +368,7 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
 
   <header>
     <div class="header-top">
+      <button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Menu">☰</button>
       <div class="header-logo">
         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Lambang_Garuda_Pancasila.svg/200px-Lambang_Garuda_Pancasila.svg.png"
              alt="Logo" onerror="this.style.display='none'"/>
@@ -311,6 +383,8 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
       </div>
     </div>
   </header>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
   <div class="app-body">
     <nav class="sidebar" id="sidebar">
@@ -689,6 +763,21 @@ function openGroup(grp) {
   if (children) children.classList.add('open');
 }
 
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sidebarOverlay');
+  if(!sb) return;
+  const open=sb.classList.toggle('on');
+  if(ov) ov.classList.toggle('on',open);
+}
+function closeSidebarMobile(){
+  if(window.innerWidth>768) return;
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sidebarOverlay');
+  if(sb) sb.classList.remove('on');
+  if(ov) ov.classList.remove('on');
+}
+
 function switchTab(name) {
   activeTab = name;
   // Remove active from all nav items
@@ -697,6 +786,7 @@ function switchTab(name) {
   if (navEl) navEl.classList.add('active');
   // Auto-open the parent group
   if (TAB_GROUP[name]) openGroup(TAB_GROUP[name]);
+  closeSidebarMobile();
   const main = document.getElementById('mainContent');
 
   if (name === 'dashboard')      { main.innerHTML = renderDashboard();     initDashboard(); }
@@ -810,8 +900,58 @@ function renderDev(judul) {
 // DASHBOARD
 // ════════════════════════════════════════════════════════
 function renderDashboard() {
-  return `<div class="page-title">Dashboard</div>
-  <div class="page-sub" id="dashDate"></div>
+  const u = currentUser || {};
+  const hour = new Date().getHours();
+  const greet = hour<11?'Selamat pagi':hour<15?'Selamat siang':hour<18?'Selamat sore':'Selamat malam';
+  return `
+  <!-- Welcome Banner -->
+  <div class="welcome-banner">
+    <div class="wb-greeting">${greet} 👋</div>
+    <div class="wb-name">${esc(u.namaSatker||u.namaLengkap||u.username||'Satker')}</div>
+    <div class="wb-kode">Kode Satker: ${esc(u.username||'—')}</div>
+    <div class="wb-date" id="dashDate">—</div>
+    <div class="wb-actions">
+      <a class="wb-btn primary" onclick="switchTab('email-baru')">📧 Daftar Email SAKTI</a>
+      <a class="wb-btn" onclick="switchTab('user-baru')">🆕 Daftar User SAKTI</a>
+    </div>
+  </div>
+
+  <!-- Tips/Info -->
+  <div class="tips-card">
+    <div class="tips-icon">💡</div>
+    <div class="tips-body">
+      <strong>Tips:</strong> Pastikan seluruh data pegawai sudah benar sebelum mengirim pengajuan.
+      Status pengajuan akan diupdate secara berkala oleh petugas KPPN. Anda bisa memantau progressnya di menu <strong>Riwayat Pengajuan</strong>.
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="section-title"><span class="st-icon">⚡</span> Aksi Cepat</div>
+  <div class="quick-actions">
+    <div class="qa-card orange" onclick="switchTab('email-baru')">
+      <div class="qa-icon">📧</div>
+      <div><div class="qa-title">Email SAKTI Baru</div><div class="qa-sub">Ajukan email pegawai baru</div></div>
+      <div class="qa-arrow">→</div>
+    </div>
+    <div class="qa-card" onclick="switchTab('user-baru')">
+      <div class="qa-icon">🆕</div>
+      <div><div class="qa-title">User SAKTI Baru</div><div class="qa-sub">Daftarkan pengguna baru</div></div>
+      <div class="qa-arrow">→</div>
+    </div>
+    <div class="qa-card teal" onclick="switchTab('email-riwayat')">
+      <div class="qa-icon">📂</div>
+      <div><div class="qa-title">Riwayat Email</div><div class="qa-sub">Cek status email SAKTI</div></div>
+      <div class="qa-arrow">→</div>
+    </div>
+    <div class="qa-card purple" onclick="switchTab('user-riwayat')">
+      <div class="qa-icon">📋</div>
+      <div><div class="qa-title">Riwayat User</div><div class="qa-sub">Cek status pendaftaran</div></div>
+      <div class="qa-arrow">→</div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="section-title"><span class="st-icon">📊</span> Ringkasan Pengajuan</div>
   <div class="stats-grid" id="statsGrid">
     ${statCard('blue','📝','—','Total Pengajuan')}
     ${statCard('orange','⏳','—','Menunggu Proses')}
@@ -820,8 +960,10 @@ function renderDashboard() {
     ${statCard('red','❌','—','Ditolak')}
     ${statCard('purple','📧','—','Email SAKTI')}
   </div>
+
+  <!-- Recent activity -->
+  <div class="section-title"><span class="st-icon">🕒</span> Aktivitas Terbaru</div>
   <div class="card">
-    <div class="card-title">Aktivitas Terbaru</div>
     <div id="recentActivity"><p style="color:var(--gray-400);font-style:italic;font-size:13px">Memuat data...</p></div>
   </div>`;
 }
@@ -833,7 +975,7 @@ function statCard(cls, icon, num, label) {
 async function initDashboard() {
   const now = new Date();
   const dateEl = document.getElementById('dashDate');
-  if (dateEl) dateEl.textContent = 'Selamat datang, ' + (currentUser.namaSatker||currentUser.username) + ' · ' + now.toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  if (dateEl) dateEl.textContent = '📅 ' + now.toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + ' · ' + now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
 
   // Load pendaftaran user sakti
   let userStats = {total:0, menunggu:0, proses:0, selesai:0, ditolak:0};

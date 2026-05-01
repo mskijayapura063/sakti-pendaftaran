@@ -176,11 +176,81 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
 /* ADMIN-ONLY hidden by default */
 .admin-only{display:none}
 
+/* ── DASHBOARD ENHANCEMENTS ── */
+.welcome-banner{background:linear-gradient(135deg,#0D47A1 0%,#1565C0 60%,#1976D2 100%);border-radius:var(--radius-lg);padding:22px 26px;color:#fff;margin-bottom:20px;box-shadow:var(--shadow-lg);position:relative;overflow:hidden}
+.welcome-banner::after{content:'';position:absolute;right:-30px;top:-30px;width:180px;height:180px;background:radial-gradient(circle,rgba(255,255,255,.12) 0%,transparent 70%);pointer-events:none}
+.welcome-banner .wb-greeting{font-size:13px;opacity:.85;margin-bottom:4px;font-weight:500}
+.welcome-banner .wb-name{font-size:22px;font-weight:800;line-height:1.2;margin-bottom:6px}
+.welcome-banner .wb-date{font-size:12px;opacity:.8}
+.welcome-banner .wb-role-badge{display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;letter-spacing:.4px;margin-top:8px}
+
+.section-title{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--gray-700);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--blue-pale)}
+.section-title .st-icon{font-size:14px}
+.section-title .st-count{background:var(--blue-pale);color:var(--blue);border-radius:10px;font-size:10px;font-weight:700;padding:2px 9px;margin-left:auto}
+
+.quick-actions{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+.qa-card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px 16px;cursor:pointer;transition:.18s;display:flex;align-items:center;gap:12px;text-align:left}
+.qa-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px);border-color:var(--blue-pale2)}
+.qa-card .qa-icon{font-size:24px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:8px;flex-shrink:0;background:var(--blue-pale);color:var(--blue)}
+.qa-card.green .qa-icon{background:var(--green-pale);color:var(--green)}
+.qa-card.orange .qa-icon{background:var(--orange-pale);color:var(--orange)}
+.qa-card.purple .qa-icon{background:var(--purple-pale);color:var(--purple)}
+.qa-card.teal .qa-icon{background:var(--teal-pale);color:var(--teal)}
+.qa-title{font-size:13px;font-weight:700;color:var(--gray-900);line-height:1.3;margin-bottom:2px}
+.qa-sub{font-size:11px;color:var(--gray-500)}
+
+.activity-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px}
+
+.progress-bar{height:6px;background:var(--gray-200);border-radius:4px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;border-radius:4px;transition:width .4s}
+.progress-fill.blue{background:var(--blue)}
+.progress-fill.green{background:var(--green)}
+.progress-fill.orange{background:var(--orange)}
+
+/* ── MOBILE HAMBURGER ── */
+.mobile-toggle{display:none;background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:6px 10px;font-size:16px;cursor:pointer;margin-right:6px}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:90}
+.sidebar-overlay.on{display:block}
+
+@media(max-width:1024px){
+  .activity-grid{grid-template-columns:1fr}
+  .quick-actions{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+}
+
 @media(max-width:768px){
-  .app-body{flex-direction:column}
-  .sidebar{width:100%;border-right:none;border-bottom:1px solid var(--gray-200)}
-  .main-content{padding:14px}
-  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .mobile-toggle{display:inline-flex}
+  .header-top{padding:10px 14px;flex-wrap:wrap;gap:8px}
+  .header-main{font-size:13px}
+  .header-sub{font-size:10px}
+  .header-right{margin-left:auto;gap:4px}
+  .role-chip{padding:3px 9px;font-size:10px}
+  .user-chip{font-size:11px;display:none}
+  .btn-logout{padding:4px 10px;font-size:11px}
+
+  .app-body{flex-direction:column;position:relative}
+  .sidebar{position:fixed;left:-280px;top:0;bottom:0;width:260px;height:100vh;z-index:100;transition:left .25s ease;box-shadow:4px 0 20px rgba(0,0,0,.15);padding-top:18px}
+  .sidebar.on{left:0}
+  .main-content{padding:14px;width:100%}
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .stat-card{padding:12px 14px}
+  .stat-num{font-size:22px}
+  .stat-icon{font-size:18px}
+  .quick-actions{grid-template-columns:1fr 1fr}
+  .qa-card{padding:11px 12px}
+  .qa-card .qa-icon{width:36px;height:36px;font-size:20px}
+  .qa-title{font-size:12px}
+  .welcome-banner{padding:16px 18px}
+  .welcome-banner .wb-name{font-size:18px}
+  .ew-grid{grid-template-columns:1fr}
+  .page-title{font-size:17px}
+  .modal-box{padding:18px 16px}
+}
+
+@media(max-width:480px){
+  .stats-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .stat-card{padding:10px 12px}
+  .stat-num{font-size:20px}
+  .quick-actions{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -222,6 +292,7 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
 <div id="appScreen" style="display:none">
   <header>
     <div class="header-top">
+      <button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Menu">☰</button>
       <div class="header-logo">
         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Lambang_Garuda_Pancasila.svg/200px-Lambang_Garuda_Pancasila.svg.png"
              alt="Logo" onerror="this.style.display='none'"/>
@@ -237,6 +308,8 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
       </div>
     </div>
   </header>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
   <div class="app-body">
     <!-- SIDEBAR -->
@@ -541,11 +614,27 @@ function openGroup(grp){
   if(ch) ch.classList.add('open');
 }
 
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sidebarOverlay');
+  if(!sb) return;
+  const open=sb.classList.toggle('on');
+  if(ov) ov.classList.toggle('on',open);
+}
+function closeSidebarMobile(){
+  if(window.innerWidth>768) return;
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sidebarOverlay');
+  if(sb) sb.classList.remove('on');
+  if(ov) ov.classList.remove('on');
+}
+
 function showPanel(name){
   document.querySelectorAll('.nav-single,.nav-sub').forEach(el=>el.classList.remove('active'));
   const navEl=document.getElementById('nav-'+name);
   if(navEl) navEl.classList.add('active');
   if(PANEL_GROUP[name]) openGroup(PANEL_GROUP[name]);
+  closeSidebarMobile();
   const main=document.getElementById('mainContent');
   if     (name==='dashboard')    { main.innerHTML=renderDashboard();    loadDashboard(); }
   else if(name==='email-daftar') { main.innerHTML=renderEmailDaftar();  loadEmailDaftar(); }
@@ -560,9 +649,45 @@ function showPanel(name){
 // DASHBOARD
 // ════════════════════════════════════════════════════════
 function renderDashboard(){
-  return `<div class="page-title">Dashboard</div>
-  <div class="page-sub" id="dashDate"></div>
+  const u = currentUser || {};
+  const hour = new Date().getHours();
+  const greet = hour<11?'Selamat pagi':hour<15?'Selamat siang':hour<18?'Selamat sore':'Selamat malam';
+  const roleLabel = u.role==='SuperAdmin'?'Super Admin':u.role==='Admin'?'Administrator':'Petugas KPPN';
+  return `
+  <!-- Welcome Banner -->
+  <div class="welcome-banner">
+    <div class="wb-greeting">${greet} 👋</div>
+    <div class="wb-name">${esc(u.namaLengkap||u.username||'Petugas')}</div>
+    <div class="wb-date" id="dashDate">—</div>
+    <div class="wb-role-badge">🛡️ ${roleLabel}</div>
+  </div>
+
+  <!-- Early Warning -->
   <div id="earlyWarning" style="margin-bottom:16px"></div>
+
+  <!-- Quick Actions -->
+  <div class="section-title"><span class="st-icon">⚡</span> Aksi Cepat</div>
+  <div class="quick-actions">
+    <div class="qa-card orange" onclick="showPanel('email-daftar')">
+      <div class="qa-icon">📧</div>
+      <div><div class="qa-title">Email SAKTI</div><div class="qa-sub">Proses pengajuan email</div></div>
+    </div>
+    <div class="qa-card" onclick="showPanel('submissions')">
+      <div class="qa-icon">📋</div>
+      <div><div class="qa-title">Pendaftaran User</div><div class="qa-sub">Monitoring &amp; verifikasi</div></div>
+    </div>
+    <div class="qa-card purple" onclick="showPanel('otp')">
+      <div class="qa-icon">🔐</div>
+      <div><div class="qa-title">Aktivasi OTP</div><div class="qa-sub">Cek pending OTP satker</div></div>
+    </div>
+    <div class="qa-card teal" onclick="showPanel('satker')">
+      <div class="qa-icon">🏢</div>
+      <div><div class="qa-title">Kelola Satker</div><div class="qa-sub">Data referensi satker</div></div>
+    </div>
+  </div>
+
+  <!-- Stats: User SAKTI -->
+  <div class="section-title"><span class="st-icon">👤</span> User SAKTI <span class="st-count" id="cntUserAll">—</span></div>
   <div class="stats-grid" id="statsGridUser">
     ${sc('blue','📝','—','Total User SAKTI')}
     ${sc('orange','⏳','—','Menunggu')}
@@ -571,20 +696,25 @@ function renderDashboard(){
     ${sc('red','❌','—','Ditolak')}
     ${sc('purple','🔐','—','Pending OTP')}
   </div>
-  <div style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">Email SAKTI</div>
+
+  <!-- Stats: Email SAKTI -->
+  <div class="section-title"><span class="st-icon">✉️</span> Email SAKTI <span class="st-count" id="cntEmailAll">—</span></div>
   <div class="stats-grid" id="statsGridEmail">
     ${sc('blue','📧','—','Total Email SAKTI')}
     ${sc('orange','⏳','—','Menunggu Proses')}
     ${sc('green','✅','—','Selesai')}
     ${sc('red','❌','—','Ditolak Email')}
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px">
+
+  <!-- Recent activity -->
+  <div class="section-title"><span class="st-icon">🕒</span> Aktivitas Terbaru</div>
+  <div class="activity-grid">
     <div class="card">
-      <div class="card-title">Pendaftaran User SAKTI Terbaru</div>
+      <div class="card-title">📋 Pendaftaran User SAKTI Terbaru</div>
       <div id="recentUser"><p style="color:var(--gray-400);font-size:13px">Memuat...</p></div>
     </div>
     <div class="card">
-      <div class="card-title">Email SAKTI Terbaru</div>
+      <div class="card-title">📧 Email SAKTI Terbaru</div>
       <div id="recentEmail"><p style="color:var(--gray-400);font-size:13px">Memuat...</p></div>
     </div>
   </div>`;
@@ -598,7 +728,7 @@ function sc(cls,icon,num,label){
 async function loadDashboard(){
   const now=new Date();
   const dateEl=document.getElementById('dashDate');
-  if(dateEl) dateEl.textContent='Panel Admin & Petugas · '+now.toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' '+now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+  if(dateEl) dateEl.textContent='📅 '+now.toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' · '+now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
   try{
     const res=await apiPost({action:'getDashboard'});
     if(!res.success) return;
@@ -615,6 +745,11 @@ async function loadDashboard(){
     upd('Menunggu-Proses',   d.emailMenunggu||0);
     upd('Selesai',           d.emailSelesai||0);
     upd('Ditolak-Email',     d.emailDitolak||0);
+    // Section counts
+    const cntU=document.getElementById('cntUserAll');
+    if(cntU) cntU.textContent = (d.total||0)+' total';
+    const cntE=document.getElementById('cntEmailAll');
+    if(cntE) cntE.textContent = (d.emailTotal||0)+' total';
     // Early warning
     renderEarlyWarning(d);
     // Recent tables
