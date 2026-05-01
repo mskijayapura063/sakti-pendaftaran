@@ -552,38 +552,20 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
   </div>
 </div>
 
-<!-- ══ MODAL EDIT KPA (riwayat) ══ -->
-<div class="modal-overlay" id="modalEditKpa">
-  <div class="modal-box" style="max-width:480px">
-    <div class="modal-title">✏️ Edit Data KPA</div>
-    <div id="editKpaBody"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modalEditKpa')">Batal</button>
-      <button class="btn btn-primary" id="btnSimpanEditKpa" onclick="doSimpanEditKpa()">💾 Simpan</button>
+<!-- ══ MODAL EDIT RIWAYAT PENDAFTARAN (form lengkap) ══ -->
+<div class="modal-overlay" id="modalEditRiwayat">
+  <div class="modal-box" style="max-width:780px;max-height:94vh;overflow-y:auto;padding:28px 28px 24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap">
+      <div class="modal-title" style="margin-bottom:0">✏️ Edit Data Pendaftaran</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" onclick="closeModal('modalEditRiwayat')">Batal</button>
+        <button class="btn btn-primary" id="btnSimpanEditRiwayat" onclick="doSimpanEditRiwayat()">💾 Simpan Perubahan</button>
+      </div>
     </div>
-  </div>
-</div>
-
-<!-- ══ MODAL EDIT PENGGUNA (riwayat) ══ -->
-<div class="modal-overlay" id="modalEditPengguna">
-  <div class="modal-box" style="max-width:560px">
-    <div class="modal-title">✏️ Edit Data Pengguna</div>
-    <div id="editPenggunaBody"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modalEditPengguna')">Batal</button>
-      <button class="btn btn-primary" id="btnSimpanEditPengguna" onclick="doSimpanEditPengguna()">💾 Simpan</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══ MODAL HAPUS PENGGUNA (riwayat) ══ -->
-<div class="modal-overlay" id="modalHapusPengguna">
-  <div class="modal-box" style="max-width:420px">
-    <div class="modal-title">🗑️ Hapus Pengguna</div>
-    <div id="hapusPenggunaBody"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modalHapusPengguna')">Batal</button>
-      <button class="btn btn-danger" id="btnKonfirmHapusPengguna" onclick="doHapusPengguna()">🗑️ Ya, Hapus</button>
+    <div id="editRiwayatBody"></div>
+    <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end;border-top:1px solid var(--gray-200);padding-top:16px">
+      <button class="btn btn-secondary" onclick="closeModal('modalEditRiwayat')">Batal</button>
+      <button class="btn btn-primary" onclick="doSimpanEditRiwayat()">💾 Simpan Perubahan</button>
     </div>
   </div>
 </div>
@@ -2445,8 +2427,6 @@ async function initUserRiwayat() {
           <div><span style="color:var(--gray-500)">Nama Satker:</span><br/><strong>${esc(d.namaSatker||'—')}</strong></div>
           <div>
             <span style="color:var(--gray-500)">Nama KPA:</span>
-            ${bolehEdit?`<button onclick="bukaEditKpa('${esc(d.refKode)}')" title="Edit Nama KPA & NIP"
-              style="background:none;border:none;cursor:pointer;color:var(--blue-light);font-size:13px;padding:0 4px;vertical-align:middle;line-height:1" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--blue-light)'">✏️</button>`:''}
             <br/><strong>${esc(d.namaKpa||'—')}</strong>
             ${d.nip?`<span style="font-size:11px;color:var(--gray-500);margin-left:4px">NIP: ${esc(d.nip)}</span>`:''}
           </div>
@@ -2462,11 +2442,19 @@ async function initUserRiwayat() {
               ${d.catatanAdmin?`<div style="font-size:12px;color:#7f1d1d;background:#fee2e2;border-radius:6px;padding:6px 10px;margin-bottom:8px"><strong>Alasan:</strong> ${esc(d.catatanAdmin)}</div>`:''}
               <div style="font-size:12px;color:#991b1b">Silakan perbaiki data lalu upload ulang dokumen pendukung.</div>
             </div>
-            <button class="btn btn-sm" onclick="bukaPerbaikiData('${esc(d.refKode)}')"
+            <button class="btn btn-sm" onclick="bukaEditRiwayat('${esc(d.refKode)}')"
               style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap">
               ✏️ Perbaiki Data
             </button>
           </div>
+        </div>`:''}
+        ${bolehEdit && !isDitolak?`
+        <div style="margin-bottom:12px">
+          <button onclick="bukaEditRiwayat('${esc(d.refKode)}')"
+            style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid var(--blue-light);color:var(--blue);border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;transition:.15s"
+            onmouseover="this.style.background='var(--blue-pale)'" onmouseout="this.style.background='#fff'">
+            ✏️ Edit Data Pendaftaran
+          </button>
         </div>`:''}
         ${sudahUpload?`
         <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:12px 16px;margin-bottom:12px">
@@ -2489,7 +2477,7 @@ async function initUserRiwayat() {
           <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--blue);padding:6px 0">👥 Lihat daftar pengguna (${usersArr.length})</summary>
           <div style="overflow-x:auto;margin-top:8px">
             <table class="tbl" style="font-size:12px">
-              <thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Email</th><th>Peran</th>${bolehEdit?'<th style="text-align:center;width:56px">Aksi</th>':''}</tr></thead>
+              <thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Email</th><th>Peran</th></tr></thead>
               <tbody>
                 ${usersArr.map((u,ui)=>`<tr>
                   <td style="text-align:center;color:var(--gray-400)">${ui+1}</td>
@@ -2497,12 +2485,6 @@ async function initUserRiwayat() {
                   <td style="font-family:monospace">${esc(u.nipnrp||'—')}</td>
                   <td style="font-family:monospace;font-size:11px">${esc(u.email||'—')}</td>
                   <td>${(u.peranList||[]).map(k=>`<span style="font-size:10px;background:${PERAN_OTP.includes(k)?'#fef9c3':'var(--blue-pale)'};color:${PERAN_OTP.includes(k)?'#854d0e':'var(--blue)'};padding:1px 6px;border-radius:10px;margin:1px;display:inline-block">${esc(k.replace('SATKER_',''))}</span>`).join('')||'—'}</td>
-                  ${bolehEdit?`<td style="text-align:center;white-space:nowrap">
-                    <button onclick="bukaEditPengguna('${esc(d.refKode)}',${ui})" title="Edit pengguna"
-                      style="background:none;border:none;cursor:pointer;font-size:15px;padding:2px 4px;color:var(--blue-light);transition:.1s" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--blue-light)'">✏️</button>
-                    ${usersArr.length>1?`<button onclick="bukaHapusPengguna('${esc(d.refKode)}',${ui})" title="Hapus pengguna"
-                      style="background:none;border:none;cursor:pointer;font-size:15px;padding:2px 4px;color:var(--gray-400);transition:.1s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--gray-400)'">🗑️</button>`:''}
-                  </td>`:''}
                 </tr>`).join('')}
               </tbody>
             </table>
@@ -2785,153 +2767,293 @@ async function satkerUnduhFormExcel(refKode) {
   } catch(e) { showToast('❌ Gagal mengunduh form Excel', true); }
 }
 
-// ── Edit KPA ────────────────────────────────────────────────────
-let _editKpaRef = null;
-function bukaEditKpa(refKode) {
+// ── Edit Riwayat Pendaftaran (form lengkap) ──────────────────────
+let _editRiwayatRef = null;
+
+function bukaEditRiwayat(refKode) {
   const info = _pdCache[refKode];
   if (!info) { showToast('Data tidak ditemukan', true); return; }
-  _editKpaRef = refKode;
-  document.getElementById('editKpaBody').innerHTML = `
-    <div class="form-group">
-      <label>Nama KPA / Pimpinan</label>
-      <input type="text" id="ekNamaKpa" value="${esc(info.namaKpa||'')}" placeholder="Nama lengkap KPA/Pimpinan"/>
+  _editRiwayatRef = refKode;
+
+  // Reset dan load ulang ubUsers dari data cache
+  ubUsers.length = 0; ubUserIdSeq = 0; ubLocked = false;
+
+  const kode = currentUser?.username || '';
+  const LEVEL_OPT = ['Satker','Satker BLU','Satker PNBP','Kantor Pusat','Kantor Wilayah'];
+
+  // Render form lengkap ke dalam modal body
+  document.getElementById('editRiwayatBody').innerHTML = `
+    <div class="info-box blue" style="margin-bottom:16px;font-size:12px">
+      📝 Edit data pendaftaran — Ref: <strong>${esc(info.refKode)}</strong>.
+      Perubahan disimpan ke server. Jika ada perubahan pengguna, Anda perlu <strong>upload ulang dokumen</strong>.
     </div>
-    <div class="form-group">
-      <label>NIP / NRP KPA</label>
-      <input type="text" id="ekNip" value="${esc(info.nip||'')}" placeholder="NIP/NRP KPA" style="font-family:monospace"/>
+
+    <!-- Data Satker -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">🏢 Data Satker</div>
+      <div class="ub-form-row">
+        <div class="ub-form-group" style="max-width:160px">
+          <label>Kode Satker</label>
+          <input type="text" value="${esc(kode)}" readonly style="background:var(--gray-100);font-family:monospace;font-weight:700;letter-spacing:1px"/>
+        </div>
+        <div class="ub-form-group">
+          <label>Nama Satker <span style="color:var(--red)">*</span></label>
+          <input type="text" id="er_namaSatker" value="${esc(info.namaSatker||'')}"/>
+        </div>
+        <div class="ub-form-group" style="max-width:180px">
+          <label>Level Satker</label>
+          <select id="er_levelSatker">
+            ${LEVEL_OPT.map(l=>`<option value="${l}" ${(info.levelSatker||'Satker')===l?'selected':''}>${l}</option>`).join('')}
+          </select>
+        </div>
+      </div>
     </div>
-    <div class="form-group">
-      <label>No. HP / WhatsApp</label>
-      <input type="tel" id="ekNoHp" value="${esc(info.noHp||'')}" placeholder="08xxxxxxxxxx" style="font-family:monospace"/>
-    </div>`;
-  openModal('modalEditKpa');
-  setTimeout(()=>document.getElementById('ekNamaKpa')?.focus(), 150);
+
+    <!-- Data KPA -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">🏛️ Data KPA (Penandatangan)</div>
+      <div class="ub-form-row">
+        <div class="ub-form-group">
+          <label>Nama KPA <span style="color:var(--red)">*</span></label>
+          <input type="text" id="er_namaKpa" value="${esc(info.namaKpa||'')}" placeholder="Nama lengkap KPA"/>
+        </div>
+        <div class="ub-form-group">
+          <label>NIP KPA <span style="color:var(--red)">*</span></label>
+          <input type="text" id="er_nip" value="${esc(info.nip||'')}" placeholder="199001012020011001" maxlength="18" style="font-family:monospace"/>
+        </div>
+      </div>
+      <div class="ub-form-row">
+        <div class="ub-form-group">
+          <label>No. HP / WA <span style="color:var(--red)">*</span></label>
+          <input type="text" id="er_noHp" value="${esc(info.noHp||'')}" placeholder="08xx-xxxx-xxxx"/>
+        </div>
+        <div class="ub-form-group">
+          <label>Kota / Tempat TTD</label>
+          <input type="text" id="er_kota" value="${esc(info.kota||'Jayapura')}" placeholder="Jayapura"/>
+        </div>
+        <div class="ub-form-group">
+          <label>Tanggal Surat</label>
+          <input type="text" id="er_tglSurat" value="${esc(info.tglSurat||'')}" placeholder="Pilih tanggal..." readonly style="cursor:pointer"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daftar Pengguna -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">👥 Daftar Pengguna yang Didaftarkan</div>
+      <div id="erUserList"></div>
+      <button class="btn-add-user" onclick="erTambahPengguna()">+ Tambah Pengguna Baru</button>
+    </div>
+  `;
+
+  // Isi ubUsers dari cache dan render ke erUserList
+  (info.usersJson || []).forEach(u => {
+    const id = ++ubUserIdSeq;
+    ubUsers.push({ id, nama:u.nama||'', nipnrp:u.nipnrp||'', nik:u.nik||'', email:u.email||'',
+      hp:u.hp||'', sk:u.sk||'', tglsk:u.tglsk||'', peranList:u.peranList||[] });
+    erRenderUserCard(id);
+  });
+  ubReindexUsers();
+
+  openModal('modalEditRiwayat');
+  setTimeout(() => {
+    ubInitFlatpickrSurat(document.getElementById('er_tglSurat'));
+    ubInitFlatpickrSurat = ubInitFlatpickrSurat; // no-op reference keep
+    // Init flatpickr tanggal surat di modal edit
+    if (window.flatpickr) {
+      flatpickr('#er_tglSurat', {
+        locale:'id', dateFormat:'d-m-Y',
+        defaultDate: document.getElementById('er_tglSurat')?.value || null,
+      });
+    }
+  }, 80);
 }
 
-async function doSimpanEditKpa() {
-  const info = _pdCache[_editKpaRef];
+// Render kartu pengguna di dalam modal edit riwayat (reuse erUserList)
+function erRenderUserCard(id) {
+  const u = ubGetUserById(id);
+  const wrap = document.getElementById('erUserList');
+  if (!wrap) return;
+  document.getElementById(`eruc-${id}`)?.remove();
+  const div = document.createElement('div');
+  div.className = 'user-card'; div.id = `eruc-${id}`;
+  div.innerHTML = `
+    <div class="user-card-header">
+      <span class="user-card-num" id="erucnum-${id}">Pengguna</span>
+      <div class="user-card-actions">
+        <button class="btn btn-outline btn-sm" onclick="erOpenEditModal(${id})">✏️ Edit</button>
+        ${ubUsers.length > 1 ? `<button class="btn btn-danger btn-sm" onclick="erRemoveUser(${id})">✕ Hapus</button>` : ''}
+      </div>
+    </div>
+    <div id="erucSummary-${id}"></div>`;
+  wrap.appendChild(div);
+  erRenderUserSummary(id);
+}
+function erRenderUserSummary(id) {
+  const u = ubGetUserById(id);
+  const el = document.getElementById(`erucSummary-${id}`);
+  if (!el || !u) return;
+  const kelompoks = [...new Set(u.peranList.map(k => ubGetKelompok(k)).filter(Boolean))];
+  const kbCls = kelompoks.length > 1 ? 'kb-M' : kelompoks[0] ? `kb-${kelompoks[0][0]}` : '';
+  el.innerHTML = `<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--gray-700)">
+    <span><strong>Nama:</strong> ${u.nama || '<em style="color:var(--gray-400)">belum diisi</em>'}</span>
+    <span style="color:var(--gray-300)">|</span>
+    <span><strong>NIP/NRP:</strong> ${u.nipnrp || '—'}</span>
+    <span style="color:var(--gray-300)">|</span>
+    <span><strong>Email:</strong> ${u.email || '—'}</span>
+    <span style="color:var(--gray-300)">|</span>
+    <span><strong>Peran:</strong> ${u.peranList.length ? u.peranList.map(k => `<span class="kb ${kbCls}">${ubGetLabel(k)}</span>`).join('') : '<em style="color:var(--red)">belum dipilih</em>'}</span>
+  </div>`;
+}
+function erRemoveUser(id) {
+  if (ubUsers.length <= 1) { showToast('Minimal harus ada 1 pengguna', true); return; }
+  const idx = ubUsers.findIndex(u => u.id === id);
+  if (idx !== -1) ubUsers.splice(idx, 1);
+  document.getElementById(`eruc-${id}`)?.remove();
+  // Re-render semua agar tombol hapus refresh
+  const wrap = document.getElementById('erUserList');
+  if (wrap) { wrap.innerHTML = ''; ubUsers.forEach(u => erRenderUserCard(u.id)); }
+  ubReindexUsers();
+}
+function erTambahPengguna() {
+  const id = ++ubUserIdSeq;
+  ubUsers.push({ id, nama:'', nipnrp:'', nik:'', email:'', hp:'', sk:'', tglsk:'', peranList:[] });
+  erRenderUserCard(id);
+  ubReindexUsers();
+  // Langsung buka modal edit pengguna baru
+  erOpenEditModal(id);
+}
+
+// Edit pengguna pakai modal ubEditUB yang sudah ada (reuse penuh)
+function erOpenEditModal(id) {
+  ubOpenEditModal(id);
+  // Override save button agar save ke erucSummary bukan ubucSummary
+  const origSave = window.ubSaveEdit.toString();
+  // Kita hijack ubSaveEdit sementara
+  window._erEditingId = id;
+  window._erOrigSave = window.ubSaveEdit;
+  window.ubSaveEdit = function() {
+    const nama = (document.getElementById('ube-nama')?.value||'').trim();
+    const nipnrp = (document.getElementById('ube-nipnrp')?.value||'').trim();
+    const nik = (document.getElementById('ube-nik')?.value||'').trim();
+    const email = (document.getElementById('ube-email')?.value||'').trim();
+    const hp = (document.getElementById('ube-hp')?.value||'').trim();
+    const sk = (document.getElementById('ube-sk')?.value||'').trim();
+    const tglsk = (document.getElementById('ube-tglsk')?.value||'').trim();
+    const peranList = ubGetCheckedPeran();
+    const emailErr = document.getElementById('ube-email-err');
+    if (email) {
+      const el = email.toLowerCase();
+      if (!el.endsWith('.go.id') && !el.endsWith('.mil.id')) {
+        emailErr.style.display = 'block';
+        document.getElementById('ube-email')?.classList.add('err');
+        showToast('Email harus berakhiran .go.id atau .mil.id', true); return;
+      }
+    }
+    emailErr.style.display = 'none'; document.getElementById('ube-email')?.classList.remove('err');
+    if (!nama) { showToast('Nama wajib diisi', true); return; }
+    if (!nipnrp) { showToast('NIP/NRP wajib diisi', true); return; }
+    if (!peranList.length) { showToast('Pilih minimal satu peran', true); return; }
+    const u = ubGetUserById(window._erEditingId); if (!u) return;
+    u.nama=nama; u.nipnrp=nipnrp; u.nik=nik; u.email=email; u.hp=hp; u.sk=sk; u.tglsk=tglsk; u.peranList=peranList;
+    erRenderUserSummary(window._erEditingId);
+    closeModal('modalEditUB');
+    showToast('✅ Data pengguna disimpan');
+    // Restore original
+    window.ubSaveEdit = window._erOrigSave;
+  };
+}
+
+async function doSimpanEditRiwayat() {
+  const info = _pdCache[_editRiwayatRef];
   if (!info) return;
-  const namaKpa = document.getElementById('ekNamaKpa')?.value.trim() || '';
-  const nip     = document.getElementById('ekNip')?.value.trim() || '';
-  const noHp    = document.getElementById('ekNoHp')?.value.trim() || '';
+
+  const namaSatker = document.getElementById('er_namaSatker')?.value.trim() || '';
+  const levelSatker = document.getElementById('er_levelSatker')?.value || '';
+  const namaKpa = document.getElementById('er_namaKpa')?.value.trim() || '';
+  const nip = document.getElementById('er_nip')?.value.trim() || '';
+  const noHp = document.getElementById('er_noHp')?.value.trim() || '';
+  const kota = document.getElementById('er_kota')?.value.trim() || 'Jayapura';
+  const tglSurat = document.getElementById('er_tglSurat')?.value.trim() || '';
+
+  // Validasi wajib
+  if (!namaSatker) { showToast('Nama Satker wajib diisi', true); return; }
   if (!namaKpa) { showToast('Nama KPA wajib diisi', true); return; }
-  const btn = document.getElementById('btnSimpanEditKpa');
-  btn.disabled = true; btn.textContent = '⏳ Menyimpan...';
+  if (!nip) { showToast('NIP KPA wajib diisi', true); return; }
+  if (!noHp) { showToast('No. HP wajib diisi', true); return; }
+  if (!ubUsers.length) { showToast('Tambahkan minimal satu pengguna', true); return; }
+  for (let i = 0; i < ubUsers.length; i++) {
+    const u = ubUsers[i]; const n = i + 1;
+    if (!u.nama) { showToast(`Pengguna ${n}: Nama wajib diisi`, true); return; }
+    if (!u.nipnrp) { showToast(`Pengguna ${n}: NIP/NRP wajib diisi`, true); return; }
+    if (!u.peranList.length) { showToast(`Pengguna ${n}: Pilih minimal satu peran`, true); return; }
+  }
+
+  const usersJson = ubUsers.map(u => ({
+    nama: u.nama, nipnrp: u.nipnrp, nik: u.nik, email: u.email,
+    hp: u.hp, sk: u.sk, tglsk: u.tglsk, peranList: u.peranList,
+  }));
+
+  const btn = document.getElementById('btnSimpanEditRiwayat');
+  const btns = document.querySelectorAll('#modalEditRiwayat button.btn-primary');
+  btns.forEach(b => { b.disabled = true; b.textContent = '⏳ Menyimpan...'; });
+
+  const isDitolakNow = (info.status || '').toLowerCase() === 'ditolak';
+  const kodeSatker = currentUser?.username || '';
+  const tglStr = new Date().toLocaleDateString('id-ID', {day:'2-digit',month:'long',year:'numeric'});
+
   try {
-    const res = await apiPost({ action:'editPendaftaran', refKode: info.refKode, namaKpa, nip, noHp });
-    if (!res.success) { showToast(res.message||'Gagal menyimpan', true); return; }
-    // Update cache
-    _pdCache[_editKpaRef].namaKpa = namaKpa;
-    _pdCache[_editKpaRef].nip     = nip;
-    _pdCache[_editKpaRef].noHp    = noHp;
-    showToast('✅ Data KPA berhasil diperbarui', false, true);
-    closeModal('modalEditKpa');
-    initUserRiwayat();
-  } catch(e) { showToast('❌ Gagal menyimpan data', true); }
-  finally { btn.disabled = false; btn.textContent = '💾 Simpan'; }
-}
+    // Jika status Ditolak → pakai updatePendaftaran (reset ke Menunggu) + generate Excel baru
+    if (isDitolakNow) {
+      btns.forEach(b => b.textContent = '⏳ Membuat Excel baru...');
+      const resXls = await apiPost({
+        action: 'generateExcel',
+        refKode: info.refKode, kodeSatker, namaSatker, levelSatker,
+        namaKpa, nip, kota, tglStr,
+        users: usersJson,
+      });
+      if (!resXls.success) throw new Error(resXls.message || 'Gagal generate Excel');
+      const bytes = Uint8Array.from(atob(resXls.fileBase64), c => c.charCodeAt(0));
+      const blob  = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const xlsUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = xlsUrl;
+      a.download = resXls.fileName || `Form-SAKTI-${kodeSatker}.xlsx`; a.click();
+      URL.revokeObjectURL(xlsUrl);
 
-// ── Edit Pengguna ────────────────────────────────────────────────
-let _editPgRef = null, _editPgIdx = -1;
-const PERAN_OPTS = [
-  'KPA','PPK','PPSPM','BP','BPP',
-  'OPERATOR_ANGGARAN','OPERATOR_PERSEDIAAN','OPERATOR_ASET','VALIDATOR_ASET','ADMIN'
-];
-function bukaEditPengguna(refKode, idx) {
-  const info = _pdCache[refKode];
-  if (!info) { showToast('Data tidak ditemukan', true); return; }
-  _editPgRef = refKode; _editPgIdx = idx;
-  const u = (info.usersJson || [])[idx] || {};
-  const peranSet = new Set(u.peranList || []);
-  document.getElementById('editPenggunaBody').innerHTML = `
-    <div class="form-group">
-      <label>Nama Lengkap</label>
-      <input type="text" id="epNama" value="${esc(u.nama||'')}" placeholder="Nama lengkap pengguna"/>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="form-group">
-        <label>NIP / NRP</label>
-        <input type="text" id="epNipnrp" value="${esc(u.nipnrp||'')}" placeholder="NIP/NRP" style="font-family:monospace"/>
-      </div>
-      <div class="form-group">
-        <label>Email</label>
-        <input type="email" id="epEmail" value="${esc(u.email||'')}" placeholder="nama@instansi.go.id"/>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Peran (pilih satu atau lebih)</label>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px">
-        ${PERAN_OPTS.map(p=>`
-          <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;background:${peranSet.has(p)?'var(--blue-pale)':'#fff'};border:1px solid ${peranSet.has(p)?'var(--blue-pale2)':'var(--gray-300)'};border-radius:20px;padding:4px 10px;transition:.15s">
-            <input type="checkbox" name="epPeran" value="${p}" ${peranSet.has(p)?'checked':''} style="accent-color:var(--blue)"/>
-            ${p.replace('SATKER_','')}
-          </label>`).join('')}
-      </div>
-    </div>`;
-  openModal('modalEditPengguna');
-  setTimeout(()=>document.getElementById('epNama')?.focus(), 150);
-}
+      btns.forEach(b => b.textContent = '⏳ Menyimpan perbaikan...');
+      const resUpd = await apiPost({
+        action: 'updatePendaftaran',
+        refKode: info.refKode, namaKpa, nip, noHp, levelSatker, namaSatker, kodeSatker, resetStatus: true,
+      });
+      if (!resUpd.success) throw new Error(resUpd.message || 'Gagal menyimpan');
 
-async function doSimpanEditPengguna() {
-  const info = _pdCache[_editPgRef];
-  if (!info) return;
-  const nama   = document.getElementById('epNama')?.value.trim() || '';
-  const nipnrp = document.getElementById('epNipnrp')?.value.trim() || '';
-  const email  = document.getElementById('epEmail')?.value.trim() || '';
-  const peranList = [...document.querySelectorAll('input[name="epPeran"]:checked')].map(c=>c.value);
-  if (!nama)   { showToast('Nama wajib diisi', true); return; }
-  if (!peranList.length) { showToast('Pilih minimal satu peran', true); return; }
-  const usersJson = (info.usersJson || []).map((u,i) =>
-    i === _editPgIdx ? { ...u, nama, nipnrp, email, peranList } : u
-  );
-  const btn = document.getElementById('btnSimpanEditPengguna');
-  btn.disabled = true; btn.textContent = '⏳ Menyimpan...';
-  try {
-    const res = await apiPost({ action:'editPendaftaran', refKode: info.refKode, usersJson });
-    if (!res.success) { showToast(res.message||'Gagal menyimpan', true); return; }
-    _pdCache[_editPgRef].usersJson = usersJson;
-    showToast('✅ Data pengguna berhasil diperbarui', false, true);
-    closeModal('modalEditPengguna');
-    initUserRiwayat();
-  } catch(e) { showToast('❌ Gagal menyimpan data', true); }
-  finally { btn.disabled = false; btn.textContent = '💾 Simpan'; }
-}
+      const filesJsonLama = info.filesJson || {};
+      _pdCache[_editRiwayatRef] = {
+        ...info, namaSatker, levelSatker, namaKpa, nip, noHp, kota, tglSurat, usersJson,
+        filesJson: filesJsonLama, needsReupload: true,
+      };
+      closeModal('modalEditRiwayat');
+      showToast('✅ Data disimpan! Silakan upload ulang dokumen.', false, true);
+      setTimeout(() => {
+        initUserRiwayat();
+        bukaModalUploadDokumen(_pdCache[_editRiwayatRef]);
+      }, 800);
 
-// ── Hapus Pengguna ───────────────────────────────────────────────
-let _hapusPgRef = null, _hapusPgIdx = -1;
-function bukaHapusPengguna(refKode, idx) {
-  const info = _pdCache[refKode];
-  if (!info) { showToast('Data tidak ditemukan', true); return; }
-  _hapusPgRef = refKode; _hapusPgIdx = idx;
-  const u = (info.usersJson || [])[idx] || {};
-  document.getElementById('hapusPenggunaBody').innerHTML = `
-    <p style="font-size:13px;color:var(--gray-700);margin-bottom:14px">
-      Yakin ingin menghapus pengguna berikut dari daftar?
-    </p>
-    <div style="background:var(--red-pale);border:1px solid #FFCDD2;border-radius:8px;padding:12px 16px;font-size:13px">
-      <strong>${esc(u.nama||'—')}</strong><br/>
-      <span style="color:var(--gray-600);font-size:12px">NIP/NRP: ${esc(u.nipnrp||'—')} · Email: ${esc(u.email||'—')}</span>
-    </div>
-    <p style="font-size:12px;color:var(--gray-500);margin-top:10px">⚠️ Perubahan ini langsung tersimpan ke data pendaftaran.</p>`;
-  openModal('modalHapusPengguna');
-}
-
-async function doHapusPengguna() {
-  const info = _pdCache[_hapusPgRef];
-  if (!info) return;
-  const usersJson = (info.usersJson || []).filter((_,i) => i !== _hapusPgIdx);
-  if (usersJson.length === 0) { showToast('Minimal harus ada 1 pengguna', true); return; }
-  const btn = document.getElementById('btnKonfirmHapusPengguna');
-  btn.disabled = true; btn.textContent = '⏳ Menghapus...';
-  try {
-    const res = await apiPost({ action:'editPendaftaran', refKode: info.refKode, usersJson });
-    if (!res.success) { showToast(res.message||'Gagal menghapus', true); return; }
-    _pdCache[_hapusPgRef].usersJson = usersJson;
-    showToast('✅ Pengguna berhasil dihapus', false, true);
-    closeModal('modalHapusPengguna');
-    initUserRiwayat();
-  } catch(e) { showToast('❌ Gagal menghapus pengguna', true); }
-  finally { btn.disabled = false; btn.textContent = '🗑️ Ya, Hapus'; }
+    } else {
+      // Status Menunggu (belum upload) → editPendaftaran biasa
+      const res = await apiPost({
+        action: 'editPendaftaran',
+        refKode: info.refKode,
+        namaSatker, levelSatker, namaKpa, nip, noHp, kota, tglSurat, usersJson,
+      });
+      if (!res.success) { showToast(res.message || 'Gagal menyimpan', true); return; }
+      Object.assign(_pdCache[_editRiwayatRef], { namaSatker, levelSatker, namaKpa, nip, noHp, kota, tglSurat, usersJson });
+      showToast('✅ Data pendaftaran berhasil diperbarui', false, true);
+      closeModal('modalEditRiwayat');
+      initUserRiwayat();
+    }
+  } catch(e) { showToast('❌ ' + (e.message || 'Gagal menyimpan data'), true); }
+  finally { btns.forEach(b => { b.disabled = false; b.textContent = '💾 Simpan Perubahan'; }); }
 }
 
 function bukaPerbaikiData(refKode) {
@@ -3132,7 +3254,7 @@ function openModal(id)  { document.getElementById(id)?.classList.add('on'); }
 function closeModal(id) { document.getElementById(id)?.classList.remove('on'); }
 document.addEventListener('click', e => {
   ['modalKonfirmasiEmail','modalDetailEmail','modalPassword','modalPernyataanUB','modalSuksesUB','modalEditUB','modalPanggilRekamanUB',
-   'modalEditKpa','modalEditPengguna','modalHapusPengguna'].forEach(mid => {
+   'modalEditRiwayat'].forEach(mid => {
     const m = document.getElementById(mid);
     if (m && e.target === m) closeModal(mid);
   });
