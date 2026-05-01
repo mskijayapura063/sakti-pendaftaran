@@ -271,8 +271,8 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
         </div>
         <div class="nav-children" id="grp-user-children">
           <div class="nav-sub" id="nav-submissions" onclick="showPanel('submissions')">
-            <span class="sub-icon">📂</span>
-            <span class="sub-label">Daftar Pendaftaran</span>
+            <span class="sub-icon">📋</span>
+            <span class="sub-label">Monitoring Pendaftaran</span>
           </div>
           <div class="nav-sub" id="nav-otp" onclick="showPanel('otp')">
             <span class="sub-icon">🔐</span>
@@ -967,8 +967,8 @@ async function adminDownloadEmailPdf(id){
 // USER SAKTI — DAFTAR PENDAFTARAN
 // ════════════════════════════════════════════════════════
 function renderSubmissions(){
-  return `<div class="page-title">Daftar Pendaftaran User SAKTI</div>
-  <div class="page-sub">Kelola semua pendaftaran pengguna SAKTI dari satker</div>
+  return `<div class="page-title">Monitoring Pendaftaran User SAKTI</div>
+  <div class="page-sub">Pantau dan kelola proses pendaftaran pengguna SAKTI dari seluruh satker</div>
   <div class="card" style="padding:14px 18px">
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
       <input class="table-search" type="text" id="subSearch" placeholder="🔍 Cari nama, kode satker, referensi..." oninput="filterSubmissions()" style="max-width:340px"/>

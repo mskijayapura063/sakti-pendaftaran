@@ -1740,29 +1740,50 @@ function ubAddUser(data={}){
 function ubRemoveUser(id){
   const idx=ubUsers.findIndex(u=>u.id===id);
   if(idx!==-1)ubUsers.splice(idx,1);
-  document.getElementById(`ubuc-${id}`)?.remove();ubReindexUsers();
+  document.getElementById(`ubuc-${id}`)?.remove();
+  ubReindexUsers();
+  ubRefreshAllCardActions();
 }
 function ubReindexUsers(){
   ubUsers.forEach((u,i)=>{const el=document.getElementById(`ubucnum-${u.id}`);if(el)el.textContent=`Pengguna ${i+1}`;});
 }
 function ubGetUserById(id){return ubUsers.find(u=>u.id===id);}
 
+function ubIsUserFilled(u){
+  return !!(u && (u.nama||'').trim() && (u.nipnrp||'').trim() && u.peranList && u.peranList.length>0);
+}
 function ubRenderUserCard(id){
   const u=ubGetUserById(id);
   const wrap=document.getElementById('ubUserList');
   document.getElementById(`ubuc-${id}`)?.remove();
+  const filled=ubIsUserFilled(u);
+  const editLabel=filled?'✏️ Edit':'📝 Isi Data';
+  const editClass=filled?'btn btn-outline btn-sm':'btn btn-primary btn-sm';
+  const showHapus=!ubLocked && ubUsers.length>1 && filled;
   const div=document.createElement('div');
   div.className='user-card';div.id=`ubuc-${id}`;
   div.innerHTML=`
     <div class="user-card-header">
       <span class="user-card-num" id="ubucnum-${id}">Pengguna</span>
-      <div class="user-card-actions">
-        ${!ubLocked?`<button class="btn btn-outline btn-sm" onclick="ubOpenEditModal(${id})">✏️ Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="ubRemoveUser(${id})">✕ Hapus</button>`:''}
+      <div class="user-card-actions" id="ubucActions-${id}">
+        ${!ubLocked?`<button class="${editClass}" onclick="ubOpenEditModal(${id})">${editLabel}</button>
+        ${showHapus?`<button class="btn btn-danger btn-sm" onclick="ubRemoveUser(${id})">✕ Hapus</button>`:''}`:``}
       </div>
     </div>
     <div id="ubucSummary-${id}"></div>`;
   wrap.appendChild(div);ubRenderUserSummary(id);
+}
+function ubRefreshAllCardActions(){
+  ubUsers.forEach(u=>{
+    const actEl=document.getElementById(`ubucActions-${u.id}`);
+    if(!actEl)return;
+    const filled=ubIsUserFilled(u);
+    const editLabel=filled?'✏️ Edit':'📝 Isi Data';
+    const editClass=filled?'btn btn-outline btn-sm':'btn btn-primary btn-sm';
+    const showHapus=!ubLocked && ubUsers.length>1 && filled;
+    actEl.innerHTML=!ubLocked?`<button class="${editClass}" onclick="ubOpenEditModal(${u.id})">${editLabel}</button>
+      ${showHapus?`<button class="btn btn-danger btn-sm" onclick="ubRemoveUser(${u.id})">✕ Hapus</button>`:''}`:``;
+  });
 }
 function ubRenderUserSummary(id){
   const u=ubGetUserById(id);
@@ -1779,6 +1800,8 @@ function ubRenderUserSummary(id){
     <span style="color:var(--gray-300)">|</span>
     <span><strong>Peran:</strong> ${u.peranList.length?u.peranList.map(k=>`<span class="kb ${kbCls}">${ubGetLabel(k)}</span>`).join(''):'<em style="color:var(--red)">belum dipilih</em>'}</span>
   </div>`;
+  // Refresh tombol Edit/Isi Data & Hapus semua kartu setelah save
+  ubRefreshAllCardActions();
 }
 
 // ─── EDIT MODAL ────────────────────────────────────────
@@ -1856,9 +1879,17 @@ function ubSaveEdit(){
   const tglsk=(document.getElementById('ube-tglsk')?.value||'').trim();
   const peranList=ubGetCheckedPeran();
   const emailErr=document.getElementById('ube-email-err');
-  if(email){
+  // Email wajib diisi dan harus kedinasan
+  if(!email){
+    emailErr.textContent='Email kedinasan wajib diisi.';
+    emailErr.style.display='block';
+    document.getElementById('ube-email')?.classList.add('err');
+    showToast('Email kedinasan wajib diisi',true);return;
+  }
+  {
     const el=email.toLowerCase();
     if(!el.endsWith('.go.id')&&!el.endsWith('.mil.id')){
+      emailErr.textContent='Email harus berakhiran .go.id atau .mil.id (email TNI).';
       emailErr.style.display='block';
       document.getElementById('ube-email').classList.add('err');
       showToast('Email harus berakhiran .go.id atau .mil.id',true);return;
@@ -2113,7 +2144,7 @@ async function initUserBaru() {
     } else {
       ubLocked = false;
       body.innerHTML = ubBuildFormHTML(null, kode);
-      ubAddUser();
+      // Tidak auto-tambah user — biarkan user klik "+ Tambah Pengguna"
     }
     ubReindexUsers();
     setTimeout(()=>ubInitFlatpickrSurat(), 80);
@@ -2160,15 +2191,7 @@ function ubBuildFormHTML(d, kode) {
         <label>Nama Satker <span style="color:var(--red)">*</span></label>
         <input type="text" id="ub_namaSatker" value="${esc(d?d.namaSatker:currentUser?.namaLengkap||'')}" ${ro} placeholder="Nama lengkap satker"/>
       </div>
-      <div class="ub-form-group" style="max-width:160px">
-        <label>Level Satker</label>
-        <select id="ub_levelSatker" ${ubLocked?'disabled':''}>
-          <option value="Satker" ${(d?.levelSatker==='Satker'||!d)?'selected':''}>Satker</option>
-          <option value="Pusat" ${d?.levelSatker==='Pusat'?'selected':''}>Pusat</option>
-          <option value="Wilayah" ${d?.levelSatker==='Wilayah'?'selected':''}>Wilayah</option>
-          <option value="Daerah" ${d?.levelSatker==='Daerah'?'selected':''}>Daerah</option>
-        </select>
-      </div>
+      <input type="hidden" id="ub_levelSatker" value="Satker"/>
     </div>
   </div>
 
@@ -2204,13 +2227,13 @@ function ubBuildFormHTML(d, kode) {
   <!-- Daftar Pengguna -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
-      <span>👥 Daftar Pengguna yang Didaftarkan</span>
+      <span>👥 Data Pengguna yang Akan Didaftarkan</span>
       ${!isLocked?`<div style="display:flex;gap:8px">
         <button class="btn btn-outline btn-sm" onclick="openModal('modalPanggilRekamanUB')">🔍 Panggil Rekaman</button>
       </div>`:''}
     </div>
     <div id="ubUserList"></div>
-    ${!isLocked?`<button class="btn-add-user" onclick="ubAddUser()">+ Tambah Pengguna Baru</button>`:''}
+    ${!isLocked?`<button class="btn-add-user" id="ubBtnTambah" onclick="ubAddUser()">+ Tambah Pengguna</button>`:''}
   </div>
 
   <!-- Unduh Excel -->
@@ -2800,12 +2823,7 @@ function bukaEditRiwayat(refKode) {
           <label>Nama Satker <span style="color:var(--red)">*</span></label>
           <input type="text" id="er_namaSatker" value="${esc(info.namaSatker||'')}"/>
         </div>
-        <div class="ub-form-group" style="max-width:180px">
-          <label>Level Satker</label>
-          <select id="er_levelSatker">
-            ${LEVEL_OPT.map(l=>`<option value="${l}" ${(info.levelSatker||'Satker')===l?'selected':''}>${l}</option>`).join('')}
-          </select>
-        </div>
+        <input type="hidden" id="er_levelSatker" value="Satker"/>
       </div>
     </div>
 
@@ -2840,9 +2858,9 @@ function bukaEditRiwayat(refKode) {
 
     <!-- Daftar Pengguna -->
     <div class="card" style="margin-bottom:14px">
-      <div class="card-title">👥 Daftar Pengguna yang Didaftarkan</div>
+      <div class="card-title">👥 Data Pengguna yang Akan Didaftarkan</div>
       <div id="erUserList"></div>
-      <button class="btn-add-user" onclick="erTambahPengguna()">+ Tambah Pengguna Baru</button>
+      <button class="btn-add-user" onclick="erTambahPengguna()">+ Tambah Pengguna</button>
     </div>
   `;
 
