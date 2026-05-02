@@ -632,13 +632,13 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap">
       <div class="modal-title" style="margin-bottom:0">✏️ Edit Data Pendaftaran</div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-secondary" onclick="closeModal('modalEditRiwayat')">Batal</button>
+        <button class="btn btn-secondary" onclick="erRestoreSaveEdit();closeModal('modalEditRiwayat')">Batal</button>
         <button class="btn btn-primary" id="btnSimpanEditRiwayat" onclick="doSimpanEditRiwayat()">💾 Simpan Perubahan</button>
       </div>
     </div>
     <div id="editRiwayatBody"></div>
     <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end;border-top:1px solid var(--gray-200);padding-top:16px">
-      <button class="btn btn-secondary" onclick="closeModal('modalEditRiwayat')">Batal</button>
+      <button class="btn btn-secondary" onclick="erRestoreSaveEdit();closeModal('modalEditRiwayat')">Batal</button>
       <button class="btn btn-primary" onclick="doSimpanEditRiwayat()">💾 Simpan Perubahan</button>
     </div>
   </div>
@@ -1887,7 +1887,14 @@ function ubRemoveUser(id){
   ubRefreshAllCardActions();
 }
 function ubReindexUsers(){
-  ubUsers.forEach((u,i)=>{const el=document.getElementById(`ubucnum-${u.id}`);if(el)el.textContent=`Pengguna ${i+1}`;});
+  ubUsers.forEach((u,i)=>{
+    // modal user-baru
+    const el = document.getElementById(`ubucnum-${u.id}`);
+    if (el) el.textContent = `Pengguna ${i+1}`;
+    // modal edit-riwayat
+    const erEl = document.getElementById(`erucnum-${u.id}`);
+    if (erEl) erEl.textContent = `Pengguna ${i+1}`;
+  });
 }
 function ubGetUserById(id){return ubUsers.find(u=>u.id===id);}
 
@@ -2627,7 +2634,13 @@ async function initUserRiwayat() {
           <div style="display:flex;flex-wrap:wrap;gap:6px">
             ${Object.entries(d.filesJson||{}).map(([key,f])=>{
               const LABEL={formPendaftaran:'Form Pendaftaran',skPengguna:'SK Pengguna SAKTI',ktpKpa:'KTP KPA/Pimpinan',skPejabat:'SK Pejabat Perbendaharaan',formOTP:'Form Aktivasi OTP',spesimen:'Spesimen Tanda Tangan',dokumenLain:'Dokumen Lainnya'};
-              const label=LABEL[key]||key;
+              let label = LABEL[key] || key;
+              // Resolve label dinamis untuk KTP per pengguna (key = ktp_user_<idx>)
+              if (key.startsWith('ktp_user_')) {
+                const idx = parseInt(key.slice(9), 10);
+                const u   = usersArr[idx];
+                label = 'KTP — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+              }
               return `<button onclick="satkerDownloadDokumen('${esc(f.url||'')}','${esc(label)}')"
                 style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--gray-300);color:var(--gray-700);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:.15s"
                 onmouseover="this.style.background='var(--blue-pale)';this.style.color='var(--blue)';this.style.borderColor='var(--blue-pale2)'"
@@ -2696,10 +2709,24 @@ function bukaModalUploadDokumen(info) {
   const butuhSK    = semuaPeran.some(p => PERAN_BUTUH_SK.includes(p));
   const butuhOTP   = semuaPeran.some(p => PERAN_BUTUH_OTP.includes(p));
 
+  // Build dokumen list — KTP dipisah per pengguna yang didaftarkan
+  const ktpDocs = users.map((u, idx) => {
+    const nama = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
+    const nip  = (u.nipnrp || '').trim();
+    const desc = nip ? ('KTP ' + nama + ' (NIP/NRP: ' + nip + ')') : ('KTP ' + nama);
+    return {
+      key: 'ktp_user_' + idx,
+      label: 'Scan KTP — ' + nama,
+      desc: desc,
+      required: true,
+      acceptImage: true   // izinkan PDF + gambar
+    };
+  });
+
   const dokumen = [
     { key:'formPendaftaran', label:'Form Pendaftaran User SAKTI',    desc:'Form pendaftaran yang sudah ditandatangani KPA', required:true },
     { key:'skPengguna',      label:'SK Pengguna SAKTI',              desc:'Surat Keputusan penetapan pengguna SAKTI dari pimpinan satker', required:true },
-    { key:'ktpKpa',          label:'Scan KTP KPA/Pimpinan',          desc:'KTP Kuasa Pengguna Anggaran atau pimpinan satker', required:true },
+    ...ktpDocs,
     ...(butuhSK ? [
       { key:'skPejabat',     label:'SK Pejabat Perbendaharaan',      desc:'SK pengangkatan KPA, PPK, PPSPM, atau Bendahara yang masih berlaku', required:true },
     ] : []),
@@ -2719,7 +2746,7 @@ function bukaModalUploadDokumen(info) {
     ${needsReupload ? `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#9a3412">
       ⚠️ <strong>Upload ulang semua dokumen</strong> — dokumen lama ditampilkan sebagai referensi dan bisa didownload, tapi harus diupload ulang karena data pendaftaran sudah diperbaiki.
     </div>` : ''}
-    <p style="font-size:12px;color:var(--gray-600);margin-bottom:14px">Format <strong>PDF</strong>, maks. <strong>2 MB</strong> per file. Klik 📥 di setiap dokumen yang sudah diupload untuk mendownloadnya.</p>
+    <p style="font-size:12px;color:var(--gray-600);margin-bottom:14px">Format <strong>PDF</strong> untuk dokumen, <strong>PDF/JPG/JPEG/PNG</strong> untuk Scan KTP. Maks. <strong>2 MB</strong> per file. Klik 📥 di setiap dokumen yang sudah diupload untuk mendownloadnya.</p>
     <div id="udDokGrid">
       ${dokumen.map(dok => {
         const existing = filesExist[dok.key];
@@ -2744,8 +2771,8 @@ function bukaModalUploadDokumen(info) {
                   📥 Download
                 </button>` : ''}
               <label style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">
-                <input type="file" accept=".pdf,application/pdf" style="display:none" onchange="udSelectFile('${dok.key}',this)"/>
-                ${sudahAda ? '🔄 Ganti' : '📄 Pilih PDF'}
+                <input type="file" accept="${dok.acceptImage?'.pdf,application/pdf,image/*':'.pdf,application/pdf'}" style="display:none" onchange="udSelectFile('${dok.key}',this,${dok.acceptImage?'true':'false'})"/>
+                ${sudahAda ? '🔄 Ganti' : (dok.acceptImage ? '📄 Pilih File' : '📄 Pilih PDF')}
               </label>
             </div>
           </div>
@@ -2765,18 +2792,30 @@ function bukaModalUploadDokumen(info) {
   openModal('modalUploadDokumen');
 }
 
-function udSelectFile(key, input) {
+function udSelectFile(key, input, allowImage) {
   const file = input.files[0];
   if (!file) return;
   const errEl = document.getElementById('ud_err_'+key);
   errEl.style.display='none';
 
-  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-    errEl.textContent='File harus berformat PDF.'; errEl.style.display='block';
-    input.value=''; return;
+  const fname = (file.name || '').toLowerCase();
+  const isPdf   = file.type === 'application/pdf' || fname.endsWith('.pdf');
+  const isImage = (file.type || '').startsWith('image/') ||
+                  /\.(jpg|jpeg|png|gif|bmp|webp|heic|heif)$/i.test(fname);
+
+  if (allowImage) {
+    if (!isPdf && !isImage) {
+      errEl.textContent='File KTP harus berformat PDF atau gambar (JPG, JPEG, PNG, dll).';
+      errEl.style.display='block'; input.value=''; return;
+    }
+  } else {
+    if (!isPdf) {
+      errEl.textContent='File harus berformat PDF.';
+      errEl.style.display='block'; input.value=''; return;
+    }
   }
   if (file.size > 2 * 1024 * 1024) {
-    errEl.textContent=`Ukuran file ${(file.size/1024/1024).toFixed(1)} MB melebihi batas maksimal 2 MB. Kompres file PDF terlebih dahulu.`;
+    errEl.textContent=`Ukuran file ${(file.size/1024/1024).toFixed(1)} MB melebihi batas maksimal 2 MB. Kompres file terlebih dahulu.`;
     errEl.style.display='block'; input.value=''; return;
   }
 
@@ -3085,23 +3124,23 @@ function erTambahPengguna() {
 }
 
 // Edit pengguna pakai modal ubEditUB yang sudah ada (reuse penuh)
+// Mode "edit-riwayat": override ubSaveEdit agar save ke kartu erucSummary, bukan ubucSummary
 function erOpenEditModal(id) {
   ubOpenEditModal(id);
-  // Override save button agar save ke erucSummary bukan ubucSummary
-  const origSave = window.ubSaveEdit.toString();
-  // Kita hijack ubSaveEdit sementara
   window._erEditingId = id;
-  window._erOrigSave = window.ubSaveEdit;
-  window.ubSaveEdit = function() {
-    const nama = (document.getElementById('ube-nama')?.value||'').trim();
-    const nipnrp = (document.getElementById('ube-nipnrp')?.value||'').trim();
-    const nik = (document.getElementById('ube-nik')?.value||'').trim();
-    const email = (document.getElementById('ube-email')?.value||'').trim();
-    const hp = (document.getElementById('ube-hp')?.value||'').trim();
-    const sk = (document.getElementById('ube-sk')?.value||'').trim();
-    const tglsk = (document.getElementById('ube-tglsk')?.value||'').trim();
+  // Hanya simpan original SEKALI (di first invocation), supaya panggilan berikutnya
+  // tidak menimpa _erOrigSave dengan versi yang sudah di-hijack.
+  if (!window._erOrigSave) window._erOrigSave = window.ubSaveEdit;
+  window.ubSaveEdit = function () {
+    const nama      = (document.getElementById('ube-nama')   ?.value || '').trim();
+    const nipnrp    = (document.getElementById('ube-nipnrp') ?.value || '').trim();
+    const nik       = (document.getElementById('ube-nik')    ?.value || '').trim();
+    const email     = (document.getElementById('ube-email')  ?.value || '').trim();
+    const hp        = (document.getElementById('ube-hp')     ?.value || '').trim();
+    const sk        = (document.getElementById('ube-sk')     ?.value || '').trim();
+    const tglsk     = (document.getElementById('ube-tglsk')  ?.value || '').trim();
     const peranList = ubGetCheckedPeran();
-    const emailErr = document.getElementById('ube-email-err');
+    const emailErr  = document.getElementById('ube-email-err');
     if (email) {
       const el = email.toLowerCase();
       if (!el.endsWith('.go.id') && !el.endsWith('.mil.id')) {
@@ -3110,18 +3149,41 @@ function erOpenEditModal(id) {
         showToast('Email harus berakhiran .go.id atau .mil.id', true); return;
       }
     }
-    emailErr.style.display = 'none'; document.getElementById('ube-email')?.classList.remove('err');
-    if (!nama) { showToast('Nama wajib diisi', true); return; }
-    if (!nipnrp) { showToast('NIP/NRP wajib diisi', true); return; }
-    if (!peranList.length) { showToast('Pilih minimal satu peran', true); return; }
-    const u = ubGetUserById(window._erEditingId); if (!u) return;
+    emailErr.style.display = 'none';
+    document.getElementById('ube-email')?.classList.remove('err');
+    if (!nama)               { showToast('Nama wajib diisi', true); return; }
+    if (!nipnrp)             { showToast('NIP/NRP wajib diisi', true); return; }
+    if (!peranList.length)   { showToast('Pilih minimal satu peran', true); return; }
+
+    // Validasi duplikat lintas pengguna lain (selain yang sedang diedit)
+    const editingId = window._erEditingId;
+    const dupNIP = ubUsers.find(u => u.id !== editingId && u.nipnrp && u.nipnrp === nipnrp);
+    if (dupNIP) { showToast(`❌ NIP/NRP sudah digunakan oleh: ${dupNIP.nama}`, true); return; }
+    if (nik) {
+      const dupNIK = ubUsers.find(u => u.id !== editingId && u.nik && u.nik === nik);
+      if (dupNIK) { showToast(`❌ NIK sudah digunakan oleh: ${dupNIK.nama}`, true); return; }
+    }
+    if (email) {
+      const dupEmail = ubUsers.find(u => u.id !== editingId && u.email && u.email.toLowerCase() === email.toLowerCase());
+      if (dupEmail) { showToast(`❌ Email sudah digunakan oleh: ${dupEmail.nama}`, true); return; }
+    }
+
+    const u = ubGetUserById(editingId); if (!u) return;
     u.nama=nama; u.nipnrp=nipnrp; u.nik=nik; u.email=email; u.hp=hp; u.sk=sk; u.tglsk=tglsk; u.peranList=peranList;
-    erRenderUserSummary(window._erEditingId);
+    erRenderUserSummary(editingId);
     closeModal('modalEditUB');
     showToast('✅ Data pengguna disimpan');
-    // Restore original
-    window.ubSaveEdit = window._erOrigSave;
   };
+}
+
+// Restore ubSaveEdit ke versi original saat keluar dari modal edit-riwayat.
+// Dipanggil saat tombol Batal/Close di modalEditRiwayat di-klik.
+function erRestoreSaveEdit() {
+  if (window._erOrigSave) {
+    window.ubSaveEdit = window._erOrigSave;
+    window._erOrigSave = null;
+  }
+  window._erEditingId = null;
 }
 
 async function doSimpanEditRiwayat() {
@@ -3192,6 +3254,7 @@ async function doSimpanEditRiwayat() {
         ...info, namaSatker, levelSatker, namaKpa, nip, noHp, kota, tglSurat, usersJson,
         filesJson: filesJsonLama, needsReupload: true,
       };
+      erRestoreSaveEdit();
       closeModal('modalEditRiwayat');
       showToast('✅ Data disimpan! Silakan upload ulang dokumen.', false, true);
       setTimeout(() => {
@@ -3209,6 +3272,7 @@ async function doSimpanEditRiwayat() {
       if (!res.success) { showToast(res.message || 'Gagal menyimpan', true); return; }
       Object.assign(_pdCache[_editRiwayatRef], { namaSatker, levelSatker, namaKpa, nip, noHp, kota, tglSurat, usersJson });
       showToast('✅ Data pendaftaran berhasil diperbarui', false, true);
+      erRestoreSaveEdit();
       closeModal('modalEditRiwayat');
       initUserRiwayat();
     }

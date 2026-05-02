@@ -1225,12 +1225,20 @@ async function lihatDetail(refKode){
       <div class="card-title" style="margin-bottom:8px">📎 Dokumen Pendaftaran</div>
       ${fileEntries.length ? `
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-        ${fileEntries.map(([key,f])=>`
-          <button onclick="adminDownloadDriveFile('${esc(f.url||'')}','${esc(LABEL_MAP[key]||key)}')"
+        ${fileEntries.map(([key,f])=>{
+          let label = LABEL_MAP[key] || key;
+          // Resolve label dinamis untuk KTP per pengguna (key = ktp_user_<idx>)
+          if (key.startsWith('ktp_user_')) {
+            const idx = parseInt(key.slice(9), 10);
+            const u   = (s.users||[])[idx];
+            label = 'KTP — ' + ((u && (u.nama||u.namaLengkap)) ? (u.nama||u.namaLengkap) : ('Pengguna #' + (idx+1)));
+          }
+          return `<button onclick="adminDownloadDriveFile('${esc(f.url||'')}','${esc(label)}')"
             style="display:inline-flex;align-items:center;gap:6px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;font-family:'Inter',sans-serif"
             onmouseover="this.style.background='var(--blue-pale2)'" onmouseout="this.style.background='var(--blue-pale)'">
-            📥 ${esc(LABEL_MAP[key]||key)}
-          </button>`).join('')}
+            📥 ${esc(label)}
+          </button>`;
+        }).join('')}
       </div>` : `
       <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#991b1b;display:flex;align-items:center;gap:8px">
         <span>⚠️</span> Belum ada dokumen yang diupload satker.
