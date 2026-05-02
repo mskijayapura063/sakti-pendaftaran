@@ -3730,3 +3730,193 @@ function bukaPerbaikiData(refKode) {
       <strong>Pendaftaran Ditolak — Ref: ${esc(info.refKode)}</strong><br/>
       Perbaiki data di bawah, lalu klik <strong>Simpan & Unduh Form Baru</strong>.
       Form Excel baru akan otomatis terundu
+      Form Excel baru akan otomatis terunduh dan Anda diarahkan ke halaman upload dokumen.
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div class="form-group" style="margin:0">
+        <label>Level Satker</label>
+        <select id="pd_levelSatker" style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 10px;font-size:13px;font-family:inherit">
+          ${LEVEL_OPT.map(v=>`<option value="${v}" ${v===(info.levelSatker||'Satker')?'selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Nama Satker</label>
+        <input id="pd_namaSatker" type="text" value="${esc(info.namaSatker||currentUser?.namaSatker||'')}" readonly
+          style="width:100%;border:1.5px solid var(--gray-200);border-radius:var(--radius);padding:9px 10px;font-size:13px;font-family:inherit;background:var(--gray-50);color:var(--gray-500)"/>
+      </div>
+    </div>
+
+    <!-- KPA -->
+    <div style="background:var(--blue-pale);border-left:3px solid var(--blue);padding:8px 14px;margin-bottom:12px;font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.4px;text-transform:uppercase;border-radius:0 6px 6px 0">
+      👤 Data KPA / Pimpinan Satker
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="form-group" style="margin:0">
+        <label>Nama KPA</label>
+        <input id="pd_namaKpa" type="text" value="${esc(info.namaKpa||'')}" placeholder="Nama lengkap KPA"
+          style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 10px;font-size:13px;font-family:inherit"/>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>NIP KPA</label>
+        <input id="pd_nip" type="text" value="${esc(info.nip||'')}" placeholder="18 digit NIP"
+          style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 10px;font-size:13px;font-family:inherit"/>
+      </div>
+      <div class="form-group" style="grid-column:1/-1;margin:0">
+        <label>No. HP KPA (WhatsApp)</label>
+        <input id="pd_noHp" type="tel" value="${esc(info.noHp||'')}" placeholder="Contoh: 08123456789"
+          style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 10px;font-size:13px;font-family:inherit"/>
+      </div>
+    </div>
+
+    <!-- Daftar pengguna (read-only, bisa dilihat) -->
+    ${users.length ? `
+    <details style="margin-bottom:12px">
+      <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--blue);padding:4px 0">
+        👥 ${users.length} Pengguna terdaftar (klik untuk lihat)
+      </summary>
+      <div style="margin-top:8px;overflow-x:auto">
+        <table class="tbl" style="font-size:11px">
+          <thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Peran</th></tr></thead>
+          <tbody>${users.map((u,i)=>`<tr>
+            <td style="text-align:center">${i+1}</td>
+            <td>${esc(u.nama||'')}</td>
+            <td style="font-family:monospace">${esc(u.nipnrp||'')}</td>
+            <td>${(u.peranList||[]).map(p=>`<span style="font-size:10px;background:var(--blue-pale);color:var(--blue);padding:1px 5px;border-radius:8px;margin:1px;display:inline-block">${esc(p.replace('SATKER_',''))}</span>`).join('')}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </details>` : ''}
+
+    <div id="pdErrBox" style="display:none;background:var(--red-pale);border:1px solid #FFCDD2;border-radius:6px;padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:8px"></div>`;
+
+  openModal('modalPerbaikiData');
+}
+
+async function doSimpanPerbaikan() {
+  if (!pdData) return;
+  const namaKpa = (document.getElementById('pd_namaKpa')?.value||'').trim();
+  const nip     = (document.getElementById('pd_nip')?.value||'').trim();
+  const noHp    = (document.getElementById('pd_noHp')?.value||'').trim();
+  const levelSatker = document.getElementById('pd_levelSatker')?.value || 'Satker';
+  const errBox  = document.getElementById('pdErrBox');
+  errBox.style.display='none';
+
+  if (!namaKpa) { errBox.textContent='Nama KPA wajib diisi.'; errBox.style.display='block'; return; }
+  if (!nip)     { errBox.textContent='NIP KPA wajib diisi.'; errBox.style.display='block'; return; }
+  if (!noHp)    { errBox.textContent='No. HP KPA wajib diisi.'; errBox.style.display='block'; return; }
+
+  const btn = document.getElementById('btnSimpanPerbaikan');
+  btn.disabled = true; btn.textContent = '⏳ Menyimpan...';
+
+  try {
+    const kodeSatker = currentUser?.username || '';
+    const namaSatker = pdData.namaSatker || currentUser?.namaSatker || '';
+    const tglStr = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+
+    showToast('⏳ Membuat form Excel baru...');
+    const resXls = await apiPost({
+      action:'generateExcel',
+      refKode: pdData.refKode, kodeSatker, namaSatker, levelSatker,
+      namaKpa, nip, kota:'Jayapura', tglStr,
+      users: (pdData.usersJson||[]).map(u=>({
+        nama:u.nama||'',nipnrp:u.nipnrp||'',nik:u.nik||'',
+        email:u.email||'',hp:u.hp||'',sk:u.sk||'',
+        tglsk:u.tglsk||'',peranList:u.peranList||[]
+      }))
+    });
+    if (!resXls.success) throw new Error(resXls.message || 'Gagal generate Excel');
+    const bytes = Uint8Array.from(atob(resXls.fileBase64),c=>c.charCodeAt(0));
+    const blob  = new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const xlsUrl= URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=xlsUrl; a.download=resXls.fileName||`Form-SAKTI-${kodeSatker}.xlsx`; a.click();
+    URL.revokeObjectURL(xlsUrl);
+
+    showToast('⏳ Menyimpan perbaikan...');
+    const resUpd = await apiPost({
+      action: 'updatePendaftaran',
+      refKode: pdData.refKode,
+      namaKpa, nip, noHp, levelSatker,
+      namaSatker, kodeSatker,
+      resetStatus: true,
+    });
+    if (!resUpd.success) throw new Error(resUpd.message || 'Gagal menyimpan perbaikan');
+
+    closeModal('modalPerbaikiData');
+    showToast('✅ Data disimpan! Silakan upload ulang dokumen pendukung.', false, true);
+
+    setTimeout(() => {
+      initUserRiwayat();
+      const uploadInfo = {
+        refKode:    pdData.refKode,
+        namaSatker: namaSatker,
+        usersJson:  pdData.usersJson || [],
+        filesJson:  {},
+      };
+      bukaModalUploadDokumen(uploadInfo);
+    }, 800);
+
+  } catch(e) {
+    errBox.textContent = '❌ ' + (e.message||'Terjadi kesalahan. Coba lagi.');
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 Simpan & Unduh Form Baru';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════════════════
+function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function fmtTgl(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+}
+function fmtTglWaktu(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function badgeStatus(s) {
+  const map = {
+    'Menunggu':  'badge-menunggu',
+    'Diproses':  'badge-proses',
+    'Selesai':   'badge-selesai',
+    'Terdaftar': 'badge-selesai',
+    'Ditolak':   'badge-ditolak',
+    'submitted': 'badge-menunggu',
+    'diproses':  'badge-proses',
+    'terdaftar': 'badge-selesai',
+    'ditolak':   'badge-ditolak',
+    'draft':     'badge-draft',
+  };
+  return `<span class="badge ${map[s]||'badge-draft'}">${esc(s||'—')}</span>`;
+}
+
+let toastT;
+function showToast(msg, isErr=false, isOk=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'on' + (isErr?' err':isOk?' ok':'');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { t.className = ''; }, 3500);
+}
+
+// ════════════════════════════════════════════════════════
+// AUTO-LOGIN
+// ════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = sessionStorage.getItem('sakti_satker');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      showApp();
+    } catch(e) { sessionStorage.removeItem('sakti_satker'); }
+  }
+});
+</script>
+</body>
+</html>
