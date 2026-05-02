@@ -141,6 +141,8 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
 /* ── MODAL ── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.on{display:flex}
+/* Modal yang harus muncul di ATAS modal lain (nested modal) — pakai z-index lebih tinggi */
+#modalEditUB,#modalPanggilRekamanUB,#modalPernyataanUB,#modalSuksesUB,#modalKonfirmasiEmail{z-index:700}
 .modal-box{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:28px 30px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;animation:fadeUp .2s ease}
 .modal-box.wide{max-width:740px}
 .modal-box.narrow{max-width:400px}
