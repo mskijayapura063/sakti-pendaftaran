@@ -532,6 +532,15 @@ async function apiPost(payload) {
   return res.json();
 }
 
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (el) { el.classList.add('on'); el.style.display='flex'; }
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) { el.classList.remove('on'); el.style.display='none'; }
+}
+
 // ════════════════════════════════════════════════════════
 // AUTH
 // ════════════════════════════════════════════════════════

@@ -646,6 +646,26 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
   </div>
 </div>
 
+<!-- ══ MODAL UPLOAD PERUBAHAN ══ -->
+<div class="modal-overlay" id="modalUploadPerubahan">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-title">📤 Upload Dokumen Perubahan</div>
+    <div id="pgUploadInfo" style="font-size:13px;color:var(--gray-600);margin-bottom:16px"></div>
+    <div class="info-box blue" style="margin-bottom:16px;font-size:13px">
+      Upload file PDF form perubahan yang sudah dicetak dan ditandatangani oleh KPA.
+    </div>
+    <div class="form-group">
+      <label>File PDF <span style="color:var(--red)">*</span></label>
+      <input type="file" id="pgUploadFile" accept=".pdf,application/pdf" style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:13px;font-family:'Inter',sans-serif"/>
+    </div>
+    <div id="pgUploadStatus" style="min-height:20px;font-size:13px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-secondary" onclick="closeModal('modalUploadPerubahan')">Batal</button>
+      <button class="btn btn-primary" onclick="pgDoUpload()">📤 Upload Dokumen</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ TOAST ══ -->
 <div id="toast"></div>
 
@@ -669,6 +689,15 @@ async function apiPost(payload) {
   if (currentUser?.token && !payload.token) payload.token = currentUser.token;
   const res = await fetch(APPS_SCRIPT_URL, { method:'POST', body: JSON.stringify(payload) });
   return res.json();
+}
+
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (el) { el.classList.add('on'); el.style.display='flex'; }
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) { el.classList.remove('on'); el.style.display='none'; }
 }
 
 // ════════════════════════════════════════════════════════
@@ -795,7 +824,7 @@ function switchTab(name) {
   else if (name === 'email-baru')    { main.innerHTML = renderEmailBaru();     initEmailBaru(); }
   else if (name === 'email-riwayat') { main.innerHTML = renderEmailRiwayat(); initEmailRiwayat(); }
   else if (name === 'user-baru')     { main.innerHTML = renderUserBaru();      initUserBaru(); }
-  else if (name === 'user-ganti')    { main.innerHTML = renderUserGanti(); }
+  else if (name === 'user-ganti')    { main.innerHTML = renderUserGanti();      initUserGanti(); }
   else if (name === 'user-riwayat')  { main.innerHTML = renderUserRiwayat();   initUserRiwayat(); }
   else if (name === 'role')          { main.innerHTML = renderDev('Perubahan Role User SAKTI'); }
   else if (name === 'data-user')     { main.innerHTML = renderDev('Perubahan Data Pengguna SAKTI'); }
@@ -2422,8 +2451,411 @@ function ubResetForm(){
 // ════════════════════════════════════════════════════════
 // USER SAKTI — PERGANTIAN
 // ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// PERUBAHAN USER SAKTI — state
+// ════════════════════════════════════════════════════════
+let pgSemulaUsers=[], pgMenjadiUsers=[], pgUserIdSeq=0, pgCurrentId=null, pgLocked=false;
+
 function renderUserGanti() {
-  return renderDev('Pergantian User SAKTI');
+  return `<div class="page-title"><strong style="font-size:22px">🔄 PERUBAHAN USER SAKTI</strong></div>
+  <div class="page-sub">Pengajuan perubahan pengguna aplikasi SAKTI — KPPN Jayapura</div>
+  <div id="pgBody"><p style="color:var(--gray-400);font-style:italic;text-align:center;padding:40px">⏳ Memuat...</p></div>`;
+}
+
+async function initUserGanti() {
+  const body = document.getElementById('pgBody');
+  if (!body) return;
+  pgSemulaUsers=[]; pgMenjadiUsers=[]; pgUserIdSeq=0; pgCurrentId=null; pgLocked=false;
+  const kode = currentUser?.username||'';
+  try {
+    const res = await apiPost({ action:'getRiwayatPerubahan' });
+    const list = res.list || [];
+    const last = list[0]; // yang terbaru
+    if (last && !['Ditolak',''].includes(last.status||'')) {
+      // Ada pengajuan aktif
+      pgCurrentId = last.id;
+      pgLocked    = ['Diproses','Terdaftar'].includes(last.status);
+      body.innerHTML = pgBuildFormHTML(last, kode);
+      (last.semula||[]).forEach(u => pgAddUser('semula',u));
+      (last.menjadi||[]).forEach(u => pgAddUser('menjadi',u));
+    } else {
+      pgLocked = false;
+      body.innerHTML = pgBuildFormHTML(null, kode);
+    }
+    pgReindexAll();
+    setTimeout(()=>{ pgInitFlatpickr(); }, 80);
+  } catch(e) {
+    body.innerHTML = `<div class="info-box red">❌ Gagal memuat data. <button class="btn btn-secondary btn-sm" onclick="initUserGanti()">Coba Lagi</button></div>`;
+  }
+}
+
+function pgBuildFormHTML(d, kode) {
+  const ro = pgLocked ? 'readonly' : '';
+  const status = d?.status||'';
+  const isDitolak = status.toLowerCase()==='ditolak';
+  const statusHtml = d ? (()=>{
+    const locked=['diproses','terdaftar'].includes(status.toLowerCase());
+    const clr=status.toLowerCase()==='ditolak'?'red':locked?'orange':'green';
+    const icon=status.toLowerCase()==='ditolak'?'❌':locked?'🔒':'✅';
+    return `<div class="info-box ${clr}" style="margin-bottom:18px">${icon} Pengajuan perubahan — status: <strong>${esc(status)}</strong>.
+      ${locked?' Data <strong>tidak dapat diubah</strong> selama sedang diproses KPPN.':''}
+      ${isDitolak?`<br/>Catatan: <em>${esc(d.catatanAdmin||'-')}</em><br/>Perbaiki data lalu unduh ulang Excel.`:''}</div>`;
+  })() : '';
+
+  return `
+  ${statusHtml}
+  <div class="info-box blue" style="margin-bottom:18px">
+    <strong>📋 Cara perubahan:</strong>
+    <ul style="padding-left:16px;margin-top:6px;line-height:1.9">
+      <li>Isi data satker, data KPA, lalu isi tabel <strong>Semula</strong> (data lama) dan <strong>Menjadi</strong> (data baru).</li>
+      <li>Pilih <strong>Keterangan</strong> (Permanen/Sementara) di setiap pengguna.</li>
+      <li>Klik <strong>"Unduh Excel"</strong> → cetak → minta tanda tangan KPA → upload ke KPPN.</li>
+    </ul>
+  </div>
+  <div class="error-panel" id="pgErrPanel"><strong>⚠️ Harap perbaiki:</strong><ul id="pgErrList"></ul></div>
+
+  <!-- Data Satker -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">🏢 Data Satker</div>
+    <div class="ub-form-row">
+      <div class="ub-form-group" style="max-width:160px">
+        <label>Kode Satker</label>
+        <input type="text" value="${esc(kode)}" readonly style="background:var(--gray-100);font-family:monospace;font-weight:700;letter-spacing:1px"/>
+      </div>
+      <div class="ub-form-group">
+        <label>Nama Satker <span style="color:var(--red)">*</span></label>
+        <input type="text" id="pg_namaSatker" value="${esc(d?.namaSatker||currentUser?.namaLengkap||'')}" ${ro} placeholder="Nama lengkap satker"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data KPA -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">🏛️ Data KPA (Penandatangan)</div>
+    <div class="ub-form-row">
+      <div class="ub-form-group">
+        <label>Nama KPA <span style="color:var(--red)">*</span></label>
+        <input type="text" id="pg_namaKpa" value="${esc(d?.namaKpa||'')}" ${ro} placeholder="Nama lengkap KPA"/>
+      </div>
+      <div class="ub-form-group">
+        <label>NIP KPA <span style="color:var(--red)">*</span></label>
+        <input type="text" id="pg_nip" value="${esc(d?.nip||'')}" ${ro} placeholder="199001012020011001" maxlength="18" style="font-family:monospace"/>
+      </div>
+    </div>
+    <div class="ub-form-row">
+      <div class="ub-form-group">
+        <label>No. HP / WA <span style="color:var(--red)">*</span></label>
+        <input type="text" id="pg_noHp" value="${esc(d?.noHp||'')}" ${ro} placeholder="08xx-xxxx-xxxx"/>
+      </div>
+      <div class="ub-form-group">
+        <label>Kota / Tempat TTD</label>
+        <input type="text" id="pg_kota" value="${esc(d?.kota||'Jayapura')}" ${ro} placeholder="Jayapura"/>
+      </div>
+      <div class="ub-form-group">
+        <label>Tanggal Surat</label>
+        <input type="text" id="pg_tglSurat" value="${esc(d?.tglSurat||'')}" placeholder="Pilih tanggal..." readonly style="cursor:${pgLocked?'default':'pointer'}"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabel SEMULA -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>📋 Data Pengguna SEMULA (kondisi saat ini)</span>
+    </div>
+    <div id="pgSemulaList"></div>
+    ${!pgLocked?`<button class="btn-add-user" onclick="pgAddUser('semula')">+ Tambah Pengguna Semula</button>`:''}
+  </div>
+
+  <!-- Tabel MENJADI -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>✅ Data Pengguna MENJADI (kondisi yang diinginkan)</span>
+    </div>
+    <div id="pgMenjadiList"></div>
+    ${!pgLocked?`<button class="btn-add-user" onclick="pgAddUser('menjadi')">+ Tambah Pengguna Menjadi</button>`:''}
+  </div>
+
+  <!-- Unduh Excel -->
+  ${!pgLocked?`
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">📥 Unduh Excel & Kirim Pengajuan</div>
+    <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">
+      Setelah semua data terisi, klik tombol di bawah. File Excel akan terunduh — cetak, minta tanda tangan KPA, lalu upload PDF ke KPPN.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-success" onclick="pgTrySubmit()">⬇️ Unduh Excel Perubahan</button>
+      <button class="btn btn-secondary" onclick="pgResetForm()">↺ Reset Form</button>
+    </div>
+  </div>
+  `:`
+  <div style="display:flex;gap:10px;margin-top:4px">
+    <button class="btn btn-outline btn-sm" onclick="switchTab('user-riwayat')">📋 Lihat Riwayat</button>
+    ${d&&d.id&&!['Terdaftar'].includes(d.status)?`<button class="btn btn-primary btn-sm" onclick="pgBukaUploadModal('${esc(d?.id||'')}')">📤 Upload Dokumen</button>`:''}
+  </div>
+  `}`;
+}
+
+// ── User card untuk SEMULA / MENJADI ──────────────────────────────────────
+function pgMakeid(){return ++pgUserIdSeq;}
+function pgAddUser(tipe, data={}) {
+  const id = pgMakeid();
+  const entry = {id, tipe, nama:data.nama||'', nipnrp:data.nipnrp||data.nip||'', nik:data.nik||'',
+    email:data.email||'', hp:data.hp||'', sk:data.sk||'', tglsk:data.tglsk||'',
+    peranList:data.peranList||[], keterangan:data.keterangan||'Permanen'};
+  if(tipe==='semula') pgSemulaUsers.push(entry);
+  else                pgMenjadiUsers.push(entry);
+  pgRenderUserCard(id, tipe);
+  pgReindexAll();
+  return id;
+}
+function pgRemoveUser(id, tipe) {
+  if(tipe==='semula') pgSemulaUsers=pgSemulaUsers.filter(u=>u.id!==id);
+  else                pgMenjadiUsers=pgMenjadiUsers.filter(u=>u.id!==id);
+  document.getElementById(`pguc-${tipe}-${id}`)?.remove();
+  pgReindexAll();
+  pgRefreshAllCardActions();
+}
+function pgGetUser(id, tipe){ return (tipe==='semula'?pgSemulaUsers:pgMenjadiUsers).find(u=>u.id===id); }
+function pgReindexAll(){
+  pgSemulaUsers.forEach((u,i)=>{const el=document.getElementById(`pgucnum-semula-${u.id}`);if(el)el.textContent=`Pengguna ${i+1}`;});
+  pgMenjadiUsers.forEach((u,i)=>{const el=document.getElementById(`pgucnum-menjadi-${u.id}`);if(el)el.textContent=`Pengguna ${i+1}`;});
+}
+function pgIsFilled(u){ return !!(u&&(u.nama||'').trim()&&(u.nipnrp||'').trim()&&u.peranList&&u.peranList.length>0); }
+
+function pgRenderUserCard(id, tipe){
+  const u=pgGetUser(id,tipe);
+  const wrap=document.getElementById(tipe==='semula'?'pgSemulaList':'pgMenjadiList');
+  document.getElementById(`pguc-${tipe}-${id}`)?.remove();
+  const filled=pgIsFilled(u);
+  const editLabel=filled?'✏️ Edit':'📝 Isi Data';
+  const editClass=filled?'btn btn-outline btn-sm':'btn btn-primary btn-sm';
+  const arr = tipe==='semula'?pgSemulaUsers:pgMenjadiUsers;
+  const showHapus=!pgLocked&&arr.length>1&&filled;
+  const div=document.createElement('div');
+  div.className='user-card'; div.id=`pguc-${tipe}-${id}`;
+  div.innerHTML=`
+    <div class="user-card-header">
+      <span class="user-card-num" id="pgucnum-${tipe}-${id}">Pengguna</span>
+      <div class="user-card-actions" id="pgucActions-${tipe}-${id}">
+        ${!pgLocked?`<button class="${editClass}" onclick="pgOpenEditModal(${id},'${tipe}')">${editLabel}</button>
+        ${showHapus?`<button class="btn btn-danger btn-sm" onclick="pgRemoveUser(${id},'${tipe}')">✕ Hapus</button>`:''}`:``}
+      </div>
+    </div>
+    <div id="pgucSummary-${tipe}-${id}"></div>`;
+  wrap.appendChild(div);
+  pgRenderUserSummary(id, tipe);
+}
+function pgRefreshAllCardActions(){
+  [...pgSemulaUsers,...pgMenjadiUsers].forEach(u=>{
+    const actEl=document.getElementById(`pgucActions-${u.tipe}-${u.id}`);
+    if(!actEl)return;
+    const filled=pgIsFilled(u);
+    const editLabel=filled?'✏️ Edit':'📝 Isi Data';
+    const editClass=filled?'btn btn-outline btn-sm':'btn btn-primary btn-sm';
+    const arr=u.tipe==='semula'?pgSemulaUsers:pgMenjadiUsers;
+    const showHapus=!pgLocked&&arr.length>1&&filled;
+    actEl.innerHTML=!pgLocked?`<button class="${editClass}" onclick="pgOpenEditModal(${u.id},'${u.tipe}')">${editLabel}</button>
+      ${showHapus?`<button class="btn btn-danger btn-sm" onclick="pgRemoveUser(${u.id},'${u.tipe}')">✕ Hapus</button>`:''}`:``;
+  });
+}
+function pgRenderUserSummary(id, tipe){
+  const u=pgGetUser(id,tipe);
+  const el=document.getElementById(`pgucSummary-${tipe}-${id}`);
+  if(!el)return;
+  const kelompoks=[...new Set((u.peranList||[]).map(k=>ubGetKelompok(k)).filter(Boolean))];
+  const kbCls=kelompoks.length>1?'kb-M':kelompoks[0]?`kb-${kelompoks[0][0]}`:'';
+  el.innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--gray-700)">
+    <span><strong>Nama:</strong> ${u.nama||'<em style="color:var(--gray-400)">belum diisi</em>'}</span>
+    <span style="color:var(--gray-300)">|</span>
+    <span><strong>NIP/NRP:</strong> ${u.nipnrp||'—'}</span>
+    <span style="color:var(--gray-300)">|</span>
+    <span><strong>Email:</strong> ${u.email||'—'}</span>
+    <span style="color:var(--gray-300)">|</span>
+    <span><strong>Peran:</strong> ${(u.peranList||[]).length?(u.peranList||[]).map(k=>`<span class="kb ${kbCls}">${ubGetLabel(k)}</span>`).join(''):'<em style="color:var(--red)">belum dipilih</em>'}</span>
+    <span style="color:var(--gray-300)">|</span>
+    <span><strong>Ket:</strong> <em>${esc(u.keterangan||'Permanen')}</em></span>
+  </div>`;
+  pgRefreshAllCardActions();
+}
+
+// ── Edit modal (reuse modalEditUB) ─────────────────────────────────────────
+let pgEditingId=null, pgEditingTipe=null;
+function pgOpenEditModal(id, tipe){
+  pgEditingId=id; pgEditingTipe=tipe;
+  ubEditingId=id; // reuse ubOpenEditModal infrastructure
+  const u=pgGetUser(id,tipe);
+  // Copy ke ubUsers sementara agar ubOpenEditModal bisa baca
+  const orig=ubUsers;
+  ubUsers=[{...u}];
+  ubOpenEditModal(id);
+  ubUsers=orig;
+  // Hijack ubSaveEdit
+  const _origSave=window.ubSaveEdit;
+  window.ubSaveEdit=function(){
+    const nama=(document.getElementById('ube-nama')?.value||'').trim();
+    const nipnrp=(document.getElementById('ube-nipnrp')?.value||'').trim();
+    const nik=(document.getElementById('ube-nik')?.value||'').trim();
+    const email=(document.getElementById('ube-email')?.value||'').trim();
+    const hp=(document.getElementById('ube-hp')?.value||'').trim();
+    const sk=(document.getElementById('ube-sk')?.value||'').trim();
+    const tglsk=(document.getElementById('ube-tglsk')?.value||'').trim();
+    const peranList=[...document.querySelectorAll('#ubePeranWrap input[type=checkbox]:checked')].map(el=>el.value);
+    const emailErr=document.getElementById('ube-emailErr');
+    if(!nama){showToast('Nama wajib diisi',true);return;}
+    if(!nipnrp){showToast('NIP/NRP wajib diisi',true);return;}
+    if(!email){if(emailErr){emailErr.textContent='Email kedinasan wajib diisi.';emailErr.style.display='block';}showToast('Email kedinasan wajib diisi',true);return;}
+    const el2=email.toLowerCase();
+    if(!el2.endsWith('.go.id')&&!el2.endsWith('.mil.id')){if(emailErr){emailErr.textContent='Email harus berakhiran .go.id atau .mil.id.';emailErr.style.display='block';}showToast('Email harus berakhiran .go.id atau .mil.id',true);return;}
+    if(!peranList.length){showToast('Pilih minimal 1 peran',true);return;}
+    // Keterangan — ambil dari select jika ada, else default
+    const ketEl=document.getElementById('ube-keterangan');
+    const keterangan=ketEl?ketEl.value:'Permanen';
+    const target=pgGetUser(pgEditingId,pgEditingTipe);
+    if(!target){closeModal('modalEditUB');window.ubSaveEdit=_origSave;return;}
+    Object.assign(target,{nama,nipnrp,nik,email,hp,sk,tglsk,peranList,keterangan});
+    pgRenderUserSummary(pgEditingId,pgEditingTipe);
+    closeModal('modalEditUB');
+    showToast('✅ Data pengguna berhasil disimpan');
+    window.ubSaveEdit=_origSave;
+  };
+}
+
+// ── Tambahkan field Keterangan ke modal edit UB ─────────────────────────────
+// Patch ubOpenEditModal: inject dropdown Keterangan setelah tglsk field
+const _origUbOpenEditModal = window.ubOpenEditModal;
+// (patch dilakukan via MutationObserver saat modal terbuka)
+function pgPatchModalKeterangan(keterangan) {
+  // Inject setelah field tglsk jika belum ada
+  const modal=document.getElementById('modalEditUB');
+  if(!modal)return;
+  if(document.getElementById('ube-keterangan'))return; // sudah ada
+  const tglRow=document.getElementById('ube-tglsk')?.closest('.ub-form-group');
+  if(!tglRow)return;
+  const wrap=tglRow.parentElement;
+  if(!wrap)return;
+  const div=document.createElement('div');
+  div.className='ub-form-group';
+  div.innerHTML=`<label>Keterangan</label>
+    <select id="ube-keterangan" style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif">
+      <option value="Permanen"${keterangan==='Permanen'?' selected':''}>Permanen</option>
+      <option value="Sementara"${keterangan==='Sementara'?' selected':''}>Sementara</option>
+    </select>`;
+  wrap.appendChild(div);
+}
+
+// Tambahkan observer saat pgOpenEditModal dipanggil
+const _pgObserver=new MutationObserver(()=>{
+  const modal=document.getElementById('modalEditUB');
+  if(modal&&modal.style.display!=='none'&&!document.getElementById('ube-keterangan')){
+    const u=pgEditingId?pgGetUser(pgEditingId,pgEditingTipe):null;
+    pgPatchModalKeterangan(u?.keterangan||'Permanen');
+  }
+});
+document.addEventListener('DOMContentLoaded',()=>{
+  const m=document.getElementById('modalEditUB');
+  if(m) _pgObserver.observe(m,{attributes:true,attributeFilter:['style']});
+});
+
+// ── Flatpickr ──────────────────────────────────────────────────────────────
+function pgInitFlatpickr(){
+  const el=document.getElementById('pg_tglSurat');
+  if(!el||pgLocked)return;
+  if(el._flatpickr)el._flatpickr.destroy();
+  flatpickr(el,{locale:'id',dateFormat:'d-m-Y',allowInput:false,disableMobile:true});
+}
+
+// ── Validasi & Submit ──────────────────────────────────────────────────────
+function pgCollectData(){
+  const namaSatker=(document.getElementById('pg_namaSatker')?.value||'').trim();
+  const namaKpa=(document.getElementById('pg_namaKpa')?.value||'').trim();
+  const nip=(document.getElementById('pg_nip')?.value||'').trim();
+  const noHp=(document.getElementById('pg_noHp')?.value||'').trim();
+  const kota=(document.getElementById('pg_kota')?.value||'Jayapura').trim();
+  const tglSurat=(document.getElementById('pg_tglSurat')?.value||'').trim();
+  return {namaSatker,namaKpa,nip,noHp,kota,tglSurat};
+}
+
+function pgValidate(){
+  const errors=[];
+  const {namaSatker,namaKpa,nip,noHp} = pgCollectData();
+  if(!namaSatker) errors.push('Nama Satker wajib diisi');
+  if(!namaKpa)    errors.push('Nama KPA wajib diisi');
+  if(!nip)        errors.push('NIP KPA wajib diisi');
+  if(!noHp)       errors.push('No. HP wajib diisi');
+  if(!pgSemulaUsers.length) errors.push('Data SEMULA wajib diisi minimal 1 pengguna');
+  if(!pgMenjadiUsers.length) errors.push('Data MENJADI wajib diisi minimal 1 pengguna');
+  pgSemulaUsers.forEach((u,i)=>{
+    if(!pgIsFilled(u)) errors.push(`Pengguna Semula ${i+1}: Data belum lengkap — klik Isi Data`);
+  });
+  pgMenjadiUsers.forEach((u,i)=>{
+    if(!pgIsFilled(u)) errors.push(`Pengguna Menjadi ${i+1}: Data belum lengkap — klik Isi Data`);
+  });
+  const errPanel=document.getElementById('pgErrPanel');
+  const errList=document.getElementById('pgErrList');
+  if(errors.length){
+    errPanel.style.display='block';
+    errList.innerHTML=errors.map(e=>`<li>${esc(e)}</li>`).join('');
+    errPanel.scrollIntoView({behavior:'smooth',block:'start'});
+    return false;
+  }
+  if(errPanel) errPanel.style.display='none';
+  return true;
+}
+
+async function pgTrySubmit(){
+  if(!pgValidate())return;
+  const {namaSatker,namaKpa,nip,noHp,kota,tglSurat}=pgCollectData();
+  const tglStr=tglSurat?ubFormatTglIndo(tglSurat):'______';
+  const semula=pgSemulaUsers.map(u=>({nama:u.nama,nipnrp:u.nipnrp,nik:u.nik,email:u.email,hp:u.hp,sk:u.sk,tglsk:u.tglsk,peranList:u.peranList,keterangan:u.keterangan}));
+  const menjadi=pgMenjadiUsers.map(u=>({nama:u.nama,nipnrp:u.nipnrp,nik:u.nik,email:u.email,hp:u.hp,sk:u.sk,tglsk:u.tglsk,peranList:u.peranList,keterangan:u.keterangan}));
+  showToast('⏳ Menyiapkan Excel...');
+  try{
+    const res=await apiPost({action:'generatePerubahanExcel',id:pgCurrentId||'',namaSatker,namaKpa,nip,noHp,kota,tglStr,tglSurat,semula,menjadi});
+    if(!res.success){showToast(res.message||'Gagal generate Excel',true);return;}
+    pgCurrentId=res.id;
+    const bytes=Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
+    const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=res.fileName||'Form_Perubahan_SAKTI.xlsx';a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ Excel berhasil didownload! Silakan upload dokumen setelah ditandatangani.',false,true);
+    // Tampilkan tombol upload
+    setTimeout(()=>pgBukaUploadModal(pgCurrentId), 800);
+  }catch(e){showToast('❌ Gagal generate Excel',true);}
+}
+
+function pgResetForm(){
+  if(!confirm('Reset semua data form perubahan? Data yang belum diunduh akan hilang.'))return;
+  pgCurrentId=null;
+  initUserGanti();
+}
+
+// ── Upload Dokumen Modal ────────────────────────────────────────────────────
+let pgUploadId=null;
+function pgBukaUploadModal(id){
+  pgUploadId=id;
+  document.getElementById('pgUploadInfo').innerHTML=`<strong>ID:</strong> ${esc(id)}`;
+  document.getElementById('pgUploadFile').value='';
+  document.getElementById('pgUploadStatus').innerHTML='';
+  openModal('modalUploadPerubahan');
+}
+async function pgDoUpload(){
+  const fileInput=document.getElementById('pgUploadFile');
+  const f=fileInput?.files?.[0];
+  if(!f){showToast('Pilih file PDF terlebih dahulu',true);return;}
+  if(f.type!=='application/pdf'&&!f.name.endsWith('.pdf')){showToast('File harus berformat PDF',true);return;}
+  if(f.size>10*1024*1024){showToast('File maksimal 10 MB',true);return;}
+  const statusEl=document.getElementById('pgUploadStatus');
+  statusEl.innerHTML='<span style="color:var(--blue)">⏳ Mengupload...</span>';
+  try{
+    const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(f);});
+    const result=await apiPost({action:'uploadFilePdf_Perubahan',id:pgUploadId,fileBase64:b64,fileName:f.name,fileType:f.type});
+    if(!result.success){statusEl.innerHTML=`<span style="color:var(--red)">❌ ${esc(result.message)}</span>`;return;}
+    statusEl.innerHTML='<span style="color:var(--green)">✅ Dokumen berhasil diupload!</span>';
+    showToast('✅ Dokumen berhasil diupload! Menunggu verifikasi KPPN.',false,true);
+    setTimeout(()=>{closeModal('modalUploadPerubahan');initUserGanti();},1200);
+  }catch(e){statusEl.innerHTML='<span style="color:var(--red)">❌ Gagal upload. Coba lagi.</span>';}
 }
 
 // ════════════════════════════════════════════════════════
