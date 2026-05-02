@@ -339,6 +339,13 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
     <p style="text-align:center;font-size:11px;color:var(--gray-400);margin-top:16px">
       Password default = kode satker Anda.<br/>Hubungi KPPN Jayapura jika lupa password.
     </p>
+    <div style="text-align:center;margin-top:6px">
+      <button type="button" onclick="testKoneksi()"
+        style="background:none;border:none;color:var(--gray-500);font-size:11px;cursor:pointer;text-decoration:underline">
+        🔧 Tes koneksi server
+      </button>
+    </div>
+    <div id="diagBox" style="display:none;margin-top:10px;padding:10px;border-radius:6px;font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-all"></div>
   </div>
 </div>
 
@@ -687,8 +694,31 @@ let userSaktiData = null;       // cache data pendaftaran user sakti milik satke
 // ════════════════════════════════════════════════════════
 async function apiPost(payload) {
   if (currentUser?.token && !payload.token) payload.token = currentUser.token;
-  const res = await fetch(APPS_SCRIPT_URL, { method:'POST', body: JSON.stringify(payload) });
-  return res.json();
+  let res;
+  try {
+    res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      // JANGAN set Content-Type agar tidak trigger CORS preflight di Apps Script
+      body: JSON.stringify(payload),
+    });
+  } catch(netErr) {
+    console.error('[apiPost] Network error:', netErr);
+    return { success:false, message:'Tidak bisa terhubung ke server. Cek koneksi internet & URL Apps Script.' };
+  }
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch(parseErr) {
+    console.error('[apiPost] Non-JSON response (status='+res.status+'):', text.slice(0,500));
+    let hint = '';
+    if (text.includes('Sorry, unable to open') || text.includes('Google Drive')) {
+      hint = ' (Deployment Apps Script belum di-set "Anyone". Buka Apps Script → Deploy → Manage Deployments → Edit → Who has access: Anyone.)';
+    } else if (text.includes('<html') || text.includes('<HTML')) {
+      hint = ' (Server mengembalikan HTML, bukan JSON. URL Apps Script mungkin salah / deployment belum aktif.)';
+    }
+    return { success:false, message:'Server tidak merespons JSON valid (HTTP '+res.status+').'+hint };
+  }
 }
 
 function openModal(id) {
@@ -712,15 +742,23 @@ async function doLogin() {
   if (!username || !password) { showLoginErr('Kode satker dan password wajib diisi'); return; }
   btn.disabled = true; btn.textContent = '⏳ Memverifikasi...';
   try {
-    const res = await fetch(APPS_SCRIPT_URL, { method:'POST', body: JSON.stringify({ action:'login', username, password }) });
-    const data = await res.json();
-    if (!data.success) { showLoginErr(data.message || 'Username atau password salah'); btn.disabled=false; btn.innerHTML='🔐 Masuk'; return; }
-    if (data.role !== 'Satker') { showLoginErr('Akses hanya untuk akun Satker'); btn.disabled=false; btn.innerHTML='🔐 Masuk'; return; }
+    const data = await apiPost({ action:'login', username, password });
+    if (!data || !data.success) {
+      showLoginErr(data?.message || 'Username atau password salah');
+      btn.disabled=false; btn.innerHTML='🔐 Masuk';
+      return;
+    }
+    if (data.role !== 'Satker') {
+      showLoginErr('Akses ditolak: akun ini bukan Satker (role: '+data.role+')');
+      btn.disabled=false; btn.innerHTML='🔐 Masuk';
+      return;
+    }
     currentUser = data;
     sessionStorage.setItem('sakti_satker', JSON.stringify(data));
     showApp();
   } catch(e) {
-    showLoginErr('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+    console.error('[doLogin] error:', e);
+    showLoginErr('Gagal terhubung ke server: '+e.message);
     btn.disabled=false; btn.innerHTML='🔐 Masuk';
   }
 }
@@ -728,6 +766,39 @@ async function doLogin() {
 function showLoginErr(msg) {
   const el = document.getElementById('loginErr');
   el.textContent = msg; el.classList.add('show');
+}
+
+// Tes koneksi ke Apps Script — kasih hasil rinci di layar login
+async function testKoneksi(){
+  const box=document.getElementById('diagBox');
+  box.style.display='block';
+  box.style.background='#FFF8E1';
+  box.style.color='#5D4037';
+  box.textContent='⏳ Menguji koneksi ke Apps Script...';
+  const t0=Date.now();
+  try{
+    const r=await fetch(APPS_SCRIPT_URL+'?action=ping',{method:'GET',redirect:'follow'});
+    const txt=await r.text();
+    const ms=Date.now()-t0;
+    let parsed=null;
+    try{parsed=JSON.parse(txt);}catch(_){}
+    if(r.ok && parsed && parsed.success){
+      box.style.background='#E8F5E9';box.style.color='#1B5E20';
+      box.textContent='✅ Koneksi OK ('+ms+'ms)\nResponse: '+JSON.stringify(parsed);
+    } else {
+      box.style.background='#FFEBEE';box.style.color='#B71C1C';
+      box.textContent='❌ Koneksi BERMASALAH (HTTP '+r.status+', '+ms+'ms)\n'
+        +'URL: '+APPS_SCRIPT_URL+'\n'
+        +'Body (potong 400 char): '+txt.slice(0,400)+'\n\n'
+        +'Kemungkinan penyebab:\n'
+        +'1. Apps Script belum di-redeploy. Buka editor Apps Script → Deploy → Manage deployments → Edit → Version "New" → Deploy.\n'
+        +'2. Akses deployment bukan "Anyone". Set Who has access = Anyone.\n'
+        +'3. URL deployment di file HTML salah/expired.';
+    }
+  }catch(e){
+    box.style.background='#FFEBEE';box.style.color='#B71C1C';
+    box.textContent='❌ Network error: '+e.message+'\nKemungkinan: koneksi internet putus, URL salah, atau diblokir CORS.';
+  }
 }
 
 function showApp() {
@@ -3906,15 +3977,25 @@ function showToast(msg, isErr=false, isOk=false) {
 }
 
 // ════════════════════════════════════════════════════════
-// AUTO-LOGIN
+// AUTO-LOGIN — validasi token ke server dulu
 // ════════════════════════════════════════════════════════
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
   const saved = sessionStorage.getItem('sakti_satker');
-  if (saved) {
-    try {
-      currentUser = JSON.parse(saved);
-      showApp();
-    } catch(e) { sessionStorage.removeItem('sakti_satker'); }
+  if (!saved) return;
+  try {
+    currentUser = JSON.parse(saved);
+    if (!currentUser?.token) { sessionStorage.removeItem('sakti_satker'); currentUser=null; return; }
+    // Validasi token: kalau gagal, anggap session expired & balik ke login
+    const v = await apiPost({ action:'validateToken' });
+    if (!v || !v.success) {
+      sessionStorage.removeItem('sakti_satker');
+      currentUser = null;
+      return;
+    }
+    showApp();
+  } catch(e) {
+    sessionStorage.removeItem('sakti_satker');
+    currentUser = null;
   }
 });
 </script>

@@ -284,6 +284,13 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
         style="width:100%;justify-content:center;padding:10px;font-size:14px">
         🔐 Masuk
       </button>
+      <div style="text-align:center;margin-top:14px">
+        <button type="button" onclick="testKoneksi()"
+          style="background:none;border:none;color:var(--gray-500);font-size:11px;cursor:pointer;text-decoration:underline">
+          🔧 Tes koneksi server
+        </button>
+      </div>
+      <div id="diagBox" style="display:none;margin-top:10px;padding:10px;border-radius:6px;font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-all"></div>
     </div>
   </div>
 </div>
@@ -528,8 +535,32 @@ let activeRollbackRef = null; // ref untuk rollback status
 // ════════════════════════════════════════════════════════
 async function apiPost(payload) {
   if (currentUser?.token && !payload.token) payload.token = currentUser.token;
-  const res = await fetch(APPS_SCRIPT_URL, { method:'POST', body: JSON.stringify(payload) });
-  return res.json();
+  let res;
+  try {
+    res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      // JANGAN set Content-Type agar tidak trigger CORS preflight di Apps Script
+      body: JSON.stringify(payload),
+    });
+  } catch(netErr) {
+    console.error('[apiPost] Network error:', netErr);
+    return { success:false, message:'Tidak bisa terhubung ke server Apps Script. Cek koneksi internet & URL deploy.' };
+  }
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch(parseErr) {
+    console.error('[apiPost] Non-JSON response (status='+res.status+'):', text.slice(0,500));
+    // Apps Script biasanya return HTML "Sorry, unable to open the file" jika deployment tidak public
+    let hint = '';
+    if (text.includes('Sorry, unable to open') || text.includes('Google Drive')) {
+      hint = ' (Deployment Apps Script belum di-set "Anyone" / "Siapa saja". Buka Apps Script → Deploy → Manage Deployments → Edit → Who has access: Anyone.)';
+    } else if (text.includes('<html') || text.includes('<HTML')) {
+      hint = ' (Server mengembalikan HTML, bukan JSON. URL Apps Script mungkin salah atau deployment belum aktif.)';
+    }
+    return { success:false, message:'Server tidak merespons JSON valid (HTTP '+res.status+').'+hint };
+  }
 }
 
 function openModal(id) {
@@ -571,6 +602,39 @@ function togglePwd(id,btn){
   const show=el.type==='password';
   el.type=show?'text':'password';
   btn.textContent=show?'🙈':'👁️';
+}
+
+// Tes koneksi ke Apps Script — kasih hasil rinci ke user
+async function testKoneksi(){
+  const box=document.getElementById('diagBox');
+  box.style.display='block';
+  box.style.background='#FFF8E1';
+  box.style.color='#5D4037';
+  box.textContent='⏳ Menguji koneksi ke Apps Script...';
+  const t0=Date.now();
+  try{
+    const r=await fetch(APPS_SCRIPT_URL+'?action=ping',{method:'GET',redirect:'follow'});
+    const txt=await r.text();
+    const ms=Date.now()-t0;
+    let parsed=null;
+    try{parsed=JSON.parse(txt);}catch(_){}
+    if(r.ok && parsed && parsed.success){
+      box.style.background='#E8F5E9';box.style.color='#1B5E20';
+      box.textContent='✅ Koneksi OK ('+ms+'ms)\nResponse: '+JSON.stringify(parsed);
+    } else {
+      box.style.background='#FFEBEE';box.style.color='#B71C1C';
+      box.textContent='❌ Koneksi BERMASALAH (HTTP '+r.status+', '+ms+'ms)\n'
+        +'URL: '+APPS_SCRIPT_URL+'\n'
+        +'Body (potong 400 char): '+txt.slice(0,400)+'\n\n'
+        +'Kemungkinan penyebab:\n'
+        +'1. Apps Script belum di-redeploy. Buka editor Apps Script → Deploy → Manage deployments → Edit (✏️) → Version "New" → Deploy.\n'
+        +'2. Akses deployment bukan "Anyone" / "Siapa saja". Set Who has access = Anyone.\n'
+        +'3. URL deployment di file HTML salah/expired.';
+    }
+  }catch(e){
+    box.style.background='#FFEBEE';box.style.color='#B71C1C';
+    box.textContent='❌ Network error: '+e.message+'\nKemungkinan: koneksi internet putus, URL salah, atau diblokir CORS.';
+  }
 }
 
 async function doLogout(){
@@ -1749,16 +1813,27 @@ document.addEventListener('click',e=>{
 });
 
 // ════════════════════════════════════════════════════════
-// AUTO-LOGIN
+// AUTO-LOGIN — validasi token ke server dulu
 // ════════════════════════════════════════════════════════
-window.addEventListener('DOMContentLoaded',()=>{
-  const savedUser=sessionStorage.getItem('sakti_user');
-  const savedToken=sessionStorage.getItem('sakti_token');
-  if(savedUser&&savedToken){
-    try{
-      currentUser={...JSON.parse(savedUser),token:savedToken};
-      initApp();
-    }catch(e){sessionStorage.clear();}
+window.addEventListener('DOMContentLoaded', async () => {
+  const savedUser  = sessionStorage.getItem('sakti_user');
+  const savedToken = sessionStorage.getItem('sakti_token');
+  if (!savedUser || !savedToken) return;
+  try {
+    const parsed = JSON.parse(savedUser);
+    currentUser  = { ...parsed, token: savedToken };
+    // Validasi token: panggil endpoint ringan
+    const v = await apiPost({ action:'validateToken' });
+    if (!v || !v.success) {
+      // Token expired / invalid → kembali ke login
+      sessionStorage.clear();
+      currentUser = null;
+      return;
+    }
+    initApp();
+  } catch(e) {
+    sessionStorage.clear();
+    currentUser = null;
   }
 });
 </script>
