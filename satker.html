@@ -653,22 +653,14 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
   </div>
 </div>
 
-<!-- ══ MODAL UPLOAD PERUBAHAN ══ -->
+<!-- ══ MODAL UPLOAD PERUBAHAN (MULTI-DOKUMEN) ══ -->
 <div class="modal-overlay" id="modalUploadPerubahan">
-  <div class="modal-box" style="max-width:480px">
-    <div class="modal-title">📤 Upload Dokumen Perubahan</div>
-    <div id="pgUploadInfo" style="font-size:13px;color:var(--gray-600);margin-bottom:16px"></div>
-    <div class="info-box blue" style="margin-bottom:16px;font-size:13px">
-      Upload file PDF form perubahan yang sudah dicetak dan ditandatangani oleh KPA.
-    </div>
-    <div class="form-group">
-      <label>File PDF <span style="color:var(--red)">*</span></label>
-      <input type="file" id="pgUploadFile" accept=".pdf,application/pdf" style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:13px;font-family:'Inter',sans-serif"/>
-    </div>
-    <div id="pgUploadStatus" style="min-height:20px;font-size:13px;margin-bottom:8px"></div>
+  <div class="modal-box wide" style="max-width:760px">
+    <div class="modal-title">📤 Upload Dokumen Pergantian User SAKTI</div>
+    <div id="pgUploadBody"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-      <button class="btn btn-secondary" onclick="closeModal('modalUploadPerubahan')">Batal</button>
-      <button class="btn btn-primary" onclick="pgDoUpload()">📤 Upload Dokumen</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalUploadPerubahan')">Tutup</button>
+      <button class="btn btn-primary" onclick="pgUploadSelesai()">✅ Selesai</button>
     </div>
   </div>
 </div>
@@ -2967,31 +2959,207 @@ function pgResetForm(){
   initUserGanti();
 }
 
-// ── Upload Dokumen Modal ────────────────────────────────────────────────────
-let pgUploadId=null;
+// ── Upload Dokumen Modal (Multi-dokumen, role-based) ──────────────────────
+let pgUploadId      = null;
+let pgUploadFiles   = {};    // { fileKey: File }
+let pgUploadDoneMap = {};    // { fileKey: true }
+let pgUploadDokList = [];    // daftar dokumen yang dihasilkan saat modal dibuka
+
+// Aturan role → dokumen
+const PG_PERAN_OTP   = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+const PG_PERAN_SK    = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM',
+                        'SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU','SATKER_BENDAHARA_PENERIMAAN'];
+const PG_PERAN_SPEC  = PG_PERAN_SK; // Specimen TTD: KPA, PPK, PPSPM, Bendahara
+const PG_PERAN_BNT   = ['SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU','SATKER_BENDAHARA_PENERIMAAN'];
+const PG_PERAN_PNT   = ['SATKER_PPK','SATKER_PPK_DFDD'];
+const PG_PERAN_SNT   = ['SATKER_PPSPM'];
+
+function pgBuildDokumenList(menjadiUsers) {
+  const semuaPeran = (menjadiUsers || []).flatMap(u => u.peranList || []);
+  const butuhOTP   = semuaPeran.some(p => PG_PERAN_OTP.includes(p));
+  const butuhSK    = semuaPeran.some(p => PG_PERAN_SK.includes(p));
+  const butuhSpec  = semuaPeran.some(p => PG_PERAN_SPEC.includes(p));
+  const list = [];
+  if (butuhOTP) list.push({ key:'formOTP', label:'Form Permohonan Aktivasi OTP',
+      desc:'Khusus untuk role KPA, PPK, dan PPSPM', required:true });
+  if (butuhSK)  list.push({ key:'skPejabat', label:'SK Pejabat Perbendaharaan',
+      desc:'Khusus untuk role KPA, PPK, PPSPM, dan Bendahara', required:true });
+  list.push({ key:'skPengguna', label:'SK Pengguna SAKTI',
+      desc:'Surat Keputusan penetapan pengguna SAKTI dari pimpinan satker', required:true });
+  if (butuhSpec) list.push({ key:'spesimen', label:'Spesimen Tanda Tangan',
+      desc:'Khusus untuk role KPA, PPK, PPSPM, dan Bendahara', required:true });
+  (menjadiUsers || []).forEach((u, idx) => {
+    const nama = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
+    const nip  = (u.nipnrp || '').trim();
+    const desc = nip ? ('FC/Scan KTP ' + nama + ' (NIP/NRP: ' + nip + ')') : ('FC/Scan KTP ' + nama);
+    list.push({ key:'ktp_menjadi_'+idx, label:'FC KTP — ' + nama, desc, required:true, acceptImage:true });
+  });
+  list.push({ key:'formPergantian', label:'Form Pergantian Pengguna SAKTI',
+      desc:'Form pergantian (hasil download) yang sudah ditandatangani KPA — dipindai sebagai PDF', required:true });
+  (menjadiUsers || []).forEach((u, idx) => {
+    const nama  = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
+    const peran = u.peranList || [];
+    if (peran.some(p => PG_PERAN_BNT.includes(p))) list.push({ key:'sertBNT_'+idx,
+      label:'Sertifikat BNT — ' + nama,
+      desc:'Sertifikat Bendahara Negara Tersertifikasi (BNT) untuk Bendahara Pengeluaran/Penerimaan', required:true });
+    if (peran.some(p => PG_PERAN_PNT.includes(p))) list.push({ key:'sertPNT_'+idx,
+      label:'Sertifikat PNT — ' + nama,
+      desc:'Sertifikat PPK Negara Tersertifikasi (PNT) untuk role PPK', required:true });
+    if (peran.some(p => PG_PERAN_SNT.includes(p))) list.push({ key:'sertSNT_'+idx,
+      label:'Sertifikat SNT — ' + nama,
+      desc:'Sertifikat PPSPM Negara Tersertifikasi (SNT) untuk role PPSPM', required:true });
+  });
+  return list;
+}
+
 function pgBukaUploadModal(id){
-  pgUploadId=id;
-  document.getElementById('pgUploadInfo').innerHTML=`<strong>ID:</strong> ${esc(id)}`;
-  document.getElementById('pgUploadFile').value='';
-  document.getElementById('pgUploadStatus').innerHTML='';
+  pgUploadId      = id;
+  pgUploadFiles   = {};
+  pgUploadDoneMap = {};
+  pgUploadDokList = pgBuildDokumenList(pgMenjadiUsers);
+
+  const body = document.getElementById('pgUploadBody');
+  body.innerHTML = `
+    <div style="background:var(--blue-pale);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">
+      <strong>ID Pergantian:</strong> <span style="font-family:monospace;font-weight:700">${esc(id)}</span>
+    </div>
+    <p style="font-size:12px;color:var(--gray-600);margin-bottom:14px">
+      Format <strong>PDF</strong> untuk semua dokumen, kecuali Scan KTP boleh <strong>PDF/JPG/PNG/dll</strong>.
+      Maks. <strong>2 MB</strong> per file. Dokumen ditampilkan sesuai role di daftar pengguna "MENJADI".
+    </p>
+    <div id="pgudGrid">
+      ${pgUploadDokList.map(dok => `
+        <div id="pgud_row_${dok.key}" style="border:1px solid var(--gray-200);border-radius:8px;padding:12px 14px;margin-bottom:8px;background:#fff;transition:.15s">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:700;color:var(--gray-800)">
+                ${dok.required?'<span style="color:var(--red)">*</span> ':''}${esc(dok.label)}
+              </div>
+              <div style="font-size:11px;color:var(--gray-500);margin-top:1px">${esc(dok.desc)}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              <label style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">
+                <input type="file" accept="${dok.acceptImage?'.pdf,application/pdf,image/*':'.pdf,application/pdf'}" style="display:none" onchange="pgudSelectFile('${dok.key}',this,${dok.acceptImage?'true':'false'})"/>
+                ${dok.acceptImage ? '📄 Pilih File' : '📄 Pilih PDF'}
+              </label>
+            </div>
+          </div>
+          <div id="pgud_preview_${dok.key}" style="display:none;margin-top:8px;background:#e0f2fe;border:1px solid #7dd3fc;border-radius:6px;padding:7px 10px;align-items:center;gap:8px">
+            <span style="font-size:14px;flex-shrink:0">📄</span>
+            <div style="flex:1;font-size:11px;font-weight:600;color:var(--gray-700)" id="pgud_flabel_${dok.key}"></div>
+            <div style="font-size:10px;color:var(--gray-500)" id="pgud_fsize_${dok.key}"></div>
+            <button onclick="pgudClearFile('${dok.key}')" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--gray-400);padding:0" title="Batal">✕</button>
+            <button id="pgud_btn_${dok.key}" onclick="pgudUploadFile('${dok.key}')" class="btn btn-primary btn-sm" style="font-size:11px;padding:4px 10px;flex-shrink:0">📤 Upload</button>
+          </div>
+          <div id="pgud_done_${dok.key}" style="display:none;margin-top:6px;font-size:11px;color:var(--green);font-weight:600">✅ Berhasil diupload</div>
+          <div id="pgud_err_${dok.key}" style="display:none;margin-top:5px;font-size:11px;color:var(--red)"></div>
+        </div>
+      `).join('')}
+    </div>`;
+
   openModal('modalUploadPerubahan');
 }
-async function pgDoUpload(){
-  const fileInput=document.getElementById('pgUploadFile');
-  const f=fileInput?.files?.[0];
-  if(!f){showToast('Pilih file PDF terlebih dahulu',true);return;}
-  if(f.type!=='application/pdf'&&!f.name.endsWith('.pdf')){showToast('File harus berformat PDF',true);return;}
-  if(f.size>10*1024*1024){showToast('File maksimal 10 MB',true);return;}
-  const statusEl=document.getElementById('pgUploadStatus');
-  statusEl.innerHTML='<span style="color:var(--blue)">⏳ Mengupload...</span>';
-  try{
-    const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(f);});
-    const result=await apiPost({action:'uploadFilePdf_Perubahan',id:pgUploadId,fileBase64:b64,fileName:f.name,fileType:f.type});
-    if(!result.success){statusEl.innerHTML=`<span style="color:var(--red)">❌ ${esc(result.message)}</span>`;return;}
-    statusEl.innerHTML='<span style="color:var(--green)">✅ Dokumen berhasil diupload!</span>';
-    showToast('✅ Dokumen berhasil diupload! Menunggu verifikasi KPPN.',false,true);
-    setTimeout(()=>{closeModal('modalUploadPerubahan');initUserGanti();},1200);
-  }catch(e){statusEl.innerHTML='<span style="color:var(--red)">❌ Gagal upload. Coba lagi.</span>';}
+
+function pgudSelectFile(key, input, allowImage) {
+  const file = input.files[0];
+  if (!file) return;
+  const errEl = document.getElementById('pgud_err_'+key);
+  errEl.style.display='none';
+  const fname = (file.name || '').toLowerCase();
+  const isPdf   = file.type === 'application/pdf' || fname.endsWith('.pdf');
+  const isImage = (file.type || '').startsWith('image/') ||
+                  /\.(jpg|jpeg|png|gif|bmp|webp|heic|heif)$/i.test(fname);
+  if (allowImage) {
+    if (!isPdf && !isImage) {
+      errEl.textContent='File KTP harus berformat PDF atau gambar (JPG, JPEG, PNG, dll).';
+      errEl.style.display='block'; input.value=''; return;
+    }
+  } else {
+    if (!isPdf) {
+      errEl.textContent='File harus berformat PDF.';
+      errEl.style.display='block'; input.value=''; return;
+    }
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    errEl.textContent='Ukuran file '+(file.size/1024/1024).toFixed(2)+' MB melebihi batas 2 MB. Kompres dulu.';
+    errEl.style.display='block'; input.value=''; return;
+  }
+  pgUploadFiles[key] = file;
+  const labelEl = document.getElementById('pgud_flabel_'+key);
+  if (labelEl) {
+    const dok = pgUploadDokList.find(d => d.key === key);
+    labelEl.textContent = (dok?.label || key) + ' — siap diupload';
+  }
+  document.getElementById('pgud_fsize_'+key).textContent = (file.size/1024).toFixed(1)+' KB';
+  document.getElementById('pgud_preview_'+key).style.display='flex';
+  document.getElementById('pgud_done_'+key).style.display='none';
+  const btn = document.getElementById('pgud_btn_'+key);
+  btn.disabled=false; btn.textContent='📤 Upload'; btn.style.display='inline-flex';
+  document.getElementById('pgud_row_'+key).style.borderColor='var(--blue-pale2)';
+}
+
+function pgudClearFile(key) {
+  delete pgUploadFiles[key];
+  document.getElementById('pgud_preview_'+key).style.display='none';
+  document.getElementById('pgud_done_'+key).style.display='none';
+  document.getElementById('pgud_err_'+key).style.display='none';
+  document.getElementById('pgud_row_'+key).style.borderColor='var(--gray-200)';
+}
+
+async function pgudUploadFile(key) {
+  const file = pgUploadFiles[key];
+  if (!file) return;
+  const btn   = document.getElementById('pgud_btn_'+key);
+  const errEl = document.getElementById('pgud_err_'+key);
+  errEl.style.display='none';
+  btn.disabled=true; btn.textContent='⏳ Mengupload...';
+  try {
+    const b64 = await new Promise((res,rej) => {
+      const fr = new FileReader();
+      fr.onload  = () => res(fr.result.split(',')[1]);
+      fr.onerror = rej;
+      fr.readAsDataURL(file);
+    });
+    const result = await apiPost({
+      action:    'uploadFilePdf_Perubahan',
+      id:        pgUploadId,
+      fileKey:   key,
+      fileName:  file.name,
+      fileType:  file.type,
+      fileBase64:b64,
+    });
+    if (!result || !result.success) {
+      errEl.textContent = result?.message || 'Gagal upload. Coba lagi.';
+      errEl.style.display='block';
+      btn.disabled=false; btn.textContent='📤 Upload'; return;
+    }
+    btn.style.display='none';
+    document.getElementById('pgud_done_'+key).style.display='block';
+    document.getElementById('pgud_row_'+key).style.borderColor='#A5D6A7';
+    document.getElementById('pgud_row_'+key).style.background='#f0fdf4';
+    pgUploadDoneMap[key] = true;
+    showToast('✅ '+file.name+' berhasil diupload', false, true);
+  } catch(e) {
+    errEl.textContent='Gagal terhubung ke server.';
+    errEl.style.display='block';
+    btn.disabled=false; btn.textContent='📤 Upload';
+  }
+}
+
+function pgUploadSelesai() {
+  const wajibBelum = pgUploadDokList.filter(d => d.required && !pgUploadDoneMap[d.key]);
+  if (wajibBelum.length) {
+    const proceed = confirm(
+      'Masih ada ' + wajibBelum.length + ' dokumen wajib yang belum diupload:\n\n' +
+      wajibBelum.map(d => '• ' + d.label).join('\n') +
+      '\n\nTutup modal sekarang? Anda bisa kembali untuk melanjutkan upload kapan saja.'
+    );
+    if (!proceed) return;
+  }
+  closeModal('modalUploadPerubahan');
+  if (Object.keys(pgUploadDoneMap).length > 0) {
+    initUserGanti();
+  }
 }
 
 // ════════════════════════════════════════════════════════
