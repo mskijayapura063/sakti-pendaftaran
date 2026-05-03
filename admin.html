@@ -354,6 +354,10 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
             <span class="sub-icon">📋</span>
             <span class="sub-label">Monitoring Pendaftaran</span>
           </div>
+          <div class="nav-sub" id="nav-pergantian" onclick="showPanel('pergantian')">
+            <span class="sub-icon">🔄</span>
+            <span class="sub-label">Monitoring Pergantian</span>
+          </div>
           <div class="nav-sub" id="nav-otp" onclick="showPanel('otp')">
             <span class="sub-icon">🔐</span>
             <span class="sub-label">Monitoring OTP</span>
@@ -669,7 +673,7 @@ function initApp(){
 // Map panel → group
 const PANEL_GROUP={
   'email-daftar':'email',
-  'submissions':'user','otp':'user',
+  'submissions':'user','pergantian':'user','otp':'user',
   'satker':'ref','users':'ref'
 };
 function toggleGroup(grp){
@@ -712,6 +716,7 @@ function showPanel(name){
   if     (name==='dashboard')    { main.innerHTML=renderDashboard();    loadDashboard(); }
   else if(name==='email-daftar') { main.innerHTML=renderEmailDaftar();  loadEmailDaftar(); }
   else if(name==='submissions')  { main.innerHTML=renderSubmissions();  loadSubmissions(); }
+  else if(name==='pergantian')   { main.innerHTML=renderPergantian();   loadPergantian(); }
   else if(name==='otp')          { main.innerHTML=renderOTP();          loadOTP(); }
   else if(name==='satker')       { main.innerHTML=renderSatker();       loadSatker(); }
   else if(name==='users')        { main.innerHTML=renderUsers();        loadUsers(); }
@@ -748,6 +753,10 @@ function renderDashboard(){
     <div class="qa-card" onclick="showPanel('submissions')">
       <div class="qa-icon">📋</div>
       <div><div class="qa-title">Pendaftaran User</div><div class="qa-sub">Monitoring &amp; verifikasi</div></div>
+    </div>
+    <div class="qa-card purple" onclick="showPanel('pergantian')">
+      <div class="qa-icon">🔄</div>
+      <div><div class="qa-title">Pergantian User</div><div class="qa-sub">Pengajuan pergantian satker</div></div>
     </div>
     <div class="qa-card purple" onclick="showPanel('otp')">
       <div class="qa-icon">🔐</div>
@@ -1490,6 +1499,220 @@ async function aktivasiOTP(refKode){
     showToast('✅ OTP berhasil ditandai aktif',false,true);
     loadOTP();
   }catch(e){showToast('Gagal',true);}
+}
+
+// ════════════════════════════════════════════════════════
+// MONITORING PERGANTIAN USER SAKTI (visual ungu agar beda dari Pendaftaran biru)
+// ════════════════════════════════════════════════════════
+let cachedPergantian = [];
+
+function renderPergantian(){
+  return `<div class="page-title" style="color:#7C3AED">🔄 Monitoring Pergantian User SAKTI</div>
+  <div class="page-sub">Pantau dan kelola pengajuan pergantian pengguna SAKTI dari satker</div>
+  <div class="card" style="padding:14px 18px;border-top:3px solid #7C3AED">
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+      <input class="table-search" type="text" id="pgSearchAdmin" placeholder="🔍 Cari ID, satker, KPA..." oninput="filterPergantian()" style="max-width:340px"/>
+      <select id="pgFilterAdmin" onchange="filterPergantian()" style="border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:7px 10px;font-size:13px;font-family:'Inter',sans-serif;background:#fff">
+        <option value="">Semua Status</option>
+        <option value="Menunggu">Menunggu</option>
+        <option value="Diproses">Diproses</option>
+        <option value="Selesai">Selesai</option>
+        <option value="Terdaftar">Terdaftar</option>
+        <option value="Ditolak">Ditolak</option>
+      </select>
+      <button class="btn btn-outline btn-sm" onclick="loadPergantian()">🔄 Refresh</button>
+      <span id="pgCountAdmin" style="margin-left:auto;font-size:12px;color:var(--gray-500)"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead style="background:#FAF5FF">
+          <tr><th>ID</th><th>Satker</th><th>KPA</th><th>Semula → Menjadi</th><th>Tgl Pengajuan</th><th>Dok.</th><th>Status</th><th>Aksi</th></tr>
+        </thead>
+        <tbody id="pgBodyAdmin"><tr class="tbl-empty"><td colspan="8">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+async function loadPergantian(){
+  const body=document.getElementById('pgBodyAdmin');
+  if(!body) return;
+  body.innerHTML='<tr class="tbl-empty"><td colspan="8">Memuat...</td></tr>';
+  try{
+    const res=await apiPost({action:'getDaftarPerubahan'});
+    if(!res.success){body.innerHTML=`<tr class="tbl-empty"><td colspan="8">❌ ${esc(res.message||'Gagal')}</td></tr>`;return;}
+    cachedPergantian=res.list||[];
+    filterPergantian();
+  }catch(e){body.innerHTML='<tr class="tbl-empty"><td colspan="8">❌ Gagal memuat</td></tr>';}
+}
+
+function filterPergantian(){
+  const q=(document.getElementById('pgSearchAdmin')?.value||'').toLowerCase();
+  const f=(document.getElementById('pgFilterAdmin')?.value||'');
+  const filtered=cachedPergantian.filter(p=>{
+    const matchQ=!q||(p.id||'').toLowerCase().includes(q)||(p.namaSatker||'').toLowerCase().includes(q)||(p.kodeSatker||'').toLowerCase().includes(q)||(p.namaKpa||'').toLowerCase().includes(q);
+    const matchF=!f||(p.status||'')===f;
+    return matchQ&&matchF;
+  });
+  const countEl=document.getElementById('pgCountAdmin');
+  if(countEl) countEl.textContent = filtered.length+' / '+cachedPergantian.length+' pengajuan';
+  renderPgTable(filtered);
+}
+
+function renderPgTable(list){
+  const body=document.getElementById('pgBodyAdmin');
+  if(!body) return;
+  if(!list.length){body.innerHTML='<tr class="tbl-empty"><td colspan="8">Tidak ada data pergantian.</td></tr>';return;}
+  const isAdmin=['Admin','SuperAdmin'].includes(currentUser?.role);
+  body.innerHTML=list.map(p=>{
+    const semula = Array.isArray(p.semula)?p.semula:[];
+    const menjadi = Array.isArray(p.menjadi)?p.menjadi:[];
+    const filesJson = (typeof p.filesJson==='object'&&p.filesJson)?p.filesJson:{};
+    const fileCount = Object.keys(filesJson).length;
+    const sudahUpload = fileCount>0;
+    const status = p.status||'Menunggu';
+    const sLow = status.toLowerCase();
+    const isMenunggu = sLow==='menunggu';
+    const belumUpload = !sudahUpload && isMenunggu;
+    return `
+    <tr>
+      <td style="font-family:monospace;font-size:11px">${esc(p.id||'—')}</td>
+      <td><strong>${esc(p.namaSatker||'—')}</strong><br/><span style="font-size:11px;color:var(--gray-500)">${esc(p.kodeSatker||'')}</span></td>
+      <td>${esc(p.namaKpa||'—')}<br/><span style="font-size:11px;color:var(--gray-500)">${esc(p.nip||'')}</span></td>
+      <td style="white-space:nowrap;font-size:12px">${semula.length} → <strong style="color:#7C3AED">${menjadi.length}</strong> pengguna</td>
+      <td style="white-space:nowrap">${fmtTgl(p.createdAt||p.tglSurat||'')}</td>
+      <td style="text-align:center">${sudahUpload?`<span style="background:#F3E8FF;color:#7C3AED;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">${fileCount}</span>`:`<span style="color:var(--red);font-size:11px;font-weight:600">⚠️ —</span>`}</td>
+      <td>${bstat(status)}${belumUpload?'<br/><span style="font-size:10px;color:var(--red);font-weight:600">⚠️ Belum upload</span>':''}</td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="lihatDetailPg('${esc(p.id)}')">🔍 Detail</button>
+          ${isMenunggu?`
+            ${belumUpload
+              ? `<button class="btn btn-secondary btn-sm" title="Dokumen belum diupload satker" disabled style="opacity:.5;cursor:not-allowed">🔒 Proses</button>`
+              : `<button class="btn btn-success btn-sm" onclick="prosesPg('${esc(p.id)}')">✅ Proses</button>`}
+            <button class="btn btn-danger btn-sm" onclick="tolakPg('${esc(p.id)}')">❌ Tolak</button>
+          `:''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function lihatDetailPg(id){
+  const p = cachedPergantian.find(x=>x.id===id);
+  if(!p){showToast('Data tidak ditemukan',true);return;}
+  const semula = Array.isArray(p.semula)?p.semula:[];
+  const menjadi = Array.isArray(p.menjadi)?p.menjadi:[];
+  const filesJson = (typeof p.filesJson==='object'&&p.filesJson)?p.filesJson:{};
+  const fileEntries = Object.entries(filesJson);
+  const LABEL_PG = {
+    formOTP:'Form Aktivasi OTP', skPejabat:'SK Pejabat Perbendaharaan',
+    skPengguna:'SK Pengguna SAKTI', spesimen:'Spesimen TTD',
+    formPergantian:'Form Pergantian', pdfDokumen:'Dokumen (lama)',
+  };
+  const resolveLabel = (key) => {
+    if (LABEL_PG[key]) return LABEL_PG[key];
+    if (key.startsWith('ktp_menjadi_')) { const i=parseInt(key.slice(12),10); return 'KTP — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
+    if (key.startsWith('sertBNT_')) { const i=parseInt(key.slice(8),10); return 'Sertifikat BNT — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
+    if (key.startsWith('sertPNT_')) { const i=parseInt(key.slice(8),10); return 'Sertifikat PNT — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
+    if (key.startsWith('sertSNT_')) { const i=parseInt(key.slice(8),10); return 'Sertifikat SNT — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
+    return key;
+  };
+
+  const renderUserMini = (u, ui)=>`<tr>
+    <td style="text-align:center;color:var(--gray-400)">${ui+1}</td>
+    <td>${esc(u.nama||'—')}</td>
+    <td style="font-family:monospace;font-size:11px">${esc(u.nipnrp||'—')}</td>
+    <td style="font-size:11px">${esc(u.email||'—')}</td>
+    <td>${(u.peranList||[]).map(k=>`<span style="font-size:10px;background:#F3E8FF;color:#7C3AED;padding:1px 6px;border-radius:10px;margin:1px;display:inline-block">${esc(String(k).replace('SATKER_',''))}</span>`).join('')||'—'}</td>
+    <td style="font-size:11px;color:var(--gray-600)">${esc(u.keterangan||'Permanen')}</td>
+  </tr>`;
+
+  const html = `
+    <div class="modal-overlay on" id="modalDetailPg" style="display:flex" onclick="if(event.target===this)closeModalPg()">
+      <div class="modal-box wide" style="max-width:900px;border-top:5px solid #7C3AED">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <span style="font-size:11px;font-weight:800;background:#7C3AED;color:#fff;padding:3px 10px;border-radius:14px">🔄 PERGANTIAN USER</span>
+              ${bstat(p.status||'Menunggu')}
+            </div>
+            <div style="font-family:monospace;font-weight:700;color:#7C3AED">${esc(p.id||'—')}</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="closeModalPg()">✕ Tutup</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px">
+          <div><span style="color:var(--gray-500)">Satker:</span><br/><strong>${esc(p.namaSatker||'—')}</strong> <span style="font-size:11px;color:var(--gray-500)">(${esc(p.kodeSatker||'')})</span></div>
+          <div><span style="color:var(--gray-500)">KPA:</span><br/><strong>${esc(p.namaKpa||'—')}</strong> ${p.nip?`<span style="font-size:11px;color:var(--gray-500)">NIP ${esc(p.nip)}</span>`:''}</div>
+          <div><span style="color:var(--gray-500)">No. HP:</span><br/><strong>${esc(p.noHp||'—')}</strong></div>
+          <div><span style="color:var(--gray-500)">Tanggal Pengajuan:</span><br/><strong>${fmtTgl(p.createdAt||'')}</strong></div>
+          ${p.catatanAdmin?`<div style="grid-column:1/-1"><span style="color:var(--red);font-weight:600">Catatan Tolak:</span><br/><span style="color:var(--red)">${esc(p.catatanAdmin)}</span></div>`:''}
+        </div>
+
+        ${fileEntries.length?`
+        <div style="background:#FAF5FF;border:1px solid #DDD6FE;border-radius:8px;padding:12px 14px;margin-bottom:14px">
+          <div style="font-size:12px;font-weight:700;color:#6D28D9;margin-bottom:8px">📎 Dokumen Terupload (${fileEntries.length})</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${fileEntries.map(([k,f])=>`<a href="${esc(f.url||'#')}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #DDD6FE;color:#6D28D9;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;text-decoration:none">📥 ${esc(resolveLabel(k))}</a>`).join('')}
+          </div>
+        </div>`:`<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#92400e">⚠️ Satker belum mengupload dokumen pendukung.</div>`}
+
+        <div style="font-size:12px;font-weight:700;color:var(--gray-700);text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px">📋 Pengguna Semula (${semula.length})</div>
+        <div style="overflow-x:auto;margin-bottom:14px">
+          <table class="tbl" style="font-size:12px">
+            <thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Email</th><th>Peran</th><th>Ket.</th></tr></thead>
+            <tbody>${semula.map(renderUserMini).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--gray-400);font-style:italic">—</td></tr>'}</tbody>
+          </table>
+        </div>
+
+        <div style="font-size:12px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px">✅ Pengguna Menjadi (${menjadi.length})</div>
+        <div style="overflow-x:auto;margin-bottom:14px">
+          <table class="tbl" style="font-size:12px">
+            <thead style="background:#F3E8FF"><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Email</th><th>Peran</th><th>Ket.</th></tr></thead>
+            <tbody>${menjadi.map(renderUserMini).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--gray-400);font-style:italic">—</td></tr>'}</tbody>
+          </table>
+        </div>
+
+        ${(p.status||'').toLowerCase()==='menunggu' && fileEntries.length?`
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+          <button class="btn btn-danger" onclick="closeModalPg();tolakPg('${esc(p.id)}')">❌ Tolak</button>
+          <button class="btn btn-success" onclick="closeModalPg();prosesPg('${esc(p.id)}')">✅ Proses</button>
+        </div>`:''}
+      </div>
+    </div>`;
+
+  // Buang modal lama jika ada
+  document.getElementById('modalDetailPg')?.remove();
+  const wrap = document.createElement('div');
+  wrap.innerHTML = html;
+  document.body.appendChild(wrap.firstElementChild);
+}
+
+function closeModalPg(){
+  document.getElementById('modalDetailPg')?.remove();
+}
+
+async function prosesPg(id){
+  if(!confirm('Tandai pergantian '+id+' sudah Diproses/Terdaftar?\n\nPastikan dokumen sudah diverifikasi sesuai dengan kebijakan KPPN.')) return;
+  try{
+    const res=await apiPost({action:'prosesPerubahan',id});
+    if(!res || !res.success){showToast(res?.message||'Gagal memproses',true);return;}
+    showToast('✅ Pergantian berhasil diproses',false,true);
+    loadPergantian();
+  }catch(e){showToast('❌ Gagal terhubung ke server',true);}
+}
+
+async function tolakPg(id){
+  const catatan = prompt('Tulis alasan penolakan (akan ditampilkan ke satker):');
+  if(catatan===null) return; // batal
+  if(!catatan.trim()){showToast('Alasan wajib diisi',true);return;}
+  try{
+    const res=await apiPost({action:'tolakPerubahan',id,catatan:catatan.trim()});
+    if(!res || !res.success){showToast(res?.message||'Gagal menolak',true);return;}
+    showToast('✅ Pergantian berhasil ditolak',false,true);
+    loadPergantian();
+  }catch(e){showToast('❌ Gagal terhubung ke server',true);}
 }
 
 // ════════════════════════════════════════════════════════
