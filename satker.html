@@ -3166,9 +3166,32 @@ function pgUploadSelesai() {
 // USER SAKTI — RIWAYAT
 // ════════════════════════════════════════════════════════
 function renderUserRiwayat() {
-  return `<div class="page-title">Riwayat Pendaftaran User SAKTI</div>
-  <div class="page-sub">Status dan progres pendaftaran user SAKTI Anda</div>
+  return `<div class="page-title">Riwayat Pendaftaran &amp; Pergantian User SAKTI</div>
+  <div class="page-sub">Semua pengajuan Anda — pendaftaran baru maupun pergantian</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+    <button id="rwFilterAll"     class="btn btn-primary btn-sm"  onclick="rwSetFilter('all')">📋 Semua</button>
+    <button id="rwFilterDaftar"  class="btn btn-outline btn-sm"  onclick="rwSetFilter('daftar')" style="border-color:var(--blue);color:var(--blue)">📝 Pendaftaran Baru</button>
+    <button id="rwFilterGanti"   class="btn btn-outline btn-sm"  onclick="rwSetFilter('ganti')"  style="border-color:#7C3AED;color:#7C3AED">🔄 Pergantian User</button>
+  </div>
   <div id="userRiwayatBody"><p style="color:var(--gray-400);font-size:13px">Memuat...</p></div>`;
+}
+
+let _rwFilter = 'all';
+function rwSetFilter(f){
+  _rwFilter = f;
+  // Update tombol aktif
+  ['All','Daftar','Ganti'].forEach(k=>{
+    const btn = document.getElementById('rwFilter'+k);
+    if(!btn) return;
+    const active = (f === k.toLowerCase()) || (f==='all' && k==='All');
+    btn.className = active ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm';
+    if(!active){
+      if(k==='Daftar') btn.style.cssText = 'border-color:var(--blue);color:var(--blue)';
+      else if(k==='Ganti') btn.style.cssText = 'border-color:#7C3AED;color:#7C3AED';
+      else btn.style.cssText = '';
+    } else btn.style.cssText='';
+  });
+  initUserRiwayat();
 }
 
 async function initUserRiwayat() {
@@ -3176,7 +3199,11 @@ async function initUserRiwayat() {
   if (!body) return;
   body.innerHTML = '<p style="color:var(--gray-400);font-size:13px;text-align:center;padding:24px">⏳ Memuat data...</p>';
   try {
-    const res = await apiPost({ action:'getSatkerDashboard' });
+    // Fetch pendaftaran baru + riwayat pergantian secara paralel
+    const [res, resGanti] = await Promise.all([
+      apiPost({ action:'getSatkerDashboard' }),
+      apiPost({ action:'getRiwayatPerubahan' }).catch(() => ({ success:false, list:[] })),
+    ]);
 
     // --- Kumpulkan semua record dari SEMUA kemungkinan field response ---
     let daftarAll = [];
@@ -3196,6 +3223,19 @@ async function initUserRiwayat() {
     // 4. res sendiri berupa array (edge case)
     else if (Array.isArray(res) && res.length) {
       daftarAll = res;
+    }
+
+    // Tag setiap item pendaftaran sebagai 'daftar'
+    daftarAll = daftarAll.map(d => ({ ...d, _kind: 'daftar' }));
+
+    // Tambahkan riwayat pergantian — tag 'ganti', simpan tanggal di tanggalDaftar agar sortable
+    let gantiAll = [];
+    if (resGanti && Array.isArray(resGanti.list)) {
+      gantiAll = resGanti.list.map(g => ({
+        ...g,
+        _kind: 'ganti',
+        tanggalDaftar: g.createdAt || g.tanggalDaftar || g.tglSurat || '',
+      }));
     }
 
     // Tampilkan debug panel agar bisa debug response script jika masih kosong
@@ -3224,25 +3264,48 @@ async function initUserRiwayat() {
       return;
     }
 
-    if (!daftarAll.length) {
+    // Gabungkan & filter
+    let combined = [...daftarAll, ...gantiAll];
+    if (_rwFilter === 'daftar') combined = combined.filter(x => x._kind === 'daftar');
+    else if (_rwFilter === 'ganti') combined = combined.filter(x => x._kind === 'ganti');
+
+    if (!combined.length) {
+      const filterLabel = _rwFilter==='daftar'?'pendaftaran baru':_rwFilter==='ganti'?'pergantian user':'pengajuan';
       body.innerHTML = `<div class="card" style="text-align:center;padding:32px">
-        <p style="color:var(--gray-400);font-style:italic;margin-bottom:16px">Belum ada pendaftaran User SAKTI yang diajukan.</p>
-        <button class="btn btn-primary" onclick="switchTab('user-baru')">📝 Mulai Pendaftaran</button>
+        <p style="color:var(--gray-400);font-style:italic;margin-bottom:16px">Belum ada ${filterLabel} yang diajukan.</p>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="switchTab('user-baru')">📝 Pendaftaran Baru</button>
+          <button class="btn btn-outline" onclick="switchTab('user-ganti')" style="border-color:#7C3AED;color:#7C3AED">🔄 Pergantian User</button>
+        </div>
         ${debugInfo}
       </div>`;
       return;
     }
 
-    // Urutkan dari terbaru
-    const daftar = [...daftarAll].reverse();
+    // Urutkan dari terbaru berdasar tanggal
+    const parseDt = (x) => { const t = new Date(x.tanggalDaftar || x.createdAt || 0); return isNaN(t)?0:t.getTime(); };
+    const daftar = combined.slice().sort((a,b) => parseDt(b) - parseDt(a));
+
+    // Hitung subtotal
+    const cntDaftar = combined.filter(x=>x._kind==='daftar').length;
+    const cntGanti  = combined.filter(x=>x._kind==='ganti').length;
 
     // Render tabel riwayat
     body.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-      <div style="font-size:13px;color:var(--gray-500)">Total: <strong>${daftar.length}</strong> pengajuan</div>
-      <button class="btn btn-primary btn-sm" onclick="switchTab('user-baru')">📝 Pendaftaran Baru</button>
+      <div style="font-size:13px;color:var(--gray-500)">
+        Total: <strong>${daftar.length}</strong> pengajuan
+        ${cntDaftar?`<span style="margin-left:8px;background:var(--blue-pale);color:var(--blue);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">📝 ${cntDaftar} Pendaftaran</span>`:''}
+        ${cntGanti?`<span style="margin-left:6px;background:#F3E8FF;color:#7C3AED;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">🔄 ${cntGanti} Pergantian</span>`:''}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="switchTab('user-baru')">📝 Pendaftaran Baru</button>
+        <button class="btn btn-outline btn-sm" onclick="switchTab('user-ganti')" style="border-color:#7C3AED;color:#7C3AED">🔄 Pergantian User</button>
+      </div>
     </div>
     ${daftar.map((d,i) => {
+      // Cabang khusus untuk Pergantian User
+      if (d._kind === 'ganti') return rwRenderKartuGanti(d, i===0);
       const status = d.status || 'Menunggu';
       const isDitolak = status.toLowerCase()==='ditolak';
       const isTerdaftar = ['terdaftar','selesai'].includes(status.toLowerCase());
@@ -3283,14 +3346,17 @@ async function initUserRiwayat() {
       };
 
       return `
-      <div class="card" style="margin-bottom:16px;${i===0?'border-left:4px solid var(--blue)':''}">
+      <div class="card" style="margin-bottom:16px;border-left:5px solid var(--blue);background:linear-gradient(180deg,#E3F2FD 0%,#fff 50px,#fff 100%)">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:14px">
           <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span style="font-size:11px;font-weight:800;background:var(--blue);color:#fff;padding:3px 10px;border-radius:14px;letter-spacing:.4px">📝 PENDAFTARAN BARU</span>
+              ${i===0?'<span style="font-size:11px;font-weight:700;background:var(--blue-pale);color:var(--blue);padding:2px 8px;border-radius:20px">TERBARU</span>':''}
+            </div>
             <div style="font-size:12px;color:var(--gray-500);margin-bottom:2px">Kode Referensi</div>
             <div style="font-family:monospace;font-weight:700;font-size:15px;color:var(--blue)">${esc(d.refKode||'—')}</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            ${i===0?'<span style="font-size:11px;font-weight:700;background:var(--blue-pale);color:var(--blue);padding:2px 8px;border-radius:20px">TERBARU</span>':''}
             ${badgeStatus(status)}
             <button onclick="satkerUnduhFormExcel('${esc(d.refKode)}')"
               title="Unduh Form Pendaftaran Excel"
@@ -3424,6 +3490,178 @@ async function initUserRiwayat() {
   } catch(e) {
     body.innerHTML = `<div class="card"><p style="color:var(--red)">❌ Gagal memuat data. Periksa koneksi internet.</p><p style="color:var(--gray-500);font-size:12px;margin-top:8px">Error: ${esc(e.message||String(e))}</p></div>`;
   }
+}
+
+// ════════════════════════════════════════════════════════
+// RIWAYAT — Kartu Pergantian User (visual berbeda dari Pendaftaran)
+// Identitas visual: ungu (#7C3AED), border kiri tebal ungu, label "🔄 PERGANTIAN USER"
+// ════════════════════════════════════════════════════════
+function rwRenderKartuGanti(g, isLatest) {
+  const status = g.status || 'Menunggu';
+  const sLow = status.toLowerCase();
+  const isDitolak   = sLow === 'ditolak';
+  const isTerdaftar = ['terdaftar','selesai'].includes(sLow);
+  const isDiproses  = sLow === 'diproses';
+  const isMenunggu  = sLow === 'menunggu';
+
+  const semula  = Array.isArray(g.semula)  ? g.semula  : (typeof g.semula==='string'?(()=>{try{return JSON.parse(g.semula);}catch(e){return [];}})():[]);
+  const menjadi = Array.isArray(g.menjadi) ? g.menjadi : (typeof g.menjadi==='string'?(()=>{try{return JSON.parse(g.menjadi);}catch(e){return [];}})():[]);
+  const filesJson = (typeof g.filesJson === 'object' && g.filesJson) ? g.filesJson :
+                    (typeof g.filesJson === 'string' ? (()=>{try{return JSON.parse(g.filesJson);}catch(e){return {};}})() : {});
+  const fileKeys = Object.keys(filesJson||{});
+  const sudahUpload = fileKeys.length > 0;
+
+  const PERAN_OTP = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+
+  // Steps (workflow Pergantian — sederhana 4 tahap)
+  const steps = [
+    { label:'Submit Form',     done: !!g.id },
+    { label:'Upload Dokumen',  done: sudahUpload },
+    { label:'Diproses KPPN',   done: isDiproses || isTerdaftar },
+    { label:'Selesai',         done: isTerdaftar },
+  ];
+
+  const belumUpload = !sudahUpload && !isDitolak && !isTerdaftar;
+
+  // Label dokumen untuk Pergantian
+  const LABEL_PG = {
+    formOTP:'Form Aktivasi OTP',
+    skPejabat:'SK Pejabat Perbendaharaan',
+    skPengguna:'SK Pengguna SAKTI',
+    spesimen:'Spesimen TTD',
+    formPergantian:'Form Pergantian',
+    pdfDokumen:'Dokumen (lama)',
+  };
+  const resolveLabelPg = (key) => {
+    if (LABEL_PG[key]) return LABEL_PG[key];
+    if (key.startsWith('ktp_menjadi_')) {
+      const idx = parseInt(key.slice('ktp_menjadi_'.length), 10);
+      const u = menjadi[idx];
+      return 'KTP — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+    }
+    if (key.startsWith('sertBNT_')) {
+      const idx = parseInt(key.slice('sertBNT_'.length), 10);
+      const u = menjadi[idx];
+      return 'Sertifikat BNT — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+    }
+    if (key.startsWith('sertPNT_')) {
+      const idx = parseInt(key.slice('sertPNT_'.length), 10);
+      const u = menjadi[idx];
+      return 'Sertifikat PNT — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+    }
+    if (key.startsWith('sertSNT_')) {
+      const idx = parseInt(key.slice('sertSNT_'.length), 10);
+      const u = menjadi[idx];
+      return 'Sertifikat SNT — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+    }
+    return key;
+  };
+
+  const renderUserMini = (u, ui) => `<tr>
+    <td style="text-align:center;color:var(--gray-400)">${ui+1}</td>
+    <td>${esc(u.nama||'—')}</td>
+    <td style="font-family:monospace">${esc(u.nipnrp||'—')}</td>
+    <td>${(u.peranList||[]).map(k=>`<span style="font-size:10px;background:${PERAN_OTP.includes(k)?'#fef9c3':'#F3E8FF'};color:${PERAN_OTP.includes(k)?'#854d0e':'#7C3AED'};padding:1px 6px;border-radius:10px;margin:1px;display:inline-block">${esc(k.replace('SATKER_',''))}</span>`).join('')||'—'}</td>
+    <td style="font-size:11px;color:var(--gray-500)">${esc(u.keterangan||'Permanen')}</td>
+  </tr>`;
+
+  return `
+  <div class="card" style="margin-bottom:16px;border-left:5px solid #7C3AED;background:linear-gradient(180deg,#FAF5FF 0%,#fff 50px,#fff 100%)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-size:11px;font-weight:800;background:#7C3AED;color:#fff;padding:3px 10px;border-radius:14px;letter-spacing:.4px">🔄 PERGANTIAN USER</span>
+          ${isLatest?'<span style="font-size:11px;font-weight:700;background:#F3E8FF;color:#7C3AED;padding:2px 8px;border-radius:20px">TERBARU</span>':''}
+        </div>
+        <div style="font-size:12px;color:var(--gray-500);margin-bottom:2px">ID Pergantian</div>
+        <div style="font-family:monospace;font-weight:700;font-size:15px;color:#7C3AED">${esc(g.id||'—')}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        ${badgeStatus(status)}
+      </div>
+    </div>
+
+    <!-- Progress stepper (warna ungu) -->
+    <div style="display:flex;align-items:center;gap:0;margin-bottom:16px;overflow-x:auto;padding-bottom:4px">
+      ${steps.map((s,si)=>`
+        <div style="display:flex;align-items:center;flex-shrink:0">
+          <div style="text-align:center;min-width:84px">
+            <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;margin:0 auto 4px;
+              background:${s.done?'#7C3AED':'var(--gray-200)'};color:${s.done?'#fff':'var(--gray-500)'}">
+              ${s.done?'✓':si+1}</div>
+            <div style="font-size:10px;font-weight:600;color:${s.done?'#7C3AED':'var(--gray-500)'}">${s.label}</div>
+          </div>
+          ${si<steps.length-1?`<div style="height:2px;width:20px;background:${steps[si+1].done?'#7C3AED':'var(--gray-200)'};flex-shrink:0;margin-bottom:16px"></div>`:''}
+        </div>`).join('')}
+    </div>
+
+    ${belumUpload?`
+    <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:12px;color:#92400e;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:flex-start;gap:8px;flex:1">
+        <span style="font-size:18px;flex-shrink:0">⚠️</span>
+        <div><strong>Dokumen pergantian belum diupload.</strong> Pergantian tidak dapat diproses sebelum dokumen lengkap diunggah.</div>
+      </div>
+      <button class="btn btn-sm" style="flex-shrink:0;font-size:12px;background:#7C3AED;color:#fff;border:none;padding:7px 14px;border-radius:6px;font-weight:700;cursor:pointer" onclick="pgBukaUploadModal('${esc(g.id)}')">📤 Upload Dokumen</button>
+    </div>`:''}
+
+    ${sudahUpload && !isDiproses && !isTerdaftar && !isDitolak?`
+    <div style="background:#F3E8FF;border:1px solid #C4B5FD;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:12px;color:#6D28D9;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div><strong>✅ ${fileKeys.length} dokumen terupload.</strong> Menunggu verifikasi KPPN Jayapura.</div>
+      <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:12px;color:#7C3AED;border-color:#7C3AED" onclick="pgBukaUploadModal('${esc(g.id)}')">📎 Tambah/Ganti Dokumen</button>
+    </div>`:''}
+
+    ${isDitolak?`
+    <div style="background:#fff1f2;border:1.5px solid #fca5a5;border-radius:10px;padding:14px 16px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;color:#b91c1c;margin-bottom:4px">❌ Pergantian Ditolak</div>
+      ${g.catatanAdmin?`<div style="font-size:12px;color:#7f1d1d;background:#fee2e2;border-radius:6px;padding:6px 10px"><strong>Alasan:</strong> ${esc(g.catatanAdmin)}</div>`:''}
+    </div>`:''}
+
+    <!-- Info grid -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px">
+      <div><span style="color:var(--gray-500)">Nama Satker:</span><br/><strong>${esc(g.namaSatker||'—')}</strong></div>
+      <div>
+        <span style="color:var(--gray-500)">Nama KPA:</span>
+        <br/><strong>${esc(g.namaKpa||'—')}</strong>
+        ${g.nip?`<span style="font-size:11px;color:var(--gray-500);margin-left:4px">NIP: ${esc(g.nip)}</span>`:''}
+      </div>
+      <div><span style="color:var(--gray-500)">Pengguna Semula → Menjadi:</span><br/><strong>${semula.length} → ${menjadi.length}</strong> pengguna</div>
+      <div><span style="color:var(--gray-500)">Tanggal Pengajuan:</span><br/><strong>${fmtTgl(g.createdAt||g.tanggalDaftar)}</strong></div>
+    </div>
+
+    ${sudahUpload?`
+    <div style="background:#FAF5FF;border:1px solid #DDD6FE;border-radius:8px;padding:12px 16px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:#6D28D9;margin-bottom:8px">📎 Dokumen Pergantian (${fileKeys.length})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${fileKeys.map(key => {
+          const f = filesJson[key] || {};
+          const label = resolveLabelPg(key);
+          return `<button onclick="satkerDownloadDokumen('${esc(f.url||'')}','${esc(label)}')"
+            style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #DDD6FE;color:#6D28D9;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:.15s"
+            onmouseover="this.style.background='#F3E8FF'"
+            onmouseout="this.style.background='#fff'">
+            📥 ${esc(label)}
+          </button>`;
+        }).join('')}
+      </div>
+    </div>`:''}
+
+    ${(semula.length||menjadi.length)?`
+    <details style="margin-bottom:12px" ${isLatest?'open':''}>
+      <summary style="cursor:pointer;font-size:12px;font-weight:600;color:#7C3AED;padding:6px 0">👥 Lihat detail Semula → Menjadi (${semula.length} → ${menjadi.length})</summary>
+      <div style="margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px">📋 Data Pengguna Semula</div>
+        <div style="overflow-x:auto"><table class="tbl" style="font-size:12px">
+          <thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Peran</th><th>Ket.</th></tr></thead>
+          <tbody>${semula.map(renderUserMini).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--gray-400);font-style:italic">—</td></tr>'}</tbody>
+        </table></div>
+        <div style="font-size:11px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 4px">✅ Data Pengguna Menjadi</div>
+        <div style="overflow-x:auto"><table class="tbl" style="font-size:12px">
+          <thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Peran</th><th>Ket.</th></tr></thead>
+          <tbody>${menjadi.map(renderUserMini).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--gray-400);font-style:italic">—</td></tr>'}</tbody>
+        </table></div>
+      </div>
+    </details>`:''}
+  </div>`;
 }
 
 // ════════════════════════════════════════════════════════
