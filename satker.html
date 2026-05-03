@@ -607,7 +607,7 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
     <div class="modal-title">✏️ Edit Data Pengguna</div>
     <div id="ubEditModalBody"></div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modalEditUB')">Batal</button>
+      <button class="btn btn-secondary" onclick="ubCancelEdit()">Batal</button>
       <button class="btn btn-primary" onclick="ubSaveEdit()">💾 Simpan Perubahan</button>
     </div>
   </div>
@@ -1970,7 +1970,7 @@ function ubGetDisabledPeran(currentList){
 
 // ─── USER STATE ─────────────────────────────────────────
 let ubUserIdSeq=0;
-const ubUsers=[];
+let ubUsers=[];   // mutable — reassign-able utk reuse di Pergantian
 let ubLocked=false;
 let ubLastRefKode='';
 let ubFpSurat=null;
@@ -2121,6 +2121,10 @@ function ubRefreshEditCheckboxStates(){
   else{warnBox.innerHTML='';warnBox.classList.remove('on');}
 }
 function ubSaveEdit(){
+  // Kalau sedang dalam mode Pergantian User, alihkan ke pgSaveFromEditModal
+  if (typeof pgEditingId !== 'undefined' && pgEditingId !== null) {
+    return pgSaveFromEditModal();
+  }
   const nama=(document.getElementById('ube-nama')?.value||'').trim();
   const nipnrp=(document.getElementById('ube-nipnrp')?.value||'').trim();
   const nik=(document.getElementById('ube-nik')?.value||'').trim();
@@ -2750,46 +2754,98 @@ function pgRenderUserSummary(id, tipe){
   pgRefreshAllCardActions();
 }
 
+// ── Cancel edit (Batal) — bersihkan state pergantian & injeksi sementara ──
+function ubCancelEdit(){
+  if (typeof pgEditingId !== 'undefined' && pgEditingId !== null) {
+    const idx = ubUsers.findIndex(x => x.id === pgEditingId);
+    if (idx !== -1) ubUsers.splice(idx, 1);
+    pgEditingId = null;
+    pgEditingTipe = null;
+  }
+  closeModal('modalEditUB');
+}
+
 // ── Edit modal (reuse modalEditUB) ─────────────────────────────────────────
 let pgEditingId=null, pgEditingTipe=null;
+
 function pgOpenEditModal(id, tipe){
-  pgEditingId=id; pgEditingTipe=tipe;
-  ubEditingId=id; // reuse ubOpenEditModal infrastructure
-  const u=pgGetUser(id,tipe);
-  // Copy ke ubUsers sementara agar ubOpenEditModal bisa baca
-  const orig=ubUsers;
-  ubUsers=[{...u}];
-  ubOpenEditModal(id);
-  ubUsers=orig;
-  // Hijack ubSaveEdit
-  const _origSave=window.ubSaveEdit;
-  window.ubSaveEdit=function(){
-    const nama=(document.getElementById('ube-nama')?.value||'').trim();
-    const nipnrp=(document.getElementById('ube-nipnrp')?.value||'').trim();
-    const nik=(document.getElementById('ube-nik')?.value||'').trim();
-    const email=(document.getElementById('ube-email')?.value||'').trim();
-    const hp=(document.getElementById('ube-hp')?.value||'').trim();
-    const sk=(document.getElementById('ube-sk')?.value||'').trim();
-    const tglsk=(document.getElementById('ube-tglsk')?.value||'').trim();
-    const peranList=[...document.querySelectorAll('#ubePeranWrap input[type=checkbox]:checked')].map(el=>el.value);
-    const emailErr=document.getElementById('ube-emailErr');
-    if(!nama){showToast('Nama wajib diisi',true);return;}
-    if(!nipnrp){showToast('NIP/NRP wajib diisi',true);return;}
-    if(!email){if(emailErr){emailErr.textContent='Email kedinasan wajib diisi.';emailErr.style.display='block';}showToast('Email kedinasan wajib diisi',true);return;}
-    const el2=email.toLowerCase();
-    if(!el2.endsWith('.go.id')&&!el2.endsWith('.mil.id')){if(emailErr){emailErr.textContent='Email harus berakhiran .go.id atau .mil.id.';emailErr.style.display='block';}showToast('Email harus berakhiran .go.id atau .mil.id',true);return;}
-    if(!peranList.length){showToast('Pilih minimal 1 peran',true);return;}
-    // Keterangan — ambil dari select jika ada, else default
-    const ketEl=document.getElementById('ube-keterangan');
-    const keterangan=ketEl?ketEl.value:'Permanen';
-    const target=pgGetUser(pgEditingId,pgEditingTipe);
-    if(!target){closeModal('modalEditUB');window.ubSaveEdit=_origSave;return;}
-    Object.assign(target,{nama,nipnrp,nik,email,hp,sk,tglsk,peranList,keterangan});
-    pgRenderUserSummary(pgEditingId,pgEditingTipe);
-    closeModal('modalEditUB');
-    showToast('✅ Data pengguna berhasil disimpan');
-    window.ubSaveEdit=_origSave;
-  };
+  // Defensive cleanup: bersihkan state edit pergantian sebelumnya kalau ada
+  if (pgEditingId !== null && pgEditingId !== undefined) {
+    const oldIdx = ubUsers.findIndex(x => x.id === pgEditingId);
+    if (oldIdx !== -1) ubUsers.splice(oldIdx, 1);
+  }
+  pgEditingId = id;
+  pgEditingTipe = tipe;
+  const u = pgGetUser(id, tipe);
+  if (!u) { showToast('Data pengguna tidak ditemukan', true); return; }
+
+  // Bersihkan field "Keterangan" tertinggal dari modal sebelumnya
+  document.getElementById('ube-keterangan')?.closest('.ub-form-group')?.remove();
+
+  // Inject sementara ke ubUsers supaya ubOpenEditModal bisa render-nya
+  // Pakai reference langsung — ubOpenEditModal hanya read, tidak mutate.
+  const existIdx = ubUsers.findIndex(x => x.id === id);
+  if (existIdx === -1) ubUsers.push(u);
+  try {
+    ubOpenEditModal(id);
+  } catch(err) {
+    console.error('[pgOpenEditModal] error:', err);
+    showToast('Terjadi error saat membuka editor: '+err.message, true);
+    return;
+  }
+  // Inject field Keterangan secara eksplisit (jangan andalkan observer saja)
+  setTimeout(()=>{
+    if (!document.getElementById('ube-keterangan')) {
+      pgPatchModalKeterangan(u.keterangan || 'Permanen');
+    }
+  }, 60);
+}
+
+// Save edit untuk Pergantian — dipanggil dari ubSaveEdit jika pgEditingId aktif.
+function pgSaveFromEditModal(){
+  const nama   = (document.getElementById('ube-nama')?.value || '').trim();
+  const nipnrp = (document.getElementById('ube-nipnrp')?.value || '').trim();
+  const nik    = (document.getElementById('ube-nik')?.value || '').trim();
+  const email  = (document.getElementById('ube-email')?.value || '').trim();
+  const hp     = (document.getElementById('ube-hp')?.value || '').trim();
+  const sk     = (document.getElementById('ube-sk')?.value || '').trim();
+  const tglsk  = (document.getElementById('ube-tglsk')?.value || '').trim();
+  const peranList = [...document.querySelectorAll('#ubEditModalBody input[type=checkbox]:checked')].map(el => el.value);
+  const emailErr = document.getElementById('ube-email-err');
+
+  if (!nama)    { showToast('Nama wajib diisi', true); return false; }
+  if (!nipnrp)  { showToast('NIP/NRP wajib diisi', true); return false; }
+  if (!email)   {
+    if (emailErr) { emailErr.textContent = 'Email kedinasan wajib diisi.'; emailErr.style.display = 'block'; }
+    showToast('Email kedinasan wajib diisi', true); return false;
+  }
+  const eLow = email.toLowerCase();
+  if (!eLow.endsWith('.go.id') && !eLow.endsWith('.mil.id')) {
+    if (emailErr) { emailErr.textContent = 'Email harus berakhiran .go.id atau .mil.id.'; emailErr.style.display = 'block'; }
+    showToast('Email harus berakhiran .go.id atau .mil.id', true); return false;
+  }
+  if (!peranList.length) { showToast('Pilih minimal 1 peran', true); return false; }
+
+  const ketEl = document.getElementById('ube-keterangan');
+  const keterangan = ketEl ? ketEl.value : 'Permanen';
+
+  const target = pgGetUser(pgEditingId, pgEditingTipe);
+  if (!target) { closeModal('modalEditUB'); return false; }
+
+  Object.assign(target, { nama, nipnrp, nik, email, hp, sk, tglsk, peranList, keterangan });
+
+  // Bersihkan ubUsers dari injeksi sementara
+  const idx = ubUsers.findIndex(x => x.id === pgEditingId);
+  if (idx !== -1) ubUsers.splice(idx, 1);
+
+  pgRenderUserSummary(pgEditingId, pgEditingTipe);
+  pgRefreshAllCardActions();
+  closeModal('modalEditUB');
+  showToast('✅ Data pengguna berhasil disimpan');
+
+  pgEditingId = null;
+  pgEditingTipe = null;
+  return true;
 }
 
 // ── Tambahkan field Keterangan ke modal edit UB ─────────────────────────────
@@ -2815,17 +2871,26 @@ function pgPatchModalKeterangan(keterangan) {
   wrap.appendChild(div);
 }
 
-// Tambahkan observer saat pgOpenEditModal dipanggil
+// Inject field "Keterangan" hanya saat modal dibuka untuk Pergantian.
+// Observer dipasang ke modalEditUB; trigger saat style atau class berubah.
 const _pgObserver=new MutationObserver(()=>{
   const modal=document.getElementById('modalEditUB');
-  if(modal&&modal.style.display!=='none'&&!document.getElementById('ube-keterangan')){
-    const u=pgEditingId?pgGetUser(pgEditingId,pgEditingTipe):null;
+  if(!modal) return;
+  // Hanya inject jika dalam mode Pergantian
+  if(pgEditingId === null || typeof pgEditingId === 'undefined') {
+    // Bersihkan field keterangan jika tertinggal dari sesi Pergantian sebelumnya
+    document.getElementById('ube-keterangan')?.closest('.ub-form-group')?.remove();
+    return;
+  }
+  const isOpen = modal.classList.contains('on') || modal.style.display==='flex';
+  if (isOpen && !document.getElementById('ube-keterangan')) {
+    const u=pgGetUser(pgEditingId,pgEditingTipe);
     pgPatchModalKeterangan(u?.keterangan||'Permanen');
   }
 });
 document.addEventListener('DOMContentLoaded',()=>{
   const m=document.getElementById('modalEditUB');
-  if(m) _pgObserver.observe(m,{attributes:true,attributeFilter:['style']});
+  if(m) _pgObserver.observe(m,{attributes:true,attributeFilter:['style','class']});
 });
 
 // ── Flatpickr ──────────────────────────────────────────────────────────────
