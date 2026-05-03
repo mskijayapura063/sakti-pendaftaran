@@ -4456,7 +4456,10 @@ async function doSimpanPerbaikan() {
         refKode:    pdData.refKode,
         namaSatker: namaSatker,
         usersJson:  pdData.usersJson || [],
-        filesJson:  {},
+        // Pertahankan filesJson dari data lama agar dokumen sebelumnya masih kelihatan
+        // dan bisa dipakai sebagai referensi/download. Upload ulang akan overwrite per-key.
+        filesJson:  pdData.filesJson || {},
+        needsReupload: true,
       };
       bukaModalUploadDokumen(uploadInfo);
     }, 800);
