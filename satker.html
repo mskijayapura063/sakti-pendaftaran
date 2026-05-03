@@ -2537,14 +2537,32 @@ async function initUserGanti() {
   try {
     const res = await apiPost({ action:'getRiwayatPerubahan' });
     const list = res.list || [];
-    const last = list[0]; // yang terbaru
-    if (last && !['Ditolak',''].includes(last.status||'')) {
-      // Ada pengajuan aktif
-      pgCurrentId = last.id;
-      pgLocked    = ['Diproses','Terdaftar'].includes(last.status);
-      body.innerHTML = pgBuildFormHTML(last, kode);
-      (last.semula||[]).forEach(u => pgAddUser('semula',u));
-      (last.menjadi||[]).forEach(u => pgAddUser('menjadi',u));
+    // Kalau ada targetId (mis. dari klik "Perbaiki Data" di Riwayat), pakai itu;
+    // selain itu pakai record terbaru.
+    let target = null;
+    if (window._pgPerbaikiTargetId) {
+      target = list.find(x => x.id === window._pgPerbaikiTargetId) || null;
+      window._pgPerbaikiTargetId = null;
+    }
+    if (!target) target = list[0];
+
+    const stat = (target?.status || '').toLowerCase();
+    const aktif = !!(target && stat && stat !== 'ditolak');
+    const ditolak = stat === 'ditolak';
+
+    if (aktif) {
+      pgCurrentId = target.id;
+      pgLocked    = ['diproses','terdaftar','selesai'].includes(stat);
+      body.innerHTML = pgBuildFormHTML(target, kode);
+      (target.semula||[]).forEach(u => pgAddUser('semula',u));
+      (target.menjadi||[]).forEach(u => pgAddUser('menjadi',u));
+    } else if (ditolak) {
+      // PERBAIKAN: prefill data dari record yang ditolak agar satker bisa edit & re-submit.
+      pgCurrentId = target.id;     // re-use ID yg sama saat submit (overwrite di server)
+      pgLocked    = false;
+      body.innerHTML = pgBuildFormHTML(target, kode);
+      (target.semula||[]).forEach(u => pgAddUser('semula',u));
+      (target.menjadi||[]).forEach(u => pgAddUser('menjadi',u));
     } else {
       pgLocked = false;
       body.innerHTML = pgBuildFormHTML(null, kode);
@@ -2554,6 +2572,12 @@ async function initUserGanti() {
   } catch(e) {
     body.innerHTML = `<div class="info-box red">❌ Gagal memuat data. <button class="btn btn-secondary btn-sm" onclick="initUserGanti()">Coba Lagi</button></div>`;
   }
+}
+
+// Dipanggil dari kartu Pergantian Ditolak di Riwayat — pindah ke tab User Ganti & prefill record
+function pgPerbaikiData(id) {
+  window._pgPerbaikiTargetId = id;
+  switchTab('user-ganti');
 }
 
 function pgBuildFormHTML(d, kode) {
@@ -3016,7 +3040,16 @@ function pgBukaUploadModal(id){
   pgUploadId      = id;
   pgUploadFiles   = {};
   pgUploadDoneMap = {};
-  pgUploadDokList = pgBuildDokumenList(pgMenjadiUsers);
+  // Pakai pgMenjadiUsers dari form aktif kalau ada; kalau kosong (dipanggil dari Riwayat),
+  // ambil dari cache hasil getRiwayatPerubahan.
+  let menjadiList = pgMenjadiUsers;
+  if (!menjadiList || !menjadiList.length) {
+    const cached = (window._pgRiwayatCache || {})[id];
+    if (cached && Array.isArray(cached.menjadi) && cached.menjadi.length) {
+      menjadiList = cached.menjadi;
+    }
+  }
+  pgUploadDokList = pgBuildDokumenList(menjadiList || []);
 
   const body = document.getElementById('pgUploadBody');
   body.innerHTML = `
@@ -3417,15 +3450,21 @@ async function initUserRiwayat() {
         ${isDitolak?`
         <div style="background:#fff1f2;border:1.5px solid #fca5a5;border-radius:10px;padding:14px 16px;margin-bottom:12px">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
-            <div style="flex:1">
+            <div style="flex:1;min-width:240px">
               <div style="font-size:13px;font-weight:700;color:#b91c1c;margin-bottom:4px">❌ Pendaftaran Ditolak</div>
               ${d.catatanAdmin?`<div style="font-size:12px;color:#7f1d1d;background:#fee2e2;border-radius:6px;padding:6px 10px;margin-bottom:8px"><strong>Alasan:</strong> ${esc(d.catatanAdmin)}</div>`:''}
-              <div style="font-size:12px;color:#991b1b">Silakan perbaiki data lalu upload ulang dokumen pendukung.</div>
+              <div style="font-size:12px;color:#991b1b">Silakan perbaiki data <strong>dan/atau</strong> upload ulang dokumen pendukung sesuai catatan KPPN.</div>
             </div>
-            <button class="btn btn-sm" onclick="bukaEditRiwayat('${esc(d.refKode)}')"
-              style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap">
-              ✏️ Perbaiki Data
-            </button>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0">
+              <button class="btn btn-sm" onclick="bukaEditRiwayat('${esc(d.refKode)}')"
+                style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
+                ✏️ Perbaiki Data
+              </button>
+              <button class="btn btn-sm" onclick="bukaUploadDokumenByRef('${esc(d.refKode)}', true)"
+                style="background:#fff;color:#b91c1c;border:1.5px solid #b91c1c;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
+                📤 Upload Ulang Dokumen
+              </button>
+            </div>
           </div>
         </div>`:''}
         ${bolehEdit && !isDitolak?`
@@ -3506,6 +3545,14 @@ function rwRenderKartuGanti(g, isLatest) {
 
   const semula  = Array.isArray(g.semula)  ? g.semula  : (typeof g.semula==='string'?(()=>{try{return JSON.parse(g.semula);}catch(e){return [];}})():[]);
   const menjadi = Array.isArray(g.menjadi) ? g.menjadi : (typeof g.menjadi==='string'?(()=>{try{return JSON.parse(g.menjadi);}catch(e){return [];}})():[]);
+
+  // Cache full record agar tombol Upload/Perbaiki di kartu bisa hydrate state pergantian
+  window._pgRiwayatCache = window._pgRiwayatCache || {};
+  window._pgRiwayatCache[g.id] = {
+    id: g.id, namaSatker: g.namaSatker, namaKpa: g.namaKpa, nip: g.nip, noHp: g.noHp,
+    kota: g.kota, tglSurat: g.tglSurat, status, semula, menjadi, filesJson: g.filesJson || {},
+    catatanAdmin: g.catatanAdmin || '',
+  };
   const filesJson = (typeof g.filesJson === 'object' && g.filesJson) ? g.filesJson :
                     (typeof g.filesJson === 'string' ? (()=>{try{return JSON.parse(g.filesJson);}catch(e){return {};}})() : {});
   const fileKeys = Object.keys(filesJson||{});
@@ -3612,8 +3659,23 @@ function rwRenderKartuGanti(g, isLatest) {
 
     ${isDitolak?`
     <div style="background:#fff1f2;border:1.5px solid #fca5a5;border-radius:10px;padding:14px 16px;margin-bottom:12px">
-      <div style="font-size:13px;font-weight:700;color:#b91c1c;margin-bottom:4px">❌ Pergantian Ditolak</div>
-      ${g.catatanAdmin?`<div style="font-size:12px;color:#7f1d1d;background:#fee2e2;border-radius:6px;padding:6px 10px"><strong>Alasan:</strong> ${esc(g.catatanAdmin)}</div>`:''}
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:240px">
+          <div style="font-size:13px;font-weight:700;color:#b91c1c;margin-bottom:4px">❌ Pergantian Ditolak</div>
+          ${g.catatanAdmin?`<div style="font-size:12px;color:#7f1d1d;background:#fee2e2;border-radius:6px;padding:6px 10px;margin-bottom:8px"><strong>Alasan:</strong> ${esc(g.catatanAdmin)}</div>`:''}
+          <div style="font-size:12px;color:#991b1b">Silakan perbaiki data <strong>dan/atau</strong> upload ulang dokumen sesuai catatan KPPN.</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0">
+          <button class="btn btn-sm" onclick="pgPerbaikiData('${esc(g.id)}')"
+            style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
+            ✏️ Perbaiki Data
+          </button>
+          <button class="btn btn-sm" onclick="pgBukaUploadModal('${esc(g.id)}')"
+            style="background:#fff;color:#b91c1c;border:1.5px solid #b91c1c;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
+            📤 Upload Ulang Dokumen
+          </button>
+        </div>
+      </div>
     </div>`:''}
 
     <!-- Info grid -->
@@ -3910,10 +3972,11 @@ async function satkerDownloadDokumen(fileUrl, labelDokumen) {
 let pdData = null; // data pendaftaran yang sedang diperbaiki
 const _pdCache = {}; // cache data per refKode agar aman dari HTML injection
 
-function bukaUploadDokumenByRef(refKode) {
+function bukaUploadDokumenByRef(refKode, forceReupload) {
   const info = _pdCache[refKode];
   if (!info) { showToast('Data tidak ditemukan', true); return; }
-  bukaModalUploadDokumen(info);
+  // Kalau forceReupload (flow setelah ditolak), kirim flag agar modal pakai mode "upload ulang"
+  bukaModalUploadDokumen({ ...info, needsReupload: !!forceReupload });
 }
 
 // ── Unduh Form Excel dari riwayat ──────────────────────────────
