@@ -1274,7 +1274,7 @@ async function loadSubmissions(){
     if(!res.success){body.innerHTML=`<tr class="tbl-empty"><td colspan="7">❌ ${esc(res.message)}</td></tr>`;return;}
     cachedSubmissions=res.list||[];
     filterSubmissions();
-  }catch(e){body.innerHTML='<tr class="tbl-empty"><td colspan="6">❌ Gagal memuat</td></tr>';}
+  }catch(e){console.error('[loadSubmissions]',e);body.innerHTML='<tr class="tbl-empty"><td colspan="6">❌ Gagal: '+esc(e.message||String(e))+'</td></tr>';}
 }
 
 function filterSubmissions(){
@@ -1758,7 +1758,7 @@ async function loadPergantian(){
     if(!res.success){body.innerHTML=`<tr class="tbl-empty"><td colspan="9">❌ ${esc(res.message||'Gagal')}</td></tr>`;return;}
     cachedPergantian=res.list||[];
     filterPergantian();
-  }catch(e){body.innerHTML='<tr class="tbl-empty"><td colspan="9">❌ Gagal memuat</td></tr>';}
+  }catch(e){console.error('[loadPergantian]',e);body.innerHTML='<tr class="tbl-empty"><td colspan="9">❌ Gagal: '+esc(e.message||String(e))+'</td></tr>';}
 }
 
 function filterPergantian(){
