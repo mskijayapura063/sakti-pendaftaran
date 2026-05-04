@@ -1283,3 +1283,877 @@ function filterSubmissions(){
   const filtered=cachedSubmissions.filter(s=>{
     const matchQ=!q||(s.refKode||'').toLowerCase().includes(q)||(s.namaSatker||'').toLowerCase().includes(q)||(s.kodeSatker||'').toLowerCase().includes(q)||(s.namaKpa||'').toLowerCase().includes(q);
     const matchF=!f||s.status===f;
+    return matchQ&&matchF;
+  });
+  renderSubTable(filtered);
+}
+
+function renderSubTable(list){
+  const body=document.getElementById('subBody');
+  if(!body) return;
+  if(!list.length){body.innerHTML='<tr class="tbl-empty"><td colspan="7">Tidak ada data.</td></tr>';return;}
+  const isAdmin=['Admin','SuperAdmin'].includes(currentUser?.role);
+  body.innerHTML=list.map(s=>{
+    const belumUpload = !s.sudahUpload && ['submitted','Menunggu'].includes(s.status);
+    return `
+    <tr>
+      <td style="font-family:monospace;font-size:11px">${esc(s.refKode)}</td>
+      <td><strong>${esc(s.namaSatker)}</strong><br/><span style="font-size:11px;color:var(--gray-500)">${esc(s.kodeSatker)}</span></td>
+      <td>${esc(s.namaKpa||'—')}</td>
+      <td style="white-space:nowrap">${fmtTgl(s.tanggalDaftar||s.createdAt||'')}</td>
+      <td>
+        ${bstat(s.status)}
+        ${s.revisiKe>0?`<br/><span style="font-size:10px;color:var(--orange)">Revisi ke-${s.revisiKe}</span>`:''}
+        ${belumUpload?`<br/><span style="font-size:10px;color:var(--red);font-weight:600">⚠️ Belum upload</span>`:''}
+      </td>
+      <td style="font-size:11px;color:var(--gray-600);font-family:monospace;white-space:nowrap">${s.diprosesoleh?esc(s.diprosesoleh):'<span style="color:var(--gray-400)">—</span>'}</td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="lihatDetail('${esc(s.refKode)}')">🔍 Detail</button>
+          ${['submitted','Menunggu'].includes(s.status)?`
+            ${belumUpload
+              ? `<button class="btn btn-secondary btn-sm" title="Dokumen belum diupload satker" disabled style="opacity:.5;cursor:not-allowed">🔒 Proses</button>`
+              : `<button class="btn btn-success btn-sm" onclick="bukaProses('${esc(s.refKode)}')">✅ Proses</button>`
+            }
+            <button class="btn btn-danger btn-sm" onclick="bukaTolak('${esc(s.refKode)}')">❌ Tolak</button>
+          `:''}
+          ${s.status==='Diproses'?`<button class="btn btn-primary btn-sm" onclick="doTandaiTerdaftar('${esc(s.refKode)}')">🏷️ Tandai Terdaftar</button>`:''}
+          ${s.status==='Terdaftar'?`<button class="btn btn-warning btn-sm" onclick="aktivasiOTP('${esc(s.refKode)}')">🔐 Aktivasi OTP</button>`:''}
+          ${isAdmin&&!s.sudahTerdaftar?`<button class="btn btn-secondary btn-sm" onclick="bukaHapus('${esc(s.refKode)}')">🗑️</button>`:''}
+          ${isAdmin&&['Diproses','Terdaftar'].includes(s.status)?`<button class="btn btn-outline btn-sm" style="color:var(--orange);border-color:var(--orange)" onclick="bukaRollback('${esc(s.refKode)}','${esc(s.status)}')">↩️</button>`:''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function lihatDetail(refKode){
+  try{
+    const res=await apiPost({action:'getDetail',refKode});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    const s=res;
+    activeDetailData=s; // simpan untuk download Excel
+    const body=document.getElementById('detailBody');
+    // Kumpulkan daftar dokumen yang diupload
+    const filesObj = s.files || {};
+    const fileEntries = Object.entries(filesObj);
+    const LABEL_MAP = {
+      formPendaftaran:'Form Pendaftaran User SAKTI',
+      skPengguna:     'SK Pengguna SAKTI',
+      ktpKpa:         'KTP KPA/Pimpinan',
+      skPejabat:      'SK Pejabat Perbendaharaan',
+      formOTP:        'Form Aktivasi OTP',
+      spesimen:       'Spesimen Tanda Tangan',
+      dokumenLain:    'Dokumen Lainnya',
+      // legacy keys
+      ktp:'KTP KPA', suratPermohonan:'Surat Permohonan',
+      pakta:'Pakta Integritas', suratKuasa:'Surat Kuasa', lainnya:'Dokumen Lainnya',
+    };
+    body.innerHTML=`
+      <!-- Info utama -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px">
+        <div><span style="color:var(--gray-500)">Ref Kode:</span><br/><strong style="font-family:monospace">${esc(s.refKode)}</strong></div>
+        <div><span style="color:var(--gray-500)">Status:</span><br/>${bstat(s.status)}</div>
+        <div><span style="color:var(--gray-500)">Nama Satker:</span><br/><strong>${esc(s.namaSatker)}</strong></div>
+        <div><span style="color:var(--gray-500)">Kode Satker:</span><br/><strong>${esc(s.kodeSatker)}</strong></div>
+        <div><span style="color:var(--gray-500)">Nama KPA:</span><br/><strong>${esc(s.namaKpa||'—')}</strong></div>
+        <div><span style="color:var(--gray-500)">NIP:</span><br/><strong>${esc(s.nip||'—')}</strong></div>
+        <div><span style="color:var(--gray-500)">No HP:</span><br/><strong>${esc(s.noHp||'—')}</strong></div>
+        <div><span style="color:var(--gray-500)">Email:</span><br/><strong>${esc(s.email||'—')}</strong></div>
+        ${s.diprosesoleh?`<div><span style="color:var(--gray-500)">Diproses oleh:</span><br/><strong style="font-family:monospace">${esc(s.diprosesoleh)}</strong></div>`:''}
+        ${s.catatanAdmin?`<div style="grid-column:1/-1"><span style="color:var(--red)">Catatan KPPN:</span><br/><strong style="color:var(--red)">${esc(s.catatanAdmin)}</strong></div>`:''}
+      </div>
+
+      <!-- Dokumen yang diupload -->
+      <div class="card-title" style="margin-bottom:8px">📎 Dokumen Pendaftaran</div>
+      ${fileEntries.length ? `
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        ${fileEntries.map(([key,f])=>{
+          let label = LABEL_MAP[key] || key;
+          // Resolve label dinamis untuk KTP per pengguna (key = ktp_user_<idx>)
+          if (key.startsWith('ktp_user_')) {
+            const idx = parseInt(key.slice(9), 10);
+            const u   = (s.users||[])[idx];
+            label = 'KTP — ' + ((u && (u.nama||u.namaLengkap)) ? (u.nama||u.namaLengkap) : ('Pengguna #' + (idx+1)));
+          }
+          return `<button onclick="adminDownloadDriveFile('${esc(f.url||'')}','${esc(label)}')"
+            style="display:inline-flex;align-items:center;gap:6px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;font-family:'Inter',sans-serif"
+            onmouseover="this.style.background='var(--blue-pale2)'" onmouseout="this.style.background='var(--blue-pale)'">
+            📥 ${esc(label)}
+          </button>`;
+        }).join('')}
+      </div>` : `
+      <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#991b1b;display:flex;align-items:center;gap:8px">
+        <span>⚠️</span> Belum ada dokumen yang diupload satker.
+      </div>`}
+
+      <!-- Data Pengguna -->
+      ${(s.users||[]).length?`
+      <div class="card-title" style="margin-bottom:10px">👥 Data Pengguna (${s.users.length} orang)</div>
+      <table class="tbl" style="margin-bottom:14px">
+        <thead><tr><th>Nama</th><th>NIP/NRP</th><th>NIK</th><th>Peran</th></tr></thead>
+        <tbody>${s.users.map(u=>{
+          const peranList = u.peranList || (u.peran ? [u.peran] : []);
+          const PERAN_OTP_UI = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+          return `<tr>
+            <td>${esc(u.nama||u.namaLengkap||'')}</td>
+            <td style="font-family:monospace">${esc(u.nipnrp||u.nip||'')}</td>
+            <td style="font-family:monospace">${esc(u.nik||'')}</td>
+            <td>${peranList.map(p=>`<span style="font-size:10px;background:${PERAN_OTP_UI.includes(p)?'#fef9c3':'var(--blue-pale)'};color:${PERAN_OTP_UI.includes(p)?'#854d0e':'var(--blue)'};padding:1px 6px;border-radius:10px;margin:1px;display:inline-block">${esc(p.replace('SATKER_',''))}</span>`).join('')||esc(u.peran||u.role||'—')}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>`:''}
+
+      <!-- Download Excel -->
+      <div style="margin-bottom:14px">
+        <button class="btn btn-outline btn-sm" onclick="adminDownloadPendaftaranExcel(activeDetailData)">📥 Download Form Excel</button>
+      </div>
+
+      <!-- Aksi proses/tolak -->
+      ${['submitted','Menunggu'].includes(s.status)?`
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${!s.sudahUpload
+          ? `<button class="btn btn-secondary btn-sm" disabled style="opacity:.5;cursor:not-allowed" title="Dokumen belum diupload">🔒 Proses</button>`
+          : `<button class="btn btn-success btn-sm" onclick="closeModal('modalDetail');bukaProses('${esc(s.refKode)}')">✅ Proses</button>`
+        }
+        <button class="btn btn-danger btn-sm" onclick="closeModal('modalDetail');bukaTolak('${esc(s.refKode)}')">❌ Tolak</button>
+      </div>
+      ${!s.sudahUpload?`<div style="margin-top:8px;font-size:11px;color:#991b1b">🔒 Dokumen belum diupload — tombol Proses dikunci sampai dokumen tersedia.</div>`:''}`:''}
+      ${['Admin','SuperAdmin'].includes(currentUser?.role)&&['Diproses','Terdaftar'].includes(s.status)?`
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gray-200)">
+        <button class="btn btn-outline btn-sm" style="color:var(--orange);border-color:var(--orange);font-size:12px" onclick="closeModal('modalDetail');bukaRollback('${esc(s.refKode)}','${esc(s.status)}')">
+          ↩️ Rollback Status ke ${s.status==='Terdaftar'?'Diproses':'Menunggu'}
+        </button>
+        <div style="font-size:11px;color:var(--gray-500);margin-top:4px">Kembalikan status pendaftaran ke tahap sebelumnya jika diperlukan.</div>
+      </div>`:''}`;
+
+    openModal('modalDetail');
+  }catch(e){showToast('Gagal memuat detail',true);}
+}
+
+function bukaProses(refKode){
+  activeProsesRef=refKode;
+  document.getElementById('prosesRefKode').textContent=refKode;
+  openModal('modalProses');
+}
+
+async function doProses(){
+  const btn=document.getElementById('btnDoProses');
+  btn.disabled=true; btn.textContent='⏳...';
+  try{
+    const res=await apiPost({action:'prosesDaftar',refKode:activeProsesRef});
+    if(!res.success){showToast(res.message||'Gagal',true);btn.disabled=false;btn.innerHTML='✅ Proses';return;}
+    showToast('✅ Pendaftaran berhasil diproses',false,true);
+    closeModal('modalProses');
+    loadSubmissions();
+  }catch(e){showToast('Gagal',true);}
+  btn.disabled=false; btn.innerHTML='✅ Proses';
+}
+
+async function doTandaiTerdaftar(refKode){
+  if(!confirm('Tandai pendaftaran ' + refKode + ' sudah terdaftar di SAKTI?')) return;
+  try{
+    const res=await apiPost({action:'tandaiTerdaftar',refKode});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    if(res.needsOTP){
+      showToast('✅ Berhasil ditandai Terdaftar. Lanjutkan ke Aktivasi OTP.',false,true);
+      // Langsung tawarkan aktivasi OTP
+      setTimeout(()=>{
+        if(confirm('Ada pengguna yang membutuhkan Aktivasi OTP (KPA/PPK/PPSPM).\nLanjutkan Aktivasi OTP sekarang?')){
+          aktivasiOTP(refKode);
+          return;
+        }
+        loadSubmissions();
+      },300);
+    } else {
+      showToast('✅ Berhasil. Status otomatis Selesai (tidak ada pengguna OTP).',false,true);
+      loadSubmissions();
+    }
+  }catch(e){showToast('Gagal: '+e.message,true);}
+}
+
+function bukaTolak(refKode){
+  activeTolakRef=refKode;
+  document.getElementById('alasanTolak').value='';
+  openModal('modalTolak');
+}
+
+async function doTolak(){
+  const alasan=(document.getElementById('alasanTolak').value||'').trim();
+  if(!alasan){showToast('Alasan penolakan wajib diisi',true);return;}
+  const btn=document.getElementById('btnDoTolak');
+  btn.disabled=true; btn.textContent='⏳...';
+  try{
+    const res=await apiPost({action:'tolakDaftar',refKode:activeTolakRef,catatan:alasan});
+    if(!res.success){showToast(res.message||'Gagal',true);btn.disabled=false;btn.innerHTML='❌ Tolak';return;}
+    showToast('✅ Pendaftaran ditolak',false,true);
+    closeModal('modalTolak');
+    loadSubmissions();
+  }catch(e){showToast('Gagal',true);}
+  btn.disabled=false; btn.innerHTML='❌ Tolak';
+}
+
+function bukaHapus(refKode){
+  activeHapusRef=refKode;
+  document.getElementById('hapusRefKode').textContent=refKode;
+  openModal('modalHapus');
+}
+
+async function doHapus(){
+  const btn=document.getElementById('btnDoHapus');
+  btn.disabled=true; btn.textContent='⏳...';
+  try{
+    const res=await apiPost({action:'hapusData',refs:[activeHapusRef],refKode:activeHapusRef});
+    if(!res.success){showToast(res.message||'Gagal',true);btn.disabled=false;btn.innerHTML='🗑️ Hapus';return;}
+    showToast('✅ Data berhasil dihapus',false,true);
+    closeModal('modalHapus');
+    loadSubmissions();
+  }catch(e){showToast('Gagal: '+e.message,true);}
+  btn.disabled=false; btn.innerHTML='🗑️ Hapus';
+}
+
+// ════════════════════════════════════════════════════════
+// ROLLBACK STATUS
+// ════════════════════════════════════════════════════════
+const ROLLBACK_MAP = { 'Terdaftar':'Diproses', 'Diproses':'Menunggu' };
+
+function bukaRollback(refKode, statusSaatIni) {
+  const statusTujuan = ROLLBACK_MAP[statusSaatIni];
+  if (!statusTujuan) { showToast('Status ini tidak bisa di-rollback', true); return; }
+  activeRollbackRef = refKode;
+  document.getElementById('rollbackRefKode').textContent     = refKode;
+  document.getElementById('rollbackStatusSaatIni').textContent = statusSaatIni;
+  document.getElementById('rollbackStatusTujuan').textContent  = statusTujuan;
+  openModal('modalRollback');
+}
+
+async function doRollback() {
+  const btn = document.getElementById('btnDoRollback');
+  btn.disabled = true; btn.textContent = '⏳...';
+  try {
+    const statusTujuan = document.getElementById('rollbackStatusTujuan').textContent;
+    const res = await apiPost({ action:'rollbackStatus', refKode:activeRollbackRef, statusTujuan });
+    if (!res.success) { showToast(res.message||'Gagal rollback', true); btn.disabled=false; btn.textContent='↩️ Konfirmasi Rollback'; return; }
+    showToast(`✅ Status berhasil di-rollback ke "${statusTujuan}"`, false, true);
+    closeModal('modalRollback');
+    loadSubmissions();
+  } catch(e) { showToast('Gagal: '+e.message, true); }
+  btn.disabled=false; btn.textContent='↩️ Konfirmasi Rollback';
+}
+
+// ════════════════════════════════════════════════════════
+// MONITORING OTP
+// ════════════════════════════════════════════════════════
+function renderOTP(){
+  return `<div class="page-title">Monitoring Aktivasi OTP</div>
+  <div class="page-sub">Satker yang sudah terdaftar namun belum aktivasi OTP di SAKTI</div>
+  <div class="card">
+    <div class="card-title">Belum Aktivasi OTP</div>
+    <div id="otpBody"><p style="color:var(--gray-400);font-size:13px">Memuat...</p></div>
+  </div>`;
+}
+
+async function loadOTP(){
+  const body=document.getElementById('otpBody');
+  if(!body) return;
+  try{
+    const res=await apiPost({action:'getDaftarList'});
+    if(!res.success){body.innerHTML=`<p style="color:var(--red)">❌ ${esc(res.message)}</p>`;return;}
+    const list=(res.list||[]).filter(s=>s.sudahTerdaftar&&!s.otpAktif&&s.hasOTP);
+    if(!list.length){body.innerHTML='<p style="color:var(--green);font-weight:600">✅ Semua satker yang terdaftar sudah aktivasi OTP.</p>';return;}
+    body.innerHTML=`<table class="tbl">
+      <thead><tr><th>Ref</th><th>Satker</th><th>Kode OTP</th><th>Aksi</th></tr></thead>
+      <tbody>${list.map(s=>`<tr>
+        <td style="font-family:monospace;font-size:11px">${esc(s.refKode)}</td>
+        <td><strong>${esc(s.namaSatker)}</strong></td>
+        <td style="font-family:monospace;font-weight:700;color:var(--purple)">${esc(s.otpCode||'—')}</td>
+        <td><button class="btn btn-primary btn-sm" onclick="aktivasiOTP('${esc(s.refKode)}')">✅ Tandai Aktif</button></td>
+      </tr>`).join('')}</tbody>
+    </table>
+    <p style="font-size:12px;color:var(--gray-500);margin-top:8px">${list.length} satker belum aktivasi OTP</p>`;
+  }catch(e){body.innerHTML='<p style="color:var(--red)">❌ Gagal memuat</p>';}
+}
+
+// ── State untuk modal OTP ──────────────────────────────────────────
+let _otpRefKode = '';
+let _otpPejabatData = []; // [{nama,peran,photoBase64,photoName,mimeType}]
+
+async function aktivasiOTP(refKode){
+  _otpRefKode = refKode;
+  _otpPejabatData = [];
+  document.getElementById('otpRefKode').textContent = refKode;
+  document.getElementById('otpCatatan').value = '';
+  // Reset mode to hadir_langsung
+  document.querySelectorAll('input[name="otpMode"]').forEach(r=>{ r.checked = r.value==='hadir_langsung'; });
+
+  // Load daftar pejabat OTP dari data pendaftaran
+  const PERAN_OTP_LIST = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+  const PERAN_LABEL = {SATKER_KPA:'KPA',SATKER_PPK:'PPK',SATKER_PPK_DFDD:'PPK DFDD',SATKER_PPSPM:'PPSPM'};
+  try{
+    const res = await apiPost({action:'getDetail', refKode});
+    const users = res.users || res.usersJson || [];
+    const pejabat = [];
+    users.forEach(u=>{
+      const matchPeran = (u.peranList||[]).filter(p=>PERAN_OTP_LIST.includes(p));
+      if(matchPeran.length){
+        pejabat.push({ nama: u.nama||u.username||'—', peran: matchPeran.map(p=>PERAN_LABEL[p]||p).join(', '), peranRaw: matchPeran[0], photoBase64:'', photoName:'', mimeType:'' });
+      }
+    });
+    _otpPejabatData = pejabat.length ? pejabat : [{ nama:'(tidak diketahui)', peran:'—', peranRaw:'', photoBase64:'', photoName:'', mimeType:'' }];
+  }catch(e){
+    _otpPejabatData = [{ nama:'(gagal memuat)', peran:'—', peranRaw:'', photoBase64:'', photoName:'', mimeType:'' }];
+  }
+  otpModeChange();
+  openModal('modalAktivasiOTP');
+}
+
+function otpModeChange(){
+  const mode = document.querySelector('input[name="otpMode"]:checked')?.value || 'hadir_langsung';
+  const lblH = document.getElementById('lblHadir');
+  const lblD = document.getElementById('lblDaring');
+  const info = document.getElementById('otpModeInfo');
+
+  if(mode==='hadir_langsung'){
+    lblH.style.borderColor='var(--blue)'; lblH.style.background='#EFF6FF';
+    lblD.style.borderColor='var(--gray-300)'; lblD.style.background='#fff';
+    info.innerHTML='ℹ️ Mode <strong>Hadir Langsung</strong>: Pejabat datang ke KPPN. Upload foto bersifat <strong>opsional</strong>.';
+    info.className='info-box blue';
+  } else {
+    lblD.style.borderColor='#7C3AED'; lblD.style.background='#FAF5FF';
+    lblH.style.borderColor='var(--gray-300)'; lblH.style.background='#fff';
+    info.innerHTML='⚠️ Mode <strong>Daring</strong>: Foto tiap pejabat <strong>wajib diupload</strong> (maks 2 MB/foto).';
+    info.className='info-box orange';
+  }
+  renderOTPPejabatList(mode);
+}
+
+function renderOTPPejabatList(mode){
+  const container = document.getElementById('otpPejabatList');
+  if(!container) return;
+  if(!_otpPejabatData.length){ container.innerHTML=''; return; }
+  const wajib = mode==='daring';
+  container.innerHTML = `
+    <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:10px">
+      Pejabat dengan Peran OTP <span style="font-size:11px;font-weight:400;color:var(--gray-500)">(${_otpPejabatData.length} orang)</span>
+    </div>
+    ${_otpPejabatData.map((p,i)=>`
+    <div style="border:1.5px solid ${wajib?'#E9D5FF':'var(--gray-200)'};border-radius:10px;padding:12px 14px;margin-bottom:10px;background:${wajib?'#FAF5FF':'#FAFAFA'}">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="font-size:18px">${wajib?'🔐':'👤'}</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--gray-800)">${esc(p.nama)}</div>
+          <div style="font-size:11px;color:#7C3AED;font-weight:600">${esc(p.peran)}</div>
+        </div>
+        ${p.photoName?`<span style="margin-left:auto;font-size:11px;color:var(--green);font-weight:600">✅ ${esc(p.photoName)}</span>`:''}
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--gray-600);font-weight:500;display:block;margin-bottom:4px">
+          Foto Pejabat ${wajib?'<span style="color:var(--red)">*wajib</span>':'<span style="color:var(--gray-400)">(opsional)</span>'}
+          <span style="color:var(--gray-400);font-weight:400"> — maks 2 MB, format JPG/PNG</span>
+        </label>
+        <input type="file" accept="image/jpeg,image/png,image/jpg" id="otpPhoto_${i}"
+          onchange="otpPhotoChange(${i}, this)"
+          style="font-size:12px;width:100%;padding:6px;border:1.5px dashed ${wajib?'#7C3AED':'var(--gray-300)'};border-radius:6px;cursor:pointer;background:#fff"/>
+      </div>
+    </div>`).join('')}`;
+}
+
+function otpPhotoChange(idx, input){
+  const file = input.files[0];
+  if(!file) return;
+  if(file.size > 2*1024*1024){
+    showToast('Foto terlalu besar! Maks 2 MB.', true);
+    input.value='';
+    _otpPejabatData[idx].photoBase64='';
+    _otpPejabatData[idx].photoName='';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const b64 = e.target.result.split(',')[1];
+    _otpPejabatData[idx].photoBase64 = b64;
+    _otpPejabatData[idx].photoName   = file.name;
+    _otpPejabatData[idx].mimeType    = file.type;
+    // Update label
+    const mode = document.querySelector('input[name="otpMode"]:checked')?.value||'hadir_langsung';
+    renderOTPPejabatList(mode);
+    // Re-assign file input value handling (re-rendered, need new listeners)
+  };
+  reader.readAsDataURL(file);
+}
+
+async function doAktivasiOTP(){
+  const mode    = document.querySelector('input[name="otpMode"]:checked')?.value || 'hadir_langsung';
+  const catatan = (document.getElementById('otpCatatan')?.value||'').trim();
+
+  // Validasi daring: semua foto harus ada
+  if(mode==='daring'){
+    const missing = _otpPejabatData.filter(p=>!p.photoBase64);
+    if(missing.length){
+      showToast('Mode Daring: Upload foto untuk semua pejabat wajib! ('+missing.map(p=>p.nama).join(', ')+')', true);
+      return;
+    }
+  }
+
+  const btn = document.getElementById('btnDoAktivasiOTP');
+  btn.disabled=true; btn.textContent='⏳ Memproses...';
+  try{
+    const payload = {
+      action: 'aktivasiOTP',
+      refKode: _otpRefKode,
+      mode,
+      catatan,
+      photos: _otpPejabatData.map(p=>({ nama:p.nama, peran:p.peran, photoBase64:p.photoBase64||'', photoName:p.photoName||'', mimeType:p.mimeType||'' }))
+    };
+    const res = await apiPost(payload);
+    if(!res.success){ showToast(res.message||'Gagal', true); btn.disabled=false; btn.innerHTML='🔐 Aktivasi OTP'; return; }
+    showToast('✅ OTP berhasil diaktivasi! Mode: '+(mode==='daring'?'Daring':'Hadir Langsung'), false, true);
+    closeModal('modalAktivasiOTP');
+    if(typeof loadOTP==='function') loadOTP();
+    if(typeof loadSubmissions==='function') loadSubmissions();
+    if(typeof loadPergantian==='function') loadPergantian();
+  }catch(e){ showToast('Gagal: '+e.message, true); }
+  btn.disabled=false; btn.innerHTML='🔐 Aktivasi OTP';
+}
+
+// ════════════════════════════════════════════════════════
+// MONITORING PERGANTIAN USER SAKTI (visual ungu agar beda dari Pendaftaran biru)
+// ════════════════════════════════════════════════════════
+let cachedPergantian = [];
+
+function renderPergantian(){
+  return `<div class="page-title" style="color:#7C3AED">🔄 Monitoring Pergantian User SAKTI</div>
+  <div class="page-sub">Pantau dan kelola pengajuan pergantian pengguna SAKTI dari satker</div>
+  <div class="card" style="padding:14px 18px;border-top:3px solid #7C3AED">
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+      <input class="table-search" type="text" id="pgSearchAdmin" placeholder="🔍 Cari ID, satker, KPA..." oninput="filterPergantian()" style="max-width:340px"/>
+      <select id="pgFilterAdmin" onchange="filterPergantian()" style="border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:7px 10px;font-size:13px;font-family:'Inter',sans-serif;background:#fff">
+        <option value="">Semua Status</option>
+        <option value="Menunggu">Menunggu</option>
+        <option value="Diproses">Diproses</option>
+        <option value="Selesai">Selesai</option>
+        <option value="Terdaftar">Terdaftar</option>
+        <option value="Ditolak">Ditolak</option>
+      </select>
+      <button class="btn btn-outline btn-sm" onclick="loadPergantian()">🔄 Refresh</button>
+      <span id="pgCountAdmin" style="margin-left:auto;font-size:12px;color:var(--gray-500)"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead style="background:#FAF5FF">
+          <tr><th>ID</th><th>Satker</th><th>KPA</th><th>Semula → Menjadi</th><th>Tgl Pengajuan</th><th>Dok.</th><th>Status</th><th>Diproses oleh</th><th>Aksi</th></tr>
+        </thead>
+        <tbody id="pgBodyAdmin"><tr class="tbl-empty"><td colspan="9">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+async function loadPergantian(){
+  const body=document.getElementById('pgBodyAdmin');
+  if(!body) return;
+  body.innerHTML='<tr class="tbl-empty"><td colspan="9">Memuat...</td></tr>';
+  try{
+    const res=await apiPost({action:'getDaftarPerubahan'});
+    if(!res.success){body.innerHTML=`<tr class="tbl-empty"><td colspan="9">❌ ${esc(res.message||'Gagal')}</td></tr>`;return;}
+    cachedPergantian=res.list||[];
+    filterPergantian();
+  }catch(e){body.innerHTML='<tr class="tbl-empty"><td colspan="9">❌ Gagal memuat</td></tr>';}
+}
+
+function filterPergantian(){
+  const q=(document.getElementById('pgSearchAdmin')?.value||'').toLowerCase();
+  const f=(document.getElementById('pgFilterAdmin')?.value||'');
+  const filtered=cachedPergantian.filter(p=>{
+    const matchQ=!q||(p.id||'').toLowerCase().includes(q)||(p.namaSatker||'').toLowerCase().includes(q)||(p.kodeSatker||'').toLowerCase().includes(q)||(p.namaKpa||'').toLowerCase().includes(q);
+    const matchF=!f||(p.status||'')===f;
+    return matchQ&&matchF;
+  });
+  const countEl=document.getElementById('pgCountAdmin');
+  if(countEl) countEl.textContent = filtered.length+' / '+cachedPergantian.length+' pengajuan';
+  renderPgTable(filtered);
+}
+
+function renderPgTable(list){
+  const body=document.getElementById('pgBodyAdmin');
+  if(!body) return;
+  if(!list.length){body.innerHTML='<tr class="tbl-empty"><td colspan="9">Tidak ada data pergantian.</td></tr>';return;}
+  const isAdmin=['Admin','SuperAdmin'].includes(currentUser?.role);
+  body.innerHTML=list.map(p=>{
+    const semula = Array.isArray(p.semula)?p.semula:[];
+    const menjadi = Array.isArray(p.menjadi)?p.menjadi:[];
+    const filesJson = (typeof p.filesJson==='object'&&p.filesJson)?p.filesJson:{};
+    const fileCount = Object.keys(filesJson).length;
+    const sudahUpload = fileCount>0;
+    const status = p.status||'Menunggu';
+    const sLow = status.toLowerCase();
+    const isMenunggu = sLow==='menunggu';
+    const belumUpload = !sudahUpload && isMenunggu;
+    return `
+    <tr>
+      <td style="font-family:monospace;font-size:11px">${esc(p.id||'—')}</td>
+      <td><strong>${esc(p.namaSatker||'—')}</strong><br/><span style="font-size:11px;color:var(--gray-500)">${esc(p.kodeSatker||'')}</span></td>
+      <td>${esc(p.namaKpa||'—')}<br/><span style="font-size:11px;color:var(--gray-500)">${esc(p.nip||'')}</span></td>
+      <td style="white-space:nowrap;font-size:12px">${semula.length} → <strong style="color:#7C3AED">${menjadi.length}</strong> pengguna</td>
+      <td style="white-space:nowrap">${fmtTgl(p.createdAt||p.tglSurat||'')}</td>
+      <td style="text-align:center">${sudahUpload?`<span style="background:#F3E8FF;color:#7C3AED;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">${fileCount}</span>`:`<span style="color:var(--red);font-size:11px;font-weight:600">⚠️ —</span>`}</td>
+      <td>${bstat(status)}${belumUpload?'<br/><span style="font-size:10px;color:var(--red);font-weight:600">⚠️ Belum upload</span>':''}</td>
+      <td style="font-size:11px;color:var(--gray-600);font-family:monospace;white-space:nowrap">${p.diprosesoleh?esc(p.diprosesoleh):'<span style="color:var(--gray-400)">—</span>'}</td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="lihatDetailPg('${esc(p.id)}')">🔍 Detail</button>
+          ${isMenunggu?`
+            ${belumUpload
+              ? `<button class="btn btn-secondary btn-sm" title="Dokumen belum diupload satker" disabled style="opacity:.5;cursor:not-allowed">🔒 Proses</button>`
+              : `<button class="btn btn-success btn-sm" onclick="prosesPg('${esc(p.id)}')">✅ Proses</button>`}
+            <button class="btn btn-danger btn-sm" onclick="tolakPg('${esc(p.id)}')">❌ Tolak</button>
+          `:''}
+          ${status==='Diproses'?`<button class="btn btn-success btn-sm" onclick="prosesPg('${esc(p.id)}')">✅ Lanjut ke Terdaftar</button>`:''}
+          ${status==='Terdaftar'?`<button class="btn btn-warning btn-sm" onclick="aktivasiOTP('${esc(p.id)}')">🔐 Aktivasi OTP</button>`:''}
+          ${isAdmin?`<button class="btn btn-danger btn-sm" onclick="hapusPerubahan('${esc(p.id)}')" title="Hapus rekaman pergantian" style="background:#7C3AED">🗑️</button>`:''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── HAPUS PERGANTIAN ─────────────────────────────────────────────
+async function hapusPerubahan(id){
+  if(!confirm('Hapus rekaman pergantian "'+id+'" secara permanen?\nSemua file terkait akan dihapus dari Drive.')) return;
+  const btn = event && event.target ? event.target : null;
+  if(btn){ btn.disabled=true; btn.textContent='…'; }
+  try{
+    const res = await apiPost({action:'hapusPerubahan', ids:[id]});
+    if(!res.success){showToast(res.message||'Gagal hapus',true);if(btn){btn.disabled=false;btn.textContent='🗑️';}return;}
+    showToast('✅ Rekaman pergantian berhasil dihapus',false,true);
+    loadPergantian();
+  }catch(err){showToast('Error: '+err.message,true);if(btn){btn.disabled=false;btn.textContent='🗑️';}}
+}
+
+// ── DETAIL PERGANTIAN MODAL ───────────────────────────────────────
+function lihatDetailPg(id){
+  const p = cachedPergantian.find(x=>x.id===id);
+  if(!p){showToast('Data tidak ditemukan',true);return;}
+  const semula  = Array.isArray(p.semula)?p.semula:[];
+  const menjadi = Array.isArray(p.menjadi)?p.menjadi:[];
+  const filesJson   = (typeof p.filesJson==='object'&&p.filesJson)?p.filesJson:{};
+  const fileEntries = Object.entries(filesJson);
+  const LABEL_PG = {
+    formOTP:'Form Aktivasi OTP', skPejabat:'SK Pejabat Perbendaharaan',
+    skPengguna:'SK Pengguna SAKTI', spesimen:'Spesimen TTD',
+    formPergantian:'Form Pergantian', pdfDokumen:'Dokumen (lama)',
+  };
+  function renderUserMini(u){
+    return '<tr>'
+      +'<td>'+esc(u.nama||'—')+'</td>'
+      +'<td style="font-family:monospace;font-size:11px">'+esc(u.nipnrp||'')+'</td>'
+      +'<td style="font-family:monospace;font-size:11px">'+esc(u.email||'')+'</td>'
+      +'<td style="font-size:11px">'+(u.peranList||[]).map(k=>'<span style="background:#EDE9FE;color:#7C3AED;padding:1px 6px;border-radius:8px;font-size:10px">'+esc(k)+'</span>').join(' ')+'</td>'
+      +'<td style="font-size:11px;color:var(--gray-500)">'+esc(u.keterangan||'')+'</td>'
+      +'<td style="font-size:11px;color:var(--gray-500)">'+esc(u.hp||'')+'</td>'
+      +'</tr>';
+  }
+  const html = '<div class="modal-overlay" id="modalDetailPg" style="display:flex" onclick="if(event.target===this)closeModalPg()">'
+    +'<div class="modal-box" style="max-width:860px;width:100%">'
+    +'<div class="modal-title">🔍 Detail Pergantian — <span style="font-family:monospace;font-size:13px">'+esc(p.id||'')+'</span></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;font-size:13px">'
+    +'<div><span style="color:var(--gray-500)">Satker:</span> <strong>'+esc(p.namaSatker||'—')+'</strong> ('+esc(p.kodeSatker||'')+')</div>'
+    +'<div><span style="color:var(--gray-500)">KPA:</span> '+esc(p.namaKpa||'—')+' / '+esc(p.nip||'')+'</div>'
+    +'<div><span style="color:var(--gray-500)">Status:</span> '+bstat(p.status||'')+'</div>'
+    +'<div><span style="color:var(--gray-500)">Tgl Pengajuan:</span> '+fmtTgl(p.createdAt||p.tglSurat||'')+'</div>'
+    +(p.catatanAdmin?'<div style="grid-column:1/-1"><span style="color:var(--gray-500)">Catatan Admin:</span> <em>'+esc(p.catatanAdmin)+'</em></div>':'')
+    +(p.diprosesoleh?'<div style="grid-column:1/-1"><span style="color:var(--gray-500)">Diproses oleh:</span> <strong style="font-family:monospace">'+esc(p.diprosesoleh)+'</strong></div>':'')
+    +'</div>'
+    +'<div style="font-weight:700;color:#7C3AED;margin-bottom:4px">SEMULA</div>'
+    +'<div style="overflow-x:auto;margin-bottom:14px"><table class="tbl" style="font-size:12px">'
+    +'<thead style="background:#F5F3FF"><tr><th>Nama</th><th>NIP/NRP</th><th>Email</th><th>Peran</th><th>Ket.</th><th>No. HP</th></tr></thead>'
+    +'<tbody>'+(semula.map(renderUserMini).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--gray-400);font-style:italic">—</td></tr>')+'</tbody>'
+    +'</table></div>'
+    +'<div style="font-weight:700;color:#7C3AED;margin-bottom:4px">MENJADI</div>'
+    +'<div style="overflow-x:auto;margin-bottom:14px"><table class="tbl" style="font-size:12px">'
+    +'<thead style="background:#F3E8FF"><tr><th>Nama</th><th>NIP/NRP</th><th>Email</th><th>Peran</th><th>Ket.</th><th>No. HP</th></tr></thead>'
+    +'<tbody>'+(menjadi.map(renderUserMini).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--gray-400);font-style:italic">—</td></tr>')+'</tbody>'
+    +'</table></div>'
+    +(fileEntries.length
+      ?'<div style="font-weight:700;margin-bottom:8px">📎 Dokumen</div>'
+       +'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">'
+       +fileEntries.map(([k,v])=>'<a href="'+(v.url||'#')+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#F3F4F6;border-radius:8px;font-size:12px;text-decoration:none;color:var(--gray-700);border:1px solid #E5E7EB">'
+         +'📄 '+esc(LABEL_PG[k]||k)+'<span style="font-size:10px;color:var(--gray-400)">'+(v.name?'('+esc(v.name)+')':'')+'</span></a>').join('')
+       +'</div>'
+      :'')
+    +((p.status||'').toLowerCase()==='menunggu' && fileEntries.length
+      ?'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">'
+       +'<button class="btn btn-danger" onclick="closeModalPg();tolakPg(\''+esc(p.id)+'\')">❌ Tolak</button>'
+       +'<button class="btn btn-success" onclick="closeModalPg();prosesPg(\''+esc(p.id)+'\')">✅ Proses</button>'
+       +'</div>'
+      :'')
+    +'</div></div>';
+  document.getElementById('modalDetailPg') && document.getElementById('modalDetailPg').remove();
+  const wrap = document.createElement('div');
+  wrap.innerHTML = html;
+  document.body.appendChild(wrap.firstElementChild);
+}
+function closeModalPg(){ const m=document.getElementById('modalDetailPg'); if(m)m.remove(); }
+
+async function prosesPg(id){
+  if(!confirm('Proses pengajuan pergantian ini?')) return;
+  try{
+    const res = await apiPost({action:'prosesPerubahan', id});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    if(res.needsOTP){
+      showToast('✅ Status → Terdaftar. Ada pengguna yang butuh Aktivasi OTP.',false,true);
+      loadPergantian();
+      setTimeout(()=>{
+        if(confirm('Ada pengguna KPA/PPK/PPSPM yang memerlukan Aktivasi OTP.\nLanjutkan Aktivasi OTP sekarang?')){
+          aktivasiOTP(id);
+        }
+      },300);
+    } else {
+      showToast('✅ Status diupdate ke '+(res.statusBaru||'Selesai'),false,true);
+      loadPergantian();
+    }
+  }catch(err){showToast('Error: '+err.message,true);}
+}
+async function tolakPg(id){
+  const catatan = prompt('Alasan penolakan:');
+  if(catatan===null) return;
+  if(!catatan.trim()){showToast('Alasan wajib diisi',true);return;}
+  try{
+    const res = await apiPost({action:'tolakPerubahan', id, catatan});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    showToast('✅ Pengajuan ditolak',false,true);
+    loadPergantian();
+  }catch(err){showToast('Error: '+err.message,true);}
+}
+
+// ── PANEL REFERENSI SATKER ────────────────────────────────────────
+let cachedSatker=[], editSatkerKode=null;
+function renderSatker(){
+  return '<div class="section-header"><h2 class="section-title">🏢 Kelola Satker</h2></div>'
+    +'<div class="card">'
+    +'<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">'
+    +'<input type="text" id="satkerSearch" placeholder="Cari kode/nama satker…" class="form-control" style="max-width:280px" oninput="filterSatker()">'
+    +'<button class="btn btn-primary btn-sm" onclick="showAddSatker()">➕ Tambah Satker</button>'
+    +'</div>'
+    +'<div style="overflow-x:auto">'
+    +'<table class="tbl" id="satkerTable">'
+    +'<thead><tr><th>Kode</th><th>Nama Satker</th><th>Aksi</th></tr></thead>'
+    +'<tbody id="satkerBody"><tr class="tbl-empty"><td colspan="3">Memuat…</td></tr></tbody>'
+    +'</table></div></div>'
+    +'<div class="modal-overlay" id="modalSatker">'
+    +'<div class="modal-box">'
+    +'<div class="modal-title" id="satkerModalTitle">Tambah Satker</div>'
+    +'<div style="display:flex;flex-direction:column;gap:10px">'
+    +'<label>Kode Satker<input type="text" id="satkerKode" class="form-control" placeholder="6 digit" maxlength="6"></label>'
+    +'<label>Nama Satker<input type="text" id="satkerNama" class="form-control" placeholder="Nama lengkap satker"></label>'
+    +'</div>'
+    +'<div class="modal-actions">'
+    +'<button class="btn btn-secondary" onclick="closeModal(\'modalSatker\')">Batal</button>'
+    +'<button class="btn btn-primary" onclick="doSaveSatker()" id="btnSaveSatker">Simpan</button>'
+    +'</div></div></div>';
+}
+async function loadSatker(){
+  try{
+    const res=await apiPost({action:'getSatkerList'});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    cachedSatker=res.list||[];
+    renderSatkerTable(cachedSatker);
+  }catch(err){showToast('Error: '+err.message,true);}
+}
+function filterSatker(){
+  const q=(document.getElementById('satkerSearch')?document.getElementById('satkerSearch').value:'').toLowerCase();
+  renderSatkerTable(q?cachedSatker.filter(s=>s.kode.toLowerCase().includes(q)||s.nama.toLowerCase().includes(q)):cachedSatker);
+}
+function renderSatkerTable(list){
+  const body=document.getElementById('satkerBody');
+  if(!body)return;
+  if(!list.length){body.innerHTML='<tr class="tbl-empty"><td colspan="3">Tidak ada data.</td></tr>';return;}
+  const isSuperAdmin=currentUser&&currentUser.role==='SuperAdmin';
+  const isAdmin=['Admin','SuperAdmin'].includes(currentUser&&currentUser.role);
+  body.innerHTML=list.map(function(s){
+    return '<tr>'
+      +'<td style="font-family:monospace;font-weight:700">'+esc(s.kode)+'</td>'
+      +'<td>'+esc(s.nama)+'</td>'
+      +'<td><div style="display:flex;gap:4px">'
+      +(isAdmin?'<button class="btn btn-outline btn-sm" onclick="showEditSatker(\''+esc(s.kode)+'\')">✏️ Edit</button>':'')
+      +(isSuperAdmin?'<button class="btn btn-danger btn-sm" onclick="doDeleteSatker(\''+esc(s.kode)+'\')">🗑️</button>':'')
+      +'</div></td></tr>';
+  }).join('');
+}
+function showAddSatker(){
+  editSatkerKode=null;
+  document.getElementById('satkerModalTitle').textContent='Tambah Satker';
+  document.getElementById('satkerKode').value='';
+  document.getElementById('satkerKode').disabled=false;
+  document.getElementById('satkerNama').value='';
+  openModal('modalSatker');
+}
+function showEditSatker(kode){
+  const s=cachedSatker.find(function(x){return x.kode===kode;});
+  if(!s)return;
+  editSatkerKode=kode;
+  document.getElementById('satkerModalTitle').textContent='Edit Satker';
+  document.getElementById('satkerKode').value=s.kode;
+  document.getElementById('satkerKode').disabled=true;
+  document.getElementById('satkerNama').value=s.nama;
+  openModal('modalSatker');
+}
+async function doSaveSatker(){
+  const kode=(document.getElementById('satkerKode')?document.getElementById('satkerKode').value:'').trim();
+  const nama=(document.getElementById('satkerNama')?document.getElementById('satkerNama').value:'').trim();
+  if(!kode||!nama){showToast('Kode dan nama wajib diisi',true);return;}
+  const btn=document.getElementById('btnSaveSatker');
+  btn.disabled=true; btn.textContent='Menyimpan…';
+  try{
+    const action=editSatkerKode?'updateSatker':'addSatker';
+    const res=await apiPost({action,kode,nama});
+    if(!res.success){showToast(res.message||'Gagal',true);btn.disabled=false;btn.textContent='Simpan';return;}
+    showToast('✅ Satker berhasil disimpan',false,true);
+    closeModal('modalSatker');
+    loadSatker();
+  }catch(err){showToast('Error: '+err.message,true);}
+  btn.disabled=false; btn.textContent='Simpan';
+}
+async function doDeleteSatker(kode){
+  if(!confirm('Hapus satker "'+kode+'"? Akun login satker ini juga akan dihapus.'))return;
+  try{
+    const res=await apiPost({action:'deleteSatker',kode});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    showToast('✅ Satker berhasil dihapus',false,true);
+    loadSatker();
+  }catch(err){showToast('Error: '+err.message,true);}
+}
+
+// ── PANEL MANAJEMEN USER ──────────────────────────────────────────
+function renderUsers(){
+  const isSuperAdmin=currentUser&&currentUser.role==='SuperAdmin';
+  const roleOpts=isSuperAdmin
+    ?'<option value="SuperAdmin">SuperAdmin</option><option value="Admin">Admin</option><option value="Petugas" selected>Petugas</option>'
+    :'<option value="Petugas" selected>Petugas</option>';
+  return '<div class="section-header"><h2 class="section-title">👥 Manajemen User</h2></div>'
+    +'<div class="card">'
+    +'<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">'
+    +'<button class="btn btn-primary btn-sm" onclick="showAddUser()">➕ Tambah User</button>'
+    +(isSuperAdmin?'<span style="font-size:12px;color:var(--gray-500);margin-left:4px">Tampil: semua role</span>':'<span style="font-size:12px;color:var(--gray-500);margin-left:4px">Tampil: Admin & Petugas</span>')
+    +'</div>'
+    +'<div style="overflow-x:auto">'
+    +'<table class="tbl"><thead><tr><th>Username</th><th>Nama Lengkap</th><th>Role</th><th>Dibuat</th><th>Aksi</th></tr></thead>'
+    +'<tbody id="usersBody"><tr class="tbl-empty"><td colspan="5">Memuat…</td></tr></tbody>'
+    +'</table></div></div>'
+    +'<div class="modal-overlay" id="modalAddUser">'
+    +'<div class="modal-box">'
+    +'<div class="modal-title">➕ Tambah User</div>'
+    +'<div style="display:flex;flex-direction:column;gap:10px">'
+    +'<label>Username<input type="text" id="newUsername" class="form-control" placeholder="Username / kode satker"></label>'
+    +'<label>Nama Lengkap<input type="text" id="newNamaLengkap" class="form-control" placeholder="Nama lengkap"></label>'
+    +'<label>Password<input type="password" id="newPassword" class="form-control" placeholder="Min 6 karakter"></label>'
+    +'<label>Role<select id="newRole" class="form-control">'+roleOpts+'</select></label>'
+    +'</div>'
+    +'<div class="modal-actions">'
+    +'<button class="btn btn-secondary" onclick="closeModal(\'modalAddUser\')">Batal</button>'
+    +'<button class="btn btn-primary" onclick="doAddUser()" id="btnDoAddUser">Simpan</button>'
+    +'</div></div></div>';
+}
+async function loadUsers(){
+  try{
+    const res=await apiPost({action:'getUsers'});
+    if(!res.success){showToast(res.message||'Gagal memuat user',true);return;}
+    renderUsersTable(res.users||[]);
+  }catch(err){showToast('Error: '+err.message,true);}
+}
+function renderUsersTable(users){
+  const body=document.getElementById('usersBody');
+  if(!body)return;
+  const isSuperAdmin=currentUser&&currentUser.role==='SuperAdmin';
+  const filtered=isSuperAdmin?users:users.filter(function(u){return ['Admin','Petugas','SuperAdmin'].includes(u.role);});
+  if(!filtered.length){body.innerHTML='<tr class="tbl-empty"><td colspan="5">Tidak ada user.</td></tr>';return;}
+  const BADGE={'SuperAdmin':'background:#FEF3C7;color:#92400E','Admin':'background:#DBEAFE;color:#1E40AF','Petugas':'background:#D1FAE5;color:#065F46','Satker':'background:#F3E8FF;color:#7C3AED'};
+  body.innerHTML=filtered.map(function(u){
+    const isSelf=u.username===(currentUser&&currentUser.username);
+    return '<tr>'
+      +'<td style="font-family:monospace;font-weight:700">'+esc(u.username)+'</td>'
+      +'<td>'+esc(u.namaLengkap||'—')+'</td>'
+      +'<td><span style="padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;'+(BADGE[u.role]||'')+'">'+esc(u.role)+'</span></td>'
+      +'<td style="font-size:12px;color:var(--gray-500)">'+(u.createdAt?new Date(u.createdAt).toLocaleDateString('id-ID'):'')+'</td>'
+      +'<td><div style="display:flex;gap:4px;flex-wrap:wrap">'
+      +(!isSelf?'<button class="btn btn-danger btn-sm" onclick="doDeleteUser(\''+esc(u.username)+'\')">🗑️</button>':'')
+      +(isSuperAdmin&&!isSelf?'<button class="btn btn-sm" style="background:#EA580C;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px" onclick="doResetPassword(\''+esc(u.username)+'\')">🔑 Reset PW</button>':'')
+      +'</div></td></tr>';
+  }).join('');
+}
+function showAddUser(){ openModal('modalAddUser'); }
+async function doAddUser(){
+  const username=(document.getElementById('newUsername')?document.getElementById('newUsername').value:'').trim();
+  const namaLengkap=(document.getElementById('newNamaLengkap')?document.getElementById('newNamaLengkap').value:'').trim();
+  const password=document.getElementById('newPassword')?document.getElementById('newPassword').value:'';
+  const role=document.getElementById('newRole')?document.getElementById('newRole').value:'Petugas';
+  if(!username||!password||!namaLengkap){showToast('Semua field wajib diisi',true);return;}
+  const btn=document.getElementById('btnDoAddUser');
+  btn.disabled=true; btn.textContent='Menyimpan…';
+  try{
+    const res=await apiPost({action:'addUser',username,password,namaLengkap,role});
+    if(!res.success){showToast(res.message||'Gagal',true);btn.disabled=false;btn.textContent='Simpan';return;}
+    showToast('✅ User berhasil ditambahkan',false,true);
+    closeModal('modalAddUser');
+    loadUsers();
+  }catch(err){showToast('Error: '+err.message,true);}
+  btn.disabled=false; btn.textContent='Simpan';
+}
+async function doDeleteUser(username){
+  if(!confirm('Hapus user "'+username+'"?'))return;
+  try{
+    const res=await apiPost({action:'deleteUser',username});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    showToast('✅ User berhasil dihapus',false,true);
+    loadUsers();
+  }catch(err){showToast('Error: '+err.message,true);}
+}
+async function doResetPassword(username){
+  const newPw=prompt('Password baru untuk "'+username+'" (min 6 karakter):');
+  if(newPw===null) return;
+  if(newPw.trim().length<6){showToast('Password minimal 6 karakter',true);return;}
+  const konfirm=prompt('Konfirmasi — ketik ulang password baru:');
+  if(konfirm===null) return;
+  if(newPw!==konfirm){showToast('Konfirmasi password tidak cocok',true);return;}
+  try{
+    const res=await apiPost({action:'resetPasswordUser',username,newPassword:newPw});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    alert('✅ Password user "'+username+'" berhasil di-reset.\nUser harus login ulang dengan password baru.');
+    showToast('✅ Password berhasil di-reset',false,true);
+  }catch(err){showToast('Error: '+err.message,true);}
+}
+
+// ── PANEL PENGATURAN ─────────────────────────────────────────────
+function renderPengaturan(){
+  return '<div class="section-header"><h2 class="section-title">⚙️ Pengaturan Akun</h2></div>'
+    +'<div class="card" style="max-width:480px">'
+    +'<div style="font-weight:700;margin-bottom:12px;font-size:15px">🔒 Ubah Password</div>'
+    +'<div style="display:flex;flex-direction:column;gap:10px">'
+    +'<label>Password Lama<input type="password" id="pwLama" class="form-control" placeholder="Password saat ini"></label>'
+    +'<label>Password Baru<input type="password" id="pwBaru" class="form-control" placeholder="Min 6 karakter"></label>'
+    +'<label>Konfirmasi Password Baru<input type="password" id="pwBaruKonfirm" class="form-control" placeholder="Ketik ulang password baru"></label>'
+    +'</div>'
+    +'<div style="margin-top:14px">'
+    +'<button class="btn btn-primary" onclick="doUbahPassword()">Simpan Password Baru</button>'
+    +'</div></div>';
+}
+async function doUbahPassword(){
+  const lamaEl=document.getElementById('pwLama');
+  const baruEl=document.getElementById('pwBaru');
+  const konfEl=document.getElementById('pwBaruKonfirm');
+  const passwordLama=lamaEl?lamaEl.value:'';
+  const passwordBaru=baruEl?baruEl.value:'';
+  const konfirm=konfEl?konfEl.value:'';
+  if(!passwordLama||!passwordBaru){showToast('Semua field wajib diisi',true);return;}
+  if(passwordBaru.length<6){showToast('Password baru minimal 6 karakter',true);return;}
+  if(passwordBaru!==konfirm){showToast('Konfirmasi password tidak cocok',true);return;}
+  try{
+    const res=await apiPost({action:'changePassword',passwordLama:passwordLama,passwordBaru:passwordBaru});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    showToast('Password berhasil diubah',false,true);
+    lamaEl.value=''; baruEl.value=''; konfEl.value='';
+  }catch(err){showToast('Error: '+err.message,true);}
+}
+</script>
+</body>
+</html>
