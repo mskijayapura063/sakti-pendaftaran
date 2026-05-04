@@ -513,6 +513,56 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
   </div>
 </div>
 
+<!-- ══ MODAL AJUKAN PERMOHONAN ULANG (EMAIL SAKTI — DITOLAK) ══ -->
+<div class="modal-overlay" id="modalAjukanUlangEmail">
+  <div class="modal-box" style="max-width:500px">
+    <div class="modal-title">🔁 Ajukan Permohonan Ulang</div>
+    <div class="info-box red" style="margin-bottom:16px" id="aueAlasanBox" style="display:none"></div>
+    <p style="font-size:13px;color:var(--gray-700);margin-bottom:14px;line-height:1.7">
+      Pengajuan Anda sebelumnya <strong style="color:#b91c1c">ditolak</strong> oleh admin KPPN. Silakan pilih tindakan yang ingin dilakukan:
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:4px">
+      <!-- Opsi 1: Perbaiki rekaman data -->
+      <div onclick="aueSelectOpsi('data')" id="aueOpsiData"
+        style="border:2px solid var(--gray-200);border-radius:10px;padding:14px 16px;cursor:pointer;transition:.15s;display:flex;align-items:flex-start;gap:12px">
+        <div style="width:36px;height:36px;background:#FEF3C7;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">✏️</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:3px">Perbaiki Data Pegawai</div>
+          <div style="font-size:12px;color:var(--gray-500);line-height:1.5">Edit kembali nama pegawai, NIP/NRP, NIK, atau status kepegawaian yang kurang tepat, lalu submit ulang.</div>
+        </div>
+        <div id="aueOpsiDataCheck" style="margin-left:auto;font-size:18px;display:none;flex-shrink:0;color:var(--blue)">✔</div>
+      </div>
+      <!-- Opsi 2: Upload ulang dokumen PDF -->
+      <div onclick="aueSelectOpsi('pdf')" id="aueOpsiPdf"
+        style="border:2px solid var(--gray-200);border-radius:10px;padding:14px 16px;cursor:pointer;transition:.15s;display:flex;align-items:flex-start;gap:12px">
+        <div style="width:36px;height:36px;background:#EDE9FE;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📤</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:3px">Upload Ulang Dokumen PDF</div>
+          <div style="font-size:12px;color:var(--gray-500);line-height:1.5">Ganti dokumen PDF yang sudah diupload sebelumnya (misal: salah tanda tangan, halaman kurang, scan buram, dsb).</div>
+        </div>
+        <div id="aueOpsiPdfCheck" style="margin-left:auto;font-size:18px;display:none;flex-shrink:0;color:var(--blue)">✔</div>
+      </div>
+      <!-- Opsi 3: Keduanya -->
+      <div onclick="aueSelectOpsi('both')" id="aueOpsiBoth"
+        style="border:2px solid var(--gray-200);border-radius:10px;padding:14px 16px;cursor:pointer;transition:.15s;display:flex;align-items:flex-start;gap:12px">
+        <div style="width:36px;height:36px;background:#D1FAE5;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🔄</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:3px">Keduanya (Data + Dokumen)</div>
+          <div style="font-size:12px;color:var(--gray-500);line-height:1.5">Perbaiki data pegawai terlebih dahulu, lalu upload ulang dokumen PDF setelah data disimpan.</div>
+        </div>
+        <div id="aueOpsiBothCheck" style="margin-left:auto;font-size:18px;display:none;flex-shrink:0;color:var(--blue)">✔</div>
+      </div>
+    </div>
+    <input type="hidden" id="aueCurrentId"/>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalAjukanUlangEmail')">Batal</button>
+      <button class="btn btn-primary" id="aueSubmitBtn" onclick="aueDoLanjutkan()" disabled style="background:#b91c1c;border-color:#b91c1c">
+        🔁 Lanjutkan Permohonan Ulang
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL GANTI PASSWORD ══ -->
 <div class="modal-overlay" id="modalPassword">
   <div class="modal-box narrow">
@@ -1487,15 +1537,14 @@ async function ebDoSubmit() {
   }
 }
 
-// Download Excel sebelum submit (preview)
-async function ebDownloadExcelPreview() {
+// Download Excel sebelum submit (preview) — generate client-side: full text + border
+function ebDownloadExcelPreview() {
   const btn = document.getElementById('btnEbExcel');
   const filled = emailRows.filter(r=>r.nama&&r.nipnrp);
   if (!filled.length) { showToast('Isi data pegawai terlebih dahulu', true); return; }
   btn.disabled=true; btn.textContent='⏳ Membuat...';
   try {
-    const res = await apiPost({
-      action:     'generateEmailExcel',
+    ebGenerateExcelClient({
       namaSatker: ebTempData.namaSatker || document.getElementById('eb_namaSatker')?.value || '',
       namaKpa:    ebTempData.namaKpa    || document.getElementById('eb_namaKpa')?.value    || '',
       nipKpa:     ebTempData.nipKpa     || document.getElementById('eb_nipKpa')?.value     || '',
@@ -1503,14 +1552,8 @@ async function ebDownloadExcelPreview() {
       tanggal:    new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),
       pegawai:    filled
     });
-    if (!res.success) { showToast(res.message||'Gagal generate Excel', true); return; }
-    const bytes = Uint8Array.from(atob(res.fileBase64), c=>c.charCodeAt(0));
-    const blob  = new Blob([bytes], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const url   = URL.createObjectURL(blob);
-    const a     = document.createElement('a'); a.href=url; a.download=res.fileName||'Form_Email_SAKTI.xlsx'; a.click();
-    URL.revokeObjectURL(url);
     showToast('✅ Form Excel berhasil didownload', false, true);
-  } catch(e) { showToast('❌ Gagal download Excel', true); }
+  } catch(e) { showToast('❌ Gagal generate Excel: '+e.message, true); }
   btn.disabled=false; btn.textContent='📥 Download Excel';
 }
 
@@ -1703,14 +1746,32 @@ async function ebDoUploadPdf(id) {
     showToast('✅ Dokumen PDF berhasil diupload! Pengajuan siap diproses KPPN.', false, true);
     // Tampilkan konfirmasi sukses penuh
     document.getElementById('ebBody').innerHTML = `
-      <div style="text-align:center;padding:40px 20px">
+      <div style="text-align:center;padding:32px 20px 16px">
         <div style="font-size:64px;margin-bottom:16px">🎉</div>
         <h3 style="color:var(--green);margin-bottom:8px">Pengajuan Selesai!</h3>
         <p style="color:var(--gray-600);margin-bottom:6px">ID Pengajuan: <strong style="font-family:monospace">${esc(id)}</strong></p>
-        <p style="color:var(--gray-600);font-size:13px;margin-bottom:24px">Data dan dokumen berhasil diterima. KPPN Jayapura akan memproses pengajuan Anda.</p>
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <p style="color:var(--gray-600);font-size:13px;margin-bottom:20px">Data dan dokumen berhasil diterima. KPPN Jayapura akan memproses pengajuan Anda.</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:20px">
           <button class="btn btn-outline" onclick="ebDownloadExcelById('${esc(id)}')">📥 Download Excel</button>
           <button class="btn btn-primary" onclick="switchTab('email-riwayat')">📋 Lihat Riwayat</button>
+        </div>
+      </div>
+      <div style="max-width:580px;margin:0 auto 24px">
+        <div style="background:linear-gradient(135deg,#FFF8E1 0%,#FFFDE7 100%);border:2px solid #FFC107;border-radius:12px;padding:16px 18px">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <span style="font-size:22px;flex-shrink:0">ℹ️</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#856404;margin-bottom:4px">Langkah Selanjutnya Setelah Diproses KPPN</div>
+              <div style="font-size:12px;color:#6D5201;line-height:1.65">
+                Setelah pengajuan diproses dan disetujui KPPN Jayapura, setiap pengguna <strong>wajib melakukan registrasi email SAKTI secara mandiri</strong> melalui:<br/>
+                <a href="https://dashboard.mail.go.id/sakti/registrasi/" target="_blank" rel="noopener noreferrer"
+                   style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:7px 14px;background:#1B5E20;color:#fff;border-radius:8px;font-weight:800;font-size:13px;text-decoration:none;letter-spacing:0.2px;box-shadow:0 2px 8px rgba(0,0,0,.18);border:2px solid #2E7D32"
+                   onmouseover="this.style.background='#2E7D32'" onmouseout="this.style.background='#1B5E20'">
+                  🔗 <strong style="text-decoration:underline;text-underline-offset:2px">dashboard.mail.go.id/sakti/registrasi/</strong>
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>`;
     emailRiwayat=[];
@@ -1787,7 +1848,7 @@ function renderEmailRiwayatTable() {
                 <button class="btn btn-outline btn-sm" onclick="lihatDetailEmail('${esc(e.id)}')">🔍 Detail</button>
                 <button class="btn btn-outline btn-sm" onclick="ebDownloadExcelById('${esc(e.id)}')" title="Download Form Excel">📥 Excel</button>
                 ${e.sudahUploadPdf ? `<button class="btn btn-outline btn-sm" onclick="ebDownloadPdfById('${esc(e.id)}')" title="Download PDF">📄 PDF</button>` : ''}
-                ${e.status==='Ditolak'?`<button class="btn btn-secondary btn-sm" onclick="ajukanUlangEmail('${esc(e.id)}')">🔄 Ulang</button>`:''}
+                ${e.status==='Ditolak'?`<button class="btn btn-sm" style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;gap:4px;display:inline-flex;align-items:center" onclick="bukaModalAjukanUlangEmail('${esc(e.id)}')">🔁 Ajukan Permohonan Ulang</button>`:''}
                 ${e.status==='Menunggu'&&!e.sudahUploadPdf?`<button class="btn btn-primary btn-sm" onclick="bukaUploadPdfModal('${esc(e.id)}')">📤 Upload PDF</button>`:''}
               </div>
             </td>
@@ -1796,22 +1857,7 @@ function renderEmailRiwayatTable() {
     </table>
   </div>
   <p style="font-size:12px;color:var(--gray-500);margin-top:10px">Total: ${emailRiwayat.length} pengajuan</p>
-  ${emailRiwayat.some(e=>e.status==='Selesai') ? `
-  <div style="background:linear-gradient(135deg,#E8F5E9,#F1F8E9);border:2px solid #66BB6A;border-radius:10px;padding:14px 18px;margin-top:14px">
-    <div style="display:flex;align-items:flex-start;gap:10px">
-      <span style="font-size:20px;flex-shrink:0">✅</span>
-      <div>
-        <div style="font-size:13px;font-weight:700;color:#2E7D32;margin-bottom:4px">Ada Pengajuan yang Telah Selesai Diproses</div>
-        <div style="font-size:12px;color:#1B5E20;line-height:1.6">
-          Tiap-tiap user wajib melakukan registrasi email SAKTI secara mandiri melalui:<br/>
-          <a href="https://dashboard.mail.go.id/sakti/registrasi" target="_blank"
-             style="display:inline-block;margin-top:6px;padding:5px 12px;background:#2E7D32;color:#fff;border-radius:6px;font-weight:700;font-size:12px;text-decoration:none">
-            🔗 dashboard.mail.go.id/sakti/registrasi
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>` : ''}`;
+  ${emailRiwayat.some(e=>e.status==='Selesai') ? notifRegistrasiMandiri(true) : ''}`;
 }
 
 function lihatDetailEmail(id) {
@@ -1863,23 +1909,10 @@ function lihatDetailEmail(id) {
           </tr>`).join('')}
         </tbody>
       </table>
-      <div class="info-box" style="background:linear-gradient(135deg,#E8F5E9,#F1F8E9);border:2px solid #66BB6A;border-radius:10px;padding:16px 18px;margin-bottom:14px">
-        <div style="display:flex;align-items:flex-start;gap:10px">
-          <span style="font-size:22px;flex-shrink:0">✅</span>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:#2E7D32;margin-bottom:6px">Email Telah Didaftarkan</div>
-            <div style="font-size:13px;color:#1B5E20;line-height:1.6">
-              Selanjutnya, tiap-tiap user wajib melakukan registrasi email SAKTI secara mandiri melalui:<br/>
-              <a href="https://dashboard.mail.go.id/sakti/registrasi" target="_blank"
-                 style="display:inline-block;margin-top:8px;padding:6px 14px;background:#2E7D32;color:#fff;border-radius:6px;font-weight:700;font-size:13px;text-decoration:none;letter-spacing:0.3px">
-                🔗 dashboard.mail.go.id/sakti/registrasi
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>`:
+      ${notifRegistrasiMandiri(false)}`:
       (e.status==='Menunggu'?'<div class="info-box orange">⏳ Pengajuan Anda sedang menunggu diproses oleh KPPN Jayapura.</div>':
-      e.status==='Ditolak'?'<div class="info-box red">❌ Pengajuan ini telah ditolak. Silakan ajukan ulang setelah memperbaiki data.</div>':
+      e.status==='Ditolak'?`<div class="info-box red" style="margin-bottom:12px">❌ Pengajuan ini telah <strong>ditolak</strong>. Perbaiki data rekaman atau upload ulang dokumen PDF, lalu ajukan kembali.</div>
+        <button class="btn btn-sm" style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin-bottom:4px" onclick="closeModal('modalDetailEmail');bukaModalAjukanUlangEmail('${esc(e.id)}')">🔁 Ajukan Permohonan Ulang</button>`:
       '<div class="info-box blue">🔄 Sedang diproses oleh KPPN Jayapura.</div>')}
     <div class="card-title" style="margin:16px 0 10px">Data Pegawai yang Diajukan</div>
     <table class="tbl">
@@ -4050,6 +4083,214 @@ async function doSimpanEditRiwayat() {
 
 function bukaPerbaikiData(refKode) { bukaEditRiwayat(refKode); }
 async function doSimpanPerbaikan() { await doSimpanEditRiwayat(); }
+
+// ════════════════════════════════════════════════════════
+// AJUKAN PERMOHONAN ULANG — EMAIL SAKTI (DITOLAK)
+// ════════════════════════════════════════════════════════
+let _aueOpsiSelected = null;
+
+function bukaModalAjukanUlangEmail(id) {
+  const e = emailRiwayat.find(x => x.id === id);
+  if (!e) return;
+  _aueOpsiSelected = null;
+  document.getElementById('aueCurrentId').value = id;
+  document.getElementById('aueSubmitBtn').disabled = true;
+
+  const alasanBox = document.getElementById('aueAlasanBox');
+  if (e.alasanTolak) {
+    alasanBox.innerHTML = '<strong>Alasan Penolakan:</strong> ' + esc(e.alasanTolak);
+    alasanBox.style.display = 'block';
+  } else {
+    alasanBox.style.display = 'none';
+  }
+
+  ['Data','Pdf','Both'].forEach(k => {
+    const card  = document.getElementById('aueOpsi' + k);
+    const check = document.getElementById('aueOpsi' + k + 'Check');
+    if (card)  { card.style.border = '2px solid var(--gray-200)'; card.style.background = '#fff'; }
+    if (check) { check.style.display = 'none'; }
+  });
+
+  openModal('modalAjukanUlangEmail');
+}
+
+function aueSelectOpsi(opsi) {
+  _aueOpsiSelected = opsi;
+  const keyMap = { data:'Data', pdf:'Pdf', both:'Both' };
+  Object.keys(keyMap).forEach(k => {
+    const suffix  = keyMap[k];
+    const card    = document.getElementById('aueOpsi' + suffix);
+    const check   = document.getElementById('aueOpsi' + suffix + 'Check');
+    const selected = (k === opsi);
+    if (card)  { card.style.border = selected ? '2px solid var(--blue)' : '2px solid var(--gray-200)'; card.style.background = selected ? 'var(--blue-pale)' : '#fff'; }
+    if (check) { check.style.display = selected ? 'block' : 'none'; }
+  });
+  document.getElementById('aueSubmitBtn').disabled = false;
+}
+
+function aueDoLanjutkan() {
+  const id = document.getElementById('aueCurrentId').value;
+  if (!id || !_aueOpsiSelected) return;
+  closeModal('modalAjukanUlangEmail');
+  if (_aueOpsiSelected === 'data' || _aueOpsiSelected === 'both') {
+    ajukanUlangEmail(id);
+    if (_aueOpsiSelected === 'both') {
+      showToast('📝 Perbaiki data pegawai, submit, lalu upload ulang dokumen PDF di step berikutnya.', false);
+    }
+  } else if (_aueOpsiSelected === 'pdf') {
+    bukaUploadPdfModal(id);
+    showToast('📤 Silakan upload ulang dokumen PDF yang sudah diperbaiki.', false);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// NOTIFIKASI REGISTRASI EMAIL SAKTI MANDIRI
+// ════════════════════════════════════════════════════════
+function notifRegistrasiMandiri(inline) {
+  const sz    = inline ? '13px' : '14px';
+  const szSm  = inline ? '12px' : '13px';
+  const pad   = inline ? '14px 16px' : '18px 20px';
+  const mt    = inline ? '12px' : '14px';
+  const icon  = inline ? '22px' : '26px';
+  const lnkPad = inline ? '7px 14px' : '9px 18px';
+  return `
+    <div style="background:linear-gradient(135deg,#E8F5E9 0%,#F1F8E9 100%);border:2px solid #4CAF50;border-radius:12px;padding:${pad};margin-top:${mt}">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <span style="font-size:${icon};flex-shrink:0">✅</span>
+        <div>
+          <div style="font-size:${sz};font-weight:800;color:#1B5E20;margin-bottom:5px">Email SAKTI Telah Selesai Diproses KPPN</div>
+          <div style="font-size:${szSm};color:#2E7D32;line-height:1.65">
+            Setiap pengguna <strong>wajib melakukan registrasi email SAKTI secara mandiri</strong> melalui link berikut:<br/>
+            <a href="https://dashboard.mail.go.id/sakti/registrasi/"
+               target="_blank" rel="noopener noreferrer"
+               style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:${lnkPad};background:#1B5E20;color:#fff;border-radius:8px;font-weight:800;font-size:${sz};text-decoration:none;letter-spacing:0.2px;box-shadow:0 2px 8px rgba(0,0,0,.18);border:2px solid #2E7D32"
+               onmouseover="this.style.background='#2E7D32'" onmouseout="this.style.background='#1B5E20'">
+              🔗 <strong style="text-decoration:underline;text-underline-offset:2px">dashboard.mail.go.id/sakti/registrasi/</strong>
+            </a>
+          </div>
+          <div style="font-size:11px;color:#388E3C;margin-top:8px;background:rgba(255,255,255,.6);border-radius:6px;padding:6px 10px;border-left:3px solid #4CAF50">
+            ⚠️ <strong>Perhatian:</strong> Registrasi mandiri harus diselesaikan oleh masing-masing pengguna agar dapat menggunakan email SAKTI. Hubungi KPPN Jayapura jika mengalami kendala.
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════════
+// GENERATE EXCEL CLIENT-SIDE — full text per cell + border
+// ════════════════════════════════════════════════════════
+function ebGenerateExcelClient(opts) {
+  const WB = XLSX.utils.book_new();
+
+  const borderThin = {
+    top:    { style:'thin', color:{ rgb:'AAAAAA' } },
+    bottom: { style:'thin', color:{ rgb:'AAAAAA' } },
+    left:   { style:'thin', color:{ rgb:'AAAAAA' } },
+    right:  { style:'thin', color:{ rgb:'AAAAAA' } },
+  };
+  const styleHeader = {
+    font:      { bold:true, sz:11, color:{ rgb:'FFFFFF' } },
+    fill:      { fgColor:{ rgb:'1565C0' }, patternType:'solid' },
+    alignment: { horizontal:'center', vertical:'center', wrapText:true },
+    border:    borderThin,
+  };
+  const styleCell = {
+    font:      { sz:10 },
+    alignment: { horizontal:'left', vertical:'center', wrapText:false },
+    border:    borderThin,
+  };
+  const styleCellCenter = {
+    font:      { sz:10 },
+    alignment: { horizontal:'center', vertical:'center' },
+    border:    borderThin,
+  };
+  const styleLabelBold = {
+    font:      { bold:true, sz:10 },
+    alignment: { horizontal:'left', vertical:'center' },
+    border:    borderThin,
+  };
+  const styleTitle = {
+    font:      { bold:true, sz:14, color:{ rgb:'0D47A1' } },
+    alignment: { horizontal:'center', vertical:'center' },
+  };
+  const styleSubtitle = {
+    font:      { bold:true, sz:11 },
+    alignment: { horizontal:'center', vertical:'center' },
+  };
+
+  // cell helper: selalu plain text type:'s'
+  function c(val, style) { return { t:'s', v: String(val ?? ''), s: style || styleCell }; }
+  function cn(val, style) { return { t:'s', v: String(val ?? ''), s: style || styleCellCenter }; }
+
+  const p = opts.pegawai || [];
+  const rows = [];
+
+  rows.push([ c('DAFTAR PENGGUNA PENDAFTARAN EMAIL SAKTI', styleTitle) ]);
+  rows.push([ c('KPPN Jayapura', styleSubtitle) ]);
+  rows.push([ c('') ]);
+  rows.push([ c('Nama Satker', styleLabelBold), c(':', styleLabelBold), c(opts.namaSatker||'', styleCell) ]);
+  rows.push([ c('Nama KPA',    styleLabelBold), c(':', styleLabelBold), c(opts.namaKpa||'',    styleCell) ]);
+  rows.push([ c('NIP KPA',     styleLabelBold), c(':', styleLabelBold), c(opts.nipKpa||'',     styleCell) ]);
+  rows.push([ c('Kota',        styleLabelBold), c(':', styleLabelBold), c(opts.kota||'Jayapura', styleCell) ]);
+  rows.push([ c('Tanggal',     styleLabelBold), c(':', styleLabelBold), c(opts.tanggal||'',    styleCell) ]);
+  rows.push([ c('') ]);
+
+  // Header tabel (row index 9)
+  rows.push([
+    cn('No.',               styleHeader),
+    c('Nama Pegawai',       styleHeader),
+    c('NIP / NRP',          styleHeader),
+    c('NIK',                styleHeader),
+    c('Status Kepegawaian', styleHeader),
+  ]);
+
+  // Baris data
+  const statusMap = {'1':'TNI','2':'POLRI','3':'PNS','4':'PPNPN','5':'PPPK'};
+  p.forEach((pegawai, i) => {
+    rows.push([
+      cn(String(i + 1)),
+      c(String(pegawai.nama   || '')),
+      c(String(pegawai.nipnrp || '')),
+      c(String(pegawai.nik    || '')),
+      c(statusMap[String(pegawai.status)] || String(pegawai.status || '')),
+    ]);
+  });
+
+  // Tanda tangan
+  rows.push([ c('') ]);
+  rows.push([ c('') ]);
+  rows.push([ c(''), c(''), c(''), c(''), c((opts.kota||'Jayapura') + ', ' + (opts.tanggal||''), { font:{sz:10}, alignment:{horizontal:'right'} }) ]);
+  rows.push([ c(''), c(''), c(''), c(''), c('Kuasa Pengguna Anggaran,',    { font:{sz:10}, alignment:{horizontal:'right'} }) ]);
+  rows.push([ c('') ]); rows.push([ c('') ]); rows.push([ c('') ]); rows.push([ c('') ]);
+  rows.push([ c(''), c(''), c(''), c(''), c(opts.namaKpa||'',             { font:{bold:true,sz:10}, alignment:{horizontal:'right'} }) ]);
+  rows.push([ c(''), c(''), c(''), c(''), c('NIP: '+(opts.nipKpa||''),    { font:{sz:10}, alignment:{horizontal:'right'} }) ]);
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  ws['!cols'] = [
+    { wch:6  },   // No.
+    { wch:34 },   // Nama Pegawai
+    { wch:22 },   // NIP/NRP
+    { wch:20 },   // NIK
+    { wch:24 },   // Status
+  ];
+
+  ws['!merges'] = [
+    { s:{r:0,c:0}, e:{r:0,c:4} },
+    { s:{r:1,c:0}, e:{r:1,c:4} },
+  ];
+
+  XLSX.utils.book_append_sheet(WB, ws, 'Form Email SAKTI');
+
+  const wbout = XLSX.write(WB, { bookType:'xlsx', type:'array', cellStyles:true });
+  const blob  = new Blob([wbout], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url   = URL.createObjectURL(blob);
+  const a     = document.createElement('a');
+  a.href      = url;
+  a.download  = 'Form_Pendaftaran_Email_SAKTI_' + (opts.namaSatker||'satker').replace(/\s+/g,'_') + '.xlsx';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 </script>
 </body>
