@@ -513,56 +513,6 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
   </div>
 </div>
 
-<!-- ══ MODAL AJUKAN PERMOHONAN ULANG (EMAIL SAKTI — DITOLAK) ══ -->
-<div class="modal-overlay" id="modalAjukanUlangEmail">
-  <div class="modal-box" style="max-width:500px">
-    <div class="modal-title">🔁 Ajukan Permohonan Ulang</div>
-    <div class="info-box red" style="margin-bottom:16px" id="aueAlasanBox" style="display:none"></div>
-    <p style="font-size:13px;color:var(--gray-700);margin-bottom:14px;line-height:1.7">
-      Pengajuan Anda sebelumnya <strong style="color:#b91c1c">ditolak</strong> oleh admin KPPN. Silakan pilih tindakan yang ingin dilakukan:
-    </p>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:4px">
-      <!-- Opsi 1: Perbaiki rekaman data -->
-      <div onclick="aueSelectOpsi('data')" id="aueOpsiData"
-        style="border:2px solid var(--gray-200);border-radius:10px;padding:14px 16px;cursor:pointer;transition:.15s;display:flex;align-items:flex-start;gap:12px">
-        <div style="width:36px;height:36px;background:#FEF3C7;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">✏️</div>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:3px">Perbaiki Data Pegawai</div>
-          <div style="font-size:12px;color:var(--gray-500);line-height:1.5">Edit kembali nama pegawai, NIP/NRP, NIK, atau status kepegawaian yang kurang tepat, lalu submit ulang.</div>
-        </div>
-        <div id="aueOpsiDataCheck" style="margin-left:auto;font-size:18px;display:none;flex-shrink:0;color:var(--blue)">✔</div>
-      </div>
-      <!-- Opsi 2: Upload ulang dokumen PDF -->
-      <div onclick="aueSelectOpsi('pdf')" id="aueOpsiPdf"
-        style="border:2px solid var(--gray-200);border-radius:10px;padding:14px 16px;cursor:pointer;transition:.15s;display:flex;align-items:flex-start;gap:12px">
-        <div style="width:36px;height:36px;background:#EDE9FE;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📤</div>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:3px">Upload Ulang Dokumen PDF</div>
-          <div style="font-size:12px;color:var(--gray-500);line-height:1.5">Ganti dokumen PDF yang sudah diupload sebelumnya (misal: salah tanda tangan, halaman kurang, scan buram, dsb).</div>
-        </div>
-        <div id="aueOpsiPdfCheck" style="margin-left:auto;font-size:18px;display:none;flex-shrink:0;color:var(--blue)">✔</div>
-      </div>
-      <!-- Opsi 3: Keduanya -->
-      <div onclick="aueSelectOpsi('both')" id="aueOpsiBoth"
-        style="border:2px solid var(--gray-200);border-radius:10px;padding:14px 16px;cursor:pointer;transition:.15s;display:flex;align-items:flex-start;gap:12px">
-        <div style="width:36px;height:36px;background:#D1FAE5;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🔄</div>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:3px">Keduanya (Data + Dokumen)</div>
-          <div style="font-size:12px;color:var(--gray-500);line-height:1.5">Perbaiki data pegawai terlebih dahulu, lalu upload ulang dokumen PDF setelah data disimpan.</div>
-        </div>
-        <div id="aueOpsiBothCheck" style="margin-left:auto;font-size:18px;display:none;flex-shrink:0;color:var(--blue)">✔</div>
-      </div>
-    </div>
-    <input type="hidden" id="aueCurrentId"/>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modalAjukanUlangEmail')">Batal</button>
-      <button class="btn btn-primary" id="aueSubmitBtn" onclick="aueDoLanjutkan()" disabled style="background:#b91c1c;border-color:#b91c1c">
-        🔁 Lanjutkan Permohonan Ulang
-      </button>
-    </div>
-  </div>
-</div>
-
 <!-- ══ MODAL GANTI PASSWORD ══ -->
 <div class="modal-overlay" id="modalPassword">
   <div class="modal-box narrow">
@@ -1537,14 +1487,15 @@ async function ebDoSubmit() {
   }
 }
 
-// Download Excel sebelum submit (preview) — generate client-side: full text + border
-function ebDownloadExcelPreview() {
+// Download Excel sebelum submit (preview)
+async function ebDownloadExcelPreview() {
   const btn = document.getElementById('btnEbExcel');
   const filled = emailRows.filter(r=>r.nama&&r.nipnrp);
   if (!filled.length) { showToast('Isi data pegawai terlebih dahulu', true); return; }
   btn.disabled=true; btn.textContent='⏳ Membuat...';
   try {
-    ebGenerateExcelClient({
+    const res = await apiPost({
+      action:     'generateEmailExcel',
       namaSatker: ebTempData.namaSatker || document.getElementById('eb_namaSatker')?.value || '',
       namaKpa:    ebTempData.namaKpa    || document.getElementById('eb_namaKpa')?.value    || '',
       nipKpa:     ebTempData.nipKpa     || document.getElementById('eb_nipKpa')?.value     || '',
@@ -1552,8 +1503,14 @@ function ebDownloadExcelPreview() {
       tanggal:    new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),
       pegawai:    filled
     });
+    if (!res.success) { showToast(res.message||'Gagal generate Excel', true); return; }
+    const bytes = Uint8Array.from(atob(res.fileBase64), c=>c.charCodeAt(0));
+    const blob  = new Blob([bytes], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement('a'); a.href=url; a.download=res.fileName||'Form_Email_SAKTI.xlsx'; a.click();
+    URL.revokeObjectURL(url);
     showToast('✅ Form Excel berhasil didownload', false, true);
-  } catch(e) { showToast('❌ Gagal generate Excel: '+e.message, true); }
+  } catch(e) { showToast('❌ Gagal download Excel', true); }
   btn.disabled=false; btn.textContent='📥 Download Excel';
 }
 
@@ -1746,32 +1703,14 @@ async function ebDoUploadPdf(id) {
     showToast('✅ Dokumen PDF berhasil diupload! Pengajuan siap diproses KPPN.', false, true);
     // Tampilkan konfirmasi sukses penuh
     document.getElementById('ebBody').innerHTML = `
-      <div style="text-align:center;padding:32px 20px 16px">
+      <div style="text-align:center;padding:40px 20px">
         <div style="font-size:64px;margin-bottom:16px">🎉</div>
         <h3 style="color:var(--green);margin-bottom:8px">Pengajuan Selesai!</h3>
         <p style="color:var(--gray-600);margin-bottom:6px">ID Pengajuan: <strong style="font-family:monospace">${esc(id)}</strong></p>
-        <p style="color:var(--gray-600);font-size:13px;margin-bottom:20px">Data dan dokumen berhasil diterima. KPPN Jayapura akan memproses pengajuan Anda.</p>
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:20px">
+        <p style="color:var(--gray-600);font-size:13px;margin-bottom:24px">Data dan dokumen berhasil diterima. KPPN Jayapura akan memproses pengajuan Anda.</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
           <button class="btn btn-outline" onclick="ebDownloadExcelById('${esc(id)}')">📥 Download Excel</button>
           <button class="btn btn-primary" onclick="switchTab('email-riwayat')">📋 Lihat Riwayat</button>
-        </div>
-      </div>
-      <div style="max-width:580px;margin:0 auto 24px">
-        <div style="background:linear-gradient(135deg,#FFF8E1 0%,#FFFDE7 100%);border:2px solid #FFC107;border-radius:12px;padding:16px 18px">
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="font-size:22px;flex-shrink:0">ℹ️</span>
-            <div>
-              <div style="font-size:13px;font-weight:700;color:#856404;margin-bottom:4px">Langkah Selanjutnya Setelah Diproses KPPN</div>
-              <div style="font-size:12px;color:#6D5201;line-height:1.65">
-                Setelah pengajuan diproses dan disetujui KPPN Jayapura, setiap pengguna <strong>wajib melakukan registrasi email SAKTI secara mandiri</strong> melalui:<br/>
-                <a href="https://dashboard.mail.go.id/sakti/registrasi/" target="_blank" rel="noopener noreferrer"
-                   style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:7px 14px;background:#1B5E20;color:#fff;border-radius:8px;font-weight:800;font-size:13px;text-decoration:none;letter-spacing:0.2px;box-shadow:0 2px 8px rgba(0,0,0,.18);border:2px solid #2E7D32"
-                   onmouseover="this.style.background='#2E7D32'" onmouseout="this.style.background='#1B5E20'">
-                  🔗 <strong style="text-decoration:underline;text-underline-offset:2px">dashboard.mail.go.id/sakti/registrasi/</strong>
-                </a>
-              </div>
-            </div>
-          </div>
         </div>
       </div>`;
     emailRiwayat=[];
@@ -1848,7 +1787,7 @@ function renderEmailRiwayatTable() {
                 <button class="btn btn-outline btn-sm" onclick="lihatDetailEmail('${esc(e.id)}')">🔍 Detail</button>
                 <button class="btn btn-outline btn-sm" onclick="ebDownloadExcelById('${esc(e.id)}')" title="Download Form Excel">📥 Excel</button>
                 ${e.sudahUploadPdf ? `<button class="btn btn-outline btn-sm" onclick="ebDownloadPdfById('${esc(e.id)}')" title="Download PDF">📄 PDF</button>` : ''}
-                ${e.status==='Ditolak'?`<button class="btn btn-sm" style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;gap:4px;display:inline-flex;align-items:center" onclick="bukaModalAjukanUlangEmail('${esc(e.id)}')">🔁 Ajukan Permohonan Ulang</button>`:''}
+                ${e.status==='Ditolak'?`<button class="btn btn-secondary btn-sm" onclick="ajukanUlangEmail('${esc(e.id)}')">🔄 Ulang</button>`:''}
                 ${e.status==='Menunggu'&&!e.sudahUploadPdf?`<button class="btn btn-primary btn-sm" onclick="bukaUploadPdfModal('${esc(e.id)}')">📤 Upload PDF</button>`:''}
               </div>
             </td>
@@ -1856,8 +1795,7 @@ function renderEmailRiwayatTable() {
       </tbody>
     </table>
   </div>
-  <p style="font-size:12px;color:var(--gray-500);margin-top:10px">Total: ${emailRiwayat.length} pengajuan</p>
-  ${emailRiwayat.some(e=>e.status==='Selesai') ? notifRegistrasiMandiri(true) : ''}`;
+  <p style="font-size:12px;color:var(--gray-500);margin-top:10px">Total: ${emailRiwayat.length} pengajuan</p>`;
 }
 
 function lihatDetailEmail(id) {
@@ -1874,7 +1812,7 @@ function lihatDetailEmail(id) {
       ${e.nipKpa?`<div><span style="color:var(--gray-500)">NIP KPA:</span><br/><strong style="font-family:monospace">${esc(e.nipKpa)}</strong></div>`:''}
       ${e.noHp?`<div><span style="color:var(--gray-500)">No. HP:</span><br/><strong>${esc(e.noHp)}</strong></div>`:''}
       ${e.diprosesTgl?`<div><span style="color:var(--gray-500)">Diproses Pada:</span><br/><strong>${fmtTglWaktu(e.diprosesTgl)}</strong></div>`:''}
-      ${/* Privacy: nama pemroses tidak ditampilkan ke satker */ ''}
+      ${e.diprosesoleh?`<div><span style="color:var(--gray-500)">Diproses Oleh:</span><br/><strong>${esc(e.diprosesoleh)}</strong></div>`:''}
     </div>
     ${e.keterangan?`<div class="info-box blue" style="margin-bottom:12px"><strong>Keterangan:</strong> ${esc(e.keterangan)}</div>`:''}
     ${e.alasanTolak?`<div class="info-box red" style="margin-bottom:14px"><strong>Alasan Penolakan:</strong> ${esc(e.alasanTolak)}</div>`:''}
@@ -1908,11 +1846,9 @@ function lihatDetailEmail(id) {
             <td><a href="mailto:${esc(h.email)}">${esc(h.email||'—')}</a></td>
           </tr>`).join('')}
         </tbody>
-      </table>
-      ${notifRegistrasiMandiri(false)}`:
+      </table>`:
       (e.status==='Menunggu'?'<div class="info-box orange">⏳ Pengajuan Anda sedang menunggu diproses oleh KPPN Jayapura.</div>':
-      e.status==='Ditolak'?`<div class="info-box red" style="margin-bottom:12px">❌ Pengajuan ini telah <strong>ditolak</strong>. Perbaiki data rekaman atau upload ulang dokumen PDF, lalu ajukan kembali.</div>
-        <button class="btn btn-sm" style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin-bottom:4px" onclick="closeModal('modalDetailEmail');bukaModalAjukanUlangEmail('${esc(e.id)}')">🔁 Ajukan Permohonan Ulang</button>`:
+      e.status==='Ditolak'?'<div class="info-box red">❌ Pengajuan ini telah ditolak. Silakan ajukan ulang setelah memperbaiki data.</div>':
       '<div class="info-box blue">🔄 Sedang diproses oleh KPPN Jayapura.</div>')}
     <div class="card-title" style="margin:16px 0 10px">Data Pegawai yang Diajukan</div>
     <table class="tbl">
@@ -3880,418 +3816,1252 @@ function rwRenderDetailDaftar(d, rowKey){
       ${steps.map((s,si)=>`
         <div style="display:flex;align-items:center;flex-shrink:0">
           <div style="text-align:center;min-width:78px">
-            <div style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;margin:0 auto 3px;background:${s.done?'var(--green)':'var(--gray-200)'};color:${s.done?'#fff':'var(--gray-500)'}">${s.done?'&#x2713;':si+1}</div>
+            <div style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;margin:0 auto 3px;background:${s.done?'var(--green)':'var(--gray-200)'};color:${s.done?'#fff':'var(--gray-500)'}">${s.done?'✓':si+1}</div>
             <div style="font-size:10px;font-weight:600;color:${s.done?'var(--green)':'var(--gray-500)'}">${s.label}</div>
           </div>
           ${si<steps.length-1?`<div style="height:2px;width:18px;background:${steps[si+1].done?'var(--green)':'var(--gray-200)'};flex-shrink:0;margin-bottom:14px"></div>`:''}
         </div>`).join('')}
     </div>`;
 
+  // Banner sesuai status
   let banner = '';
   if (belumUpload) {
     banner = `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#92400e;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-      <div><strong>Dokumen belum diupload.</strong> Pendaftaran tidak dapat diproses.</div>
-      <button class="btn btn-primary btn-sm" onclick="bukaUploadDokumenByRef('${esc(d.refKode)}')">Upload Dokumen</button>
+      <div>⚠️ <strong>Dokumen belum diupload.</strong> Pendaftaran tidak dapat diproses.</div>
+      <button class="btn btn-primary btn-sm" onclick="bukaUploadDokumenByRef('${esc(d.refKode)}')">📤 Upload Dokumen</button>
     </div>`;
   } else if (sudahUpload && !isDiproses && !isTerdaftar && !isDitolak) {
     banner = `<div style="background:var(--green-pale);border:1px solid #A5D6A7;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:var(--green);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-      <div><strong>Dokumen terupload.</strong> Menunggu verifikasi KPPN.</div>
-      <button class="btn btn-outline btn-sm" style="font-size:11px;color:var(--green);border-color:var(--green)" onclick="bukaUploadDokumenByRef('${esc(d.refKode)}')">Tambah/Ganti</button>
+      <div>✅ <strong>Dokumen terupload.</strong> Menunggu verifikasi KPPN.</div>
+      <button class="btn btn-outline btn-sm" style="font-size:11px;color:var(--green);border-color:var(--green)" onclick="bukaUploadDokumenByRef('${esc(d.refKode)}')">📎 Tambah/Ganti</button>
     </div>`;
   } else if (isDitolak) {
     banner = `<div style="background:#fff1f2;border:1.5px solid #fca5a5;border-radius:8px;padding:12px 14px;margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700;color:#b91c1c;margin-bottom:4px">Ditolak</div>
+      <div style="font-size:12px;font-weight:700;color:#b91c1c;margin-bottom:4px">❌ Ditolak</div>
       ${d.catatanAdmin?`<div style="font-size:11px;color:#7f1d1d;background:#fee2e2;border-radius:6px;padding:6px 10px;margin-bottom:8px"><strong>Alasan:</strong> ${esc(d.catatanAdmin)}</div>`:''}
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-sm" onclick="bukaEditRiwayat('${esc(d.refKode)}')" style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer">Perbaiki Data</button>
-        <button class="btn btn-sm" onclick="bukaUploadDokumenByRef('${esc(d.refKode)}',true)" style="background:#fff;color:#b91c1c;border:1.5px solid #b91c1c;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">Upload Ulang</button>
+        <button class="btn btn-sm" onclick="bukaEditRiwayat('${esc(d.refKode)}')" style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer">✏️ Perbaiki Data</button>
+        <button class="btn btn-sm" onclick="bukaUploadDokumenByRef('${esc(d.refKode)}',true)" style="background:#fff;color:#b91c1c;border:1.5px solid #b91c1c;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">📤 Upload Ulang</button>
+      </div>
+    </div>`;
+  }
+
+  // Info grid
+  const infoGrid = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px 14px;font-size:12px;background:#fff;border:1px solid var(--gray-200);border-radius:8px;padding:10px 14px;margin-bottom:12px">
+      <div><span style="color:var(--gray-500)">Satker:</span> <strong>${esc(d.namaSatker||'—')}</strong></div>
+      <div><span style="color:var(--gray-500)">KPA:</span> <strong>${esc(d.namaKpa||'—')}</strong>${d.nip?` <span style="color:var(--gray-500)">(${esc(d.nip)})</span>`:''}</div>
+      <div><span style="color:var(--gray-500)">Pengguna:</span> <strong>${usersArr.length} orang</strong></div>
+      <div><span style="color:var(--gray-500)">Tgl Daftar:</span> <strong>${fmtTgl(d.tanggalDaftar)}</strong></div>
+    </div>`;
+
+  // Dokumen
+  const filesEntries = Object.entries(d.filesJson||{});
+  const dokumenHtml = filesEntries.length ? `
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--gray-700);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">📎 Dokumen Terupload (${filesEntries.length})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${filesEntries.map(([key,f])=>{
+          const LABEL={formPendaftaran:'Form Pendaftaran',skPengguna:'SK Pengguna SAKTI',ktpKpa:'KTP KPA',skPejabat:'SK Pejabat',formOTP:'Form OTP',spesimen:'Spesimen TTD',dokumenLain:'Dok. Lainnya'};
+          let label = LABEL[key] || key;
+          if (key.startsWith('ktp_user_')) {
+            const idx = parseInt(key.slice(9), 10);
+            const u = usersArr[idx];
+            label = 'KTP — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+          }
+          return `<button onclick="satkerDownloadDokumen('${esc(f.url||'')}','${esc(label)}')"
+            style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid var(--gray-300);color:var(--gray-700);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:.15s"
+            onmouseover="this.style.background='var(--blue-pale)';this.style.color='var(--blue)'"
+            onmouseout="this.style.background='#fff';this.style.color='var(--gray-700)'">📥 ${esc(label)}</button>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  // Daftar pengguna
+  const usersHtml = usersArr.length ? `
+    <details style="margin-bottom:8px">
+      <summary style="cursor:pointer;font-size:11px;font-weight:700;color:var(--blue);padding:4px 0;text-transform:uppercase;letter-spacing:.4px">👥 Daftar Pengguna (${usersArr.length})</summary>
+      <div style="overflow-x:auto;margin-top:6px">
+        <table class="tbl" style="font-size:11px"><thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Email</th><th>Peran</th></tr></thead>
+        <tbody>${usersArr.map((u,ui)=>`<tr>
+          <td style="text-align:center;color:var(--gray-400)">${ui+1}</td>
+          <td>${esc(u.nama||'—')}</td>
+          <td style="font-family:monospace">${esc(u.nipnrp||'—')}</td>
+          <td style="font-family:monospace;font-size:10px">${esc(u.email||'—')}</td>
+          <td>${(u.peranList||[]).map(k=>`<span style="font-size:9px;background:${PERAN_OTP.includes(k)?'#fef9c3':'var(--blue-pale)'};color:${PERAN_OTP.includes(k)?'#854d0e':'var(--blue)'};padding:1px 5px;border-radius:8px;margin:1px;display:inline-block">${esc(String(k).replace('SATKER_',''))}</span>`).join('')||'—'}</td>
+        </tr>`).join('')}</tbody></table>
+      </div>
+    </details>` : '';
+
+  // Action footer
+  const actionFooter = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-outline btn-sm" onclick="satkerUnduhFormExcel('${esc(d.refKode)}')"
+        style="font-size:11px;border-color:var(--green);color:var(--green)">📥 Unduh Form Excel</button>
+    </div>`;
+
+  return stepperHtml + banner + infoGrid + dokumenHtml + usersHtml + actionFooter;
+}
+
+// Detail untuk Pergantian
+function rwRenderDetailGanti(g, rowKey){
+  const status = g.status || 'Menunggu';
+  const sLow = status.toLowerCase();
+  const isDitolak = sLow==='ditolak';
+  const isTerdaftar = ['terdaftar','selesai'].includes(sLow);
+  const isDiproses = sLow==='diproses';
+
+  const semula  = Array.isArray(g.semula)  ? g.semula  : (typeof g.semula==='string'?(()=>{try{return JSON.parse(g.semula);}catch(e){return [];}})():[]);
+  const menjadi = Array.isArray(g.menjadi) ? g.menjadi : (typeof g.menjadi==='string'?(()=>{try{return JSON.parse(g.menjadi);}catch(e){return [];}})():[]);
+  const filesJson = (typeof g.filesJson==='object'&&g.filesJson)?g.filesJson:{};
+  const fileKeys = Object.keys(filesJson);
+  const sudahUpload = fileKeys.length>0;
+  const belumUpload = !sudahUpload && !isDitolak && !isTerdaftar;
+
+  const PERAN_OTP = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+
+  const steps = [
+    {label:'Submit Form', done:!!g.id},
+    {label:'Upload Dokumen', done:sudahUpload},
+    {label:'Diproses KPPN', done:isDiproses||isTerdaftar},
+    {label:'Selesai', done:isTerdaftar},
+  ];
+
+  const stepperHtml = `
+    <div style="display:flex;align-items:center;gap:0;margin-bottom:14px;overflow-x:auto;padding-bottom:4px">
+      ${steps.map((s,si)=>`
+        <div style="display:flex;align-items:center;flex-shrink:0">
+          <div style="text-align:center;min-width:84px">
+            <div style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;margin:0 auto 3px;background:${s.done?'#7C3AED':'var(--gray-200)'};color:${s.done?'#fff':'var(--gray-500)'}">${s.done?'✓':si+1}</div>
+            <div style="font-size:10px;font-weight:600;color:${s.done?'#7C3AED':'var(--gray-500)'}">${s.label}</div>
+          </div>
+          ${si<steps.length-1?`<div style="height:2px;width:18px;background:${steps[si+1].done?'#7C3AED':'var(--gray-200)'};flex-shrink:0;margin-bottom:14px"></div>`:''}
+        </div>`).join('')}
+    </div>`;
+
+  let banner = '';
+  if (belumUpload) {
+    banner = `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#92400e;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div>⚠️ <strong>Dokumen belum diupload.</strong> Pergantian tidak dapat diproses.</div>
+      <button class="btn btn-sm" onclick="pgBukaUploadModal('${esc(g.id)}')" style="background:#7C3AED;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer">📤 Upload Dokumen</button>
+    </div>`;
+  } else if (sudahUpload && !isDiproses && !isTerdaftar && !isDitolak) {
+    banner = `<div style="background:#F3E8FF;border:1px solid #C4B5FD;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:#6D28D9;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div>✅ <strong>${fileKeys.length} dokumen terupload.</strong> Menunggu verifikasi KPPN.</div>
+      <button class="btn btn-outline btn-sm" style="font-size:11px;color:#7C3AED;border-color:#7C3AED" onclick="pgBukaUploadModal('${esc(g.id)}')">📎 Tambah/Ganti</button>
+    </div>`;
+  } else if (isDitolak) {
+    banner = `<div style="background:#fff1f2;border:1.5px solid #fca5a5;border-radius:8px;padding:12px 14px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:#b91c1c;margin-bottom:4px">❌ Ditolak</div>
+      ${g.catatanAdmin?`<div style="font-size:11px;color:#7f1d1d;background:#fee2e2;border-radius:6px;padding:6px 10px;margin-bottom:8px"><strong>Alasan:</strong> ${esc(g.catatanAdmin)}</div>`:''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="pgPerbaikiData('${esc(g.id)}')" style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer">✏️ Perbaiki Data</button>
+        <button class="btn btn-sm" onclick="pgBukaUploadModal('${esc(g.id)}')" style="background:#fff;color:#b91c1c;border:1.5px solid #b91c1c;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">📤 Upload Ulang</button>
       </div>
     </div>`;
   }
 
   const infoGrid = `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px 14px;font-size:12px;background:#fff;border:1px solid var(--gray-200);border-radius:8px;padding:10px 14px;margin-bottom:12px">
-      <div><span style="color:var(--gray-500)">Satker:</span> <strong>${esc(d.namaSatker||'-')}</strong></div>
-      <div><span style="color:var(--gray-500)">KPA:</span> <strong>${esc(d.namaKpa||'-')}</strong>${d.nip?' ('+esc(d.nip)+')':''}</div>
-      <div><span style="color:var(--gray-500)">Pengguna:</span> <strong>${usersArr.length} orang</strong></div>
-      <div><span style="color:var(--gray-500)">Tgl Daftar:</span> <strong>${fmtTgl(d.tanggalDaftar)}</strong></div>
+      <div><span style="color:var(--gray-500)">Satker:</span> <strong>${esc(g.namaSatker||'—')}</strong></div>
+      <div><span style="color:var(--gray-500)">KPA:</span> <strong>${esc(g.namaKpa||'—')}</strong>${g.nip?` <span style="color:var(--gray-500)">(${esc(g.nip)})</span>`:''}</div>
+      <div><span style="color:var(--gray-500)">Semula → Menjadi:</span> <strong>${semula.length} → ${menjadi.length}</strong> orang</div>
+      <div><span style="color:var(--gray-500)">Tgl Pengajuan:</span> <strong>${fmtTgl(g.createdAt||g.tanggalDaftar)}</strong></div>
     </div>`;
 
-  const filesEntries = Object.entries(d.filesJson||{});
-  const LABEL_DOK = {formPendaftaran:'Form Pendaftaran',skPengguna:'SK Pengguna SAKTI',ktpKpa:'KTP KPA',skPejabat:'SK Pejabat',formOTP:'Form OTP',spesimen:'Spesimen TTD',dokumenLain:'Dok. Lainnya'};
-  const dokumenHtml = filesEntries.length ? `
+  // Dokumen
+  const LABEL_PG = {formOTP:'Form OTP', skPejabat:'SK Pejabat', skPengguna:'SK Pengguna SAKTI', spesimen:'Spesimen TTD', formPergantian:'Form Pergantian', pdfDokumen:'Dokumen (lama)'};
+  const resolveLabelPg = (key) => {
+    if (LABEL_PG[key]) return LABEL_PG[key];
+    if (key.startsWith('ktp_menjadi_')) { const i=parseInt(key.slice(12),10); return 'KTP — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
+    if (key.startsWith('sertBNT_')) { const i=parseInt(key.slice(8),10); return 'BNT — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
+    if (key.startsWith('sertPNT_')) { const i=parseInt(key.slice(8),10); return 'PNT — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
+    if (key.startsWith('sertSNT_')) { const i=parseInt(key.slice(8),10); return 'SNT — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
+    return key;
+  };
+
+  const dokumenHtml = sudahUpload ? `
     <div style="margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--gray-700);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Dokumen Terupload (${filesEntries.length})</div>
+      <div style="font-size:11px;font-weight:700;color:#6D28D9;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">📎 Dokumen Terupload (${fileKeys.length})</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
-        ${filesEntries.map(([key,f])=>{
-          let label = LABEL_DOK[key] || key;
-          if (key.startsWith('ktp_user_')) {
-            const idx = parseInt(key.slice(9), 10);
-            const u = usersArr[idx];
-            label = 'KTP - ' + ((u && u.nama) ? u.nama : ('Pengguna #'+(idx+1)));
-          }
+        ${fileKeys.map(key=>{
+          const f = filesJson[key]||{};
+          const label = resolveLabelPg(key);
           return `<button onclick="satkerDownloadDokumen('${esc(f.url||'')}','${esc(label)}')"
-            style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid var(--gray-300);color:var(--gray-700);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">
-            Dok: ${esc(label)}${f.name?'<span style="font-size:10px;color:var(--gray-400)"> ('+esc(f.name)+')</span>':''}
-          </button>`;
+            style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid #DDD6FE;color:#6D28D9;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:.15s"
+            onmouseover="this.style.background='#F3E8FF'"
+            onmouseout="this.style.background='#fff'">📥 ${esc(label)}</button>`;
         }).join('')}
       </div>
     </div>` : '';
 
-  const usersHtml = usersArr.length ? `
-    <div style="margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--gray-700);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Pengguna (${usersArr.length})</div>
-      <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead><tr style="background:var(--gray-50)">
-            <th style="padding:6px 10px;text-align:left;font-weight:600;color:var(--gray-600);border-bottom:1px solid var(--gray-200)">Nama</th>
-            <th style="padding:6px 10px;text-align:left;font-weight:600;color:var(--gray-600);border-bottom:1px solid var(--gray-200)">NIP/NRP</th>
-            <th style="padding:6px 10px;text-align:left;font-weight:600;color:var(--gray-600);border-bottom:1px solid var(--gray-200)">Email</th>
-            <th style="padding:6px 10px;text-align:left;font-weight:600;color:var(--gray-600);border-bottom:1px solid var(--gray-200)">Peran</th>
-          </tr></thead>
-          <tbody>
-            ${usersArr.map(u=>`<tr style="border-bottom:1px solid var(--gray-100)">
-              <td style="padding:6px 10px">${esc(u.nama||'-')}</td>
-              <td style="padding:6px 10px;font-family:monospace;font-size:11px">${esc(u.nipnrp||'-')}</td>
-              <td style="padding:6px 10px;font-size:11px">${esc(u.email||'-')}</td>
-              <td style="padding:6px 10px">${(u.peranList||[]).map(p=>`<span style="background:#EDE9FE;color:#7C3AED;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700">${esc(p)}</span>`).join(' ')}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
+  const renderUserMini = (u, ui) => `<tr>
+    <td style="text-align:center;color:var(--gray-400)">${ui+1}</td>
+    <td>${esc(u.nama||'—')}</td>
+    <td style="font-family:monospace">${esc(u.nipnrp||'—')}</td>
+    <td>${(u.peranList||[]).map(k=>`<span style="font-size:9px;background:${PERAN_OTP.includes(k)?'#fef9c3':'#F3E8FF'};color:${PERAN_OTP.includes(k)?'#854d0e':'#7C3AED'};padding:1px 5px;border-radius:8px;margin:1px;display:inline-block">${esc(String(k).replace('SATKER_',''))}</span>`).join('')||'—'}</td>
+  </tr>`;
+
+  const usersHtml = (semula.length||menjadi.length) ? `
+    <details>
+      <summary style="cursor:pointer;font-size:11px;font-weight:700;color:#7C3AED;padding:4px 0;text-transform:uppercase;letter-spacing:.4px">👥 Detail Semula → Menjadi (${semula.length} → ${menjadi.length})</summary>
+      <div style="margin-top:8px">
+        <div style="font-size:10px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.4px;margin:6px 0 2px">📋 Pengguna Semula</div>
+        <div style="overflow-x:auto"><table class="tbl" style="font-size:11px"><thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Peran</th></tr></thead>
+          <tbody>${semula.map(renderUserMini).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--gray-400);font-style:italic">—</td></tr>'}</tbody>
+        </table></div>
+        <div style="font-size:10px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.4px;margin:10px 0 2px">✅ Pengguna Menjadi</div>
+        <div style="overflow-x:auto"><table class="tbl" style="font-size:11px"><thead style="background:#F3E8FF"><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Peran</th></tr></thead>
+          <tbody>${menjadi.map(renderUserMini).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--gray-400);font-style:italic">—</td></tr>'}</tbody>
+        </table></div>
       </div>
-    </div>` : '';
+    </details>` : '';
 
   return stepperHtml + banner + infoGrid + dokumenHtml + usersHtml;
 }
 
-// DEKLARASI CACHE GLOBAL
-if (typeof _pdCache === 'undefined') var _pdCache = {};
+// ════════════════════════════════════════════════════════
+// RIWAYAT — Kartu Pergantian User (deprecated, tidak dipakai)
+// ════════════════════════════════════════════════════════
+function rwRenderKartuGanti(g, isLatest) {
+  const status = g.status || 'Menunggu';
+  const sLow = status.toLowerCase();
+  const isDitolak   = sLow === 'ditolak';
+  const isTerdaftar = ['terdaftar','selesai'].includes(sLow);
+  const isDiproses  = sLow === 'diproses';
+  const isMenunggu  = sLow === 'menunggu';
 
-// EDIT RIWAYAT PENDAFTARAN (saat Ditolak)
-var _erSavedState = null;
-var _erCurrentRef = null;
+  const semula  = Array.isArray(g.semula)  ? g.semula  : (typeof g.semula==='string'?(()=>{try{return JSON.parse(g.semula);}catch(e){return [];}})():[]);
+  const menjadi = Array.isArray(g.menjadi) ? g.menjadi : (typeof g.menjadi==='string'?(()=>{try{return JSON.parse(g.menjadi);}catch(e){return [];}})():[]);
 
-function bukaEditRiwayat(refKode) {
-  var d = (_pdCache || {})[refKode];
-  if (!d) { showToast('Data tidak ditemukan. Muat ulang halaman.', true); return; }
-  _erCurrentRef = refKode;
+  // Cache full record agar tombol Upload/Perbaiki di kartu bisa hydrate state pergantian
+  window._pgRiwayatCache = window._pgRiwayatCache || {};
+  window._pgRiwayatCache[g.id] = {
+    id: g.id, namaSatker: g.namaSatker, namaKpa: g.namaKpa, nip: g.nip, noHp: g.noHp,
+    kota: g.kota, tglSurat: g.tglSurat, status, semula, menjadi, filesJson: g.filesJson || {},
+    catatanAdmin: g.catatanAdmin || '',
+  };
+  const filesJson = (typeof g.filesJson === 'object' && g.filesJson) ? g.filesJson :
+                    (typeof g.filesJson === 'string' ? (()=>{try{return JSON.parse(g.filesJson);}catch(e){return {};}})() : {});
+  const fileKeys = Object.keys(filesJson||{});
+  const sudahUpload = fileKeys.length > 0;
 
-  var usersArr = [];
-  if (Array.isArray(d.usersJson)) usersArr = d.usersJson;
-  else if (typeof d.usersJson === 'string') { try { usersArr = JSON.parse(d.usersJson)||[]; } catch(e){} }
+  const PERAN_OTP = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
 
-  _erSavedState = JSON.parse(JSON.stringify({
-    refKode: refKode, namaKpa: d.namaKpa||'', nip: d.nip||'',
-    noHp: d.noHp||'', levelSatker: d.levelSatker||'Satker', usersJson: usersArr,
-  }));
+  // Steps (workflow Pergantian — sederhana 4 tahap)
+  const steps = [
+    { label:'Submit Form',     done: !!g.id },
+    { label:'Upload Dokumen',  done: sudahUpload },
+    { label:'Diproses KPPN',   done: isDiproses || isTerdaftar },
+    { label:'Selesai',         done: isTerdaftar },
+  ];
 
-  var levels = ['Satker','Satker Wilayah','Satker BLU'];
-  var LEVEL_OPTS = levels.map(function(l){
-    return '<option value="'+l+'" '+((d.levelSatker||'Satker')===l?'selected':'')+'>'+l+'</option>';
-  }).join('');
+  const belumUpload = !sudahUpload && !isDitolak && !isTerdaftar;
 
-  var usersHtml = usersArr.map(function(u, i){
-    return '<div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:12px;margin-bottom:8px">'
-      +'<div style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;margin-bottom:8px">Pengguna #'+(i+1)+'</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
-      +'<label style="font-size:12px">Nama<input type="text" class="form-control" id="er_nama_'+i+'" value="'+esc(u.nama||'')+'" placeholder="Nama lengkap"></label>'
-      +'<label style="font-size:12px">NIP/NRP<input type="text" class="form-control" id="er_nipnrp_'+i+'" value="'+esc(u.nipnrp||'')+'" placeholder="NIP/NRP"></label>'
-      +'<label style="font-size:12px">Email<input type="email" class="form-control" id="er_email_'+i+'" value="'+esc(u.email||'')+'" placeholder="email@domain.com"></label>'
-      +'<label style="font-size:12px">No. HP<input type="text" class="form-control" id="er_hp_'+i+'" value="'+esc(u.hp||u.noHp||'')+'" placeholder="08xx"></label>'
-      +'</div></div>';
-  }).join('');
+  // Label dokumen untuk Pergantian
+  const LABEL_PG = {
+    formOTP:'Form Aktivasi OTP',
+    skPejabat:'SK Pejabat Perbendaharaan',
+    skPengguna:'SK Pengguna SAKTI',
+    spesimen:'Spesimen TTD',
+    formPergantian:'Form Pergantian',
+    pdfDokumen:'Dokumen (lama)',
+  };
+  const resolveLabelPg = (key) => {
+    if (LABEL_PG[key]) return LABEL_PG[key];
+    if (key.startsWith('ktp_menjadi_')) {
+      const idx = parseInt(key.slice('ktp_menjadi_'.length), 10);
+      const u = menjadi[idx];
+      return 'KTP — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+    }
+    if (key.startsWith('sertBNT_')) {
+      const idx = parseInt(key.slice('sertBNT_'.length), 10);
+      const u = menjadi[idx];
+      return 'Sertifikat BNT — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+    }
+    if (key.startsWith('sertPNT_')) {
+      const idx = parseInt(key.slice('sertPNT_'.length), 10);
+      const u = menjadi[idx];
+      return 'Sertifikat PNT — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+    }
+    if (key.startsWith('sertSNT_')) {
+      const idx = parseInt(key.slice('sertSNT_'.length), 10);
+      const u = menjadi[idx];
+      return 'Sertifikat SNT — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+    }
+    return key;
+  };
 
-  document.getElementById('editRiwayatBody').innerHTML =
-    '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#92400e">'
-    +'<strong>Perbaikan data</strong> - status akan dikembalikan ke Menunggu setelah disimpan. Dokumen lama tetap tersimpan; upload ulang jika diperlukan.'
-    +'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
-    +'<label style="font-size:13px">Nama KPA<input type="text" class="form-control" id="er_namaKpa" value="'+esc(d.namaKpa||'')+'" placeholder="Nama KPA"></label>'
-    +'<label style="font-size:13px">NIP KPA<input type="text" class="form-control" id="er_nip" value="'+esc(d.nip||'')+'" placeholder="NIP KPA"></label>'
-    +'<label style="font-size:13px">No. HP KPA<input type="text" class="form-control" id="er_noHp" value="'+esc(d.noHp||'')+'" placeholder="No. HP"></label>'
-    +'<label style="font-size:13px">Level Satker<select class="form-control" id="er_levelSatker">'+LEVEL_OPTS+'</select></label>'
-    +'</div>'
-    +'<div style="font-size:12px;font-weight:700;color:var(--gray-700);margin-bottom:8px">Data Pengguna SAKTI</div>'
-    +usersHtml
-    +'<div id="erErrMsg" style="display:none;background:var(--red-pale);border:1px solid var(--red);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--red);margin-top:8px"></div>';
+  const renderUserMini = (u, ui) => `<tr>
+    <td style="text-align:center;color:var(--gray-400)">${ui+1}</td>
+    <td>${esc(u.nama||'—')}</td>
+    <td style="font-family:monospace">${esc(u.nipnrp||'—')}</td>
+    <td>${(u.peranList||[]).map(k=>`<span style="font-size:10px;background:${PERAN_OTP.includes(k)?'#fef9c3':'#F3E8FF'};color:${PERAN_OTP.includes(k)?'#854d0e':'#7C3AED'};padding:1px 6px;border-radius:10px;margin:1px;display:inline-block">${esc(k.replace('SATKER_',''))}</span>`).join('')||'—'}</td>
+    <td style="font-size:11px;color:var(--gray-500)">${esc(u.keterangan||'Permanen')}</td>
+  </tr>`;
 
-  openModal('modalEditRiwayat');
+  return `
+  <div class="card" style="margin-bottom:16px;border-left:5px solid #7C3AED;background:linear-gradient(180deg,#FAF5FF 0%,#fff 50px,#fff 100%)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-size:11px;font-weight:800;background:#7C3AED;color:#fff;padding:3px 10px;border-radius:14px;letter-spacing:.4px">🔄 PERGANTIAN USER</span>
+          ${isLatest?'<span style="font-size:11px;font-weight:700;background:#F3E8FF;color:#7C3AED;padding:2px 8px;border-radius:20px">TERBARU</span>':''}
+        </div>
+        <div style="font-size:12px;color:var(--gray-500);margin-bottom:2px">ID Pergantian</div>
+        <div style="font-family:monospace;font-weight:700;font-size:15px;color:#7C3AED">${esc(g.id||'—')}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        ${badgeStatus(status)}
+      </div>
+    </div>
+
+    <!-- Progress stepper (warna ungu) -->
+    <div style="display:flex;align-items:center;gap:0;margin-bottom:16px;overflow-x:auto;padding-bottom:4px">
+      ${steps.map((s,si)=>`
+        <div style="display:flex;align-items:center;flex-shrink:0">
+          <div style="text-align:center;min-width:84px">
+            <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;margin:0 auto 4px;
+              background:${s.done?'#7C3AED':'var(--gray-200)'};color:${s.done?'#fff':'var(--gray-500)'}">
+              ${s.done?'✓':si+1}</div>
+            <div style="font-size:10px;font-weight:600;color:${s.done?'#7C3AED':'var(--gray-500)'}">${s.label}</div>
+          </div>
+          ${si<steps.length-1?`<div style="height:2px;width:20px;background:${steps[si+1].done?'#7C3AED':'var(--gray-200)'};flex-shrink:0;margin-bottom:16px"></div>`:''}
+        </div>`).join('')}
+    </div>
+
+    ${belumUpload?`
+    <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:12px;color:#92400e;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:flex-start;gap:8px;flex:1">
+        <span style="font-size:18px;flex-shrink:0">⚠️</span>
+        <div><strong>Dokumen pergantian belum diupload.</strong> Pergantian tidak dapat diproses sebelum dokumen lengkap diunggah.</div>
+      </div>
+      <button class="btn btn-sm" style="flex-shrink:0;font-size:12px;background:#7C3AED;color:#fff;border:none;padding:7px 14px;border-radius:6px;font-weight:700;cursor:pointer" onclick="pgBukaUploadModal('${esc(g.id)}')">📤 Upload Dokumen</button>
+    </div>`:''}
+
+    ${sudahUpload && !isDiproses && !isTerdaftar && !isDitolak?`
+    <div style="background:#F3E8FF;border:1px solid #C4B5FD;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:12px;color:#6D28D9;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div><strong>✅ ${fileKeys.length} dokumen terupload.</strong> Menunggu verifikasi KPPN Jayapura.</div>
+      <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:12px;color:#7C3AED;border-color:#7C3AED" onclick="pgBukaUploadModal('${esc(g.id)}')">📎 Tambah/Ganti Dokumen</button>
+    </div>`:''}
+
+    ${isDitolak?`
+    <div style="background:#fff1f2;border:1.5px solid #fca5a5;border-radius:10px;padding:14px 16px;margin-bottom:12px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:240px">
+          <div style="font-size:13px;font-weight:700;color:#b91c1c;margin-bottom:4px">❌ Pergantian Ditolak</div>
+          ${g.catatanAdmin?`<div style="font-size:12px;color:#7f1d1d;background:#fee2e2;border-radius:6px;padding:6px 10px;margin-bottom:8px"><strong>Alasan:</strong> ${esc(g.catatanAdmin)}</div>`:''}
+          <div style="font-size:12px;color:#991b1b">Silakan perbaiki data <strong>dan/atau</strong> upload ulang dokumen sesuai catatan KPPN.</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0">
+          <button class="btn btn-sm" onclick="pgPerbaikiData('${esc(g.id)}')"
+            style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
+            ✏️ Perbaiki Data
+          </button>
+          <button class="btn btn-sm" onclick="pgBukaUploadModal('${esc(g.id)}')"
+            style="background:#fff;color:#b91c1c;border:1.5px solid #b91c1c;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
+            📤 Upload Ulang Dokumen
+          </button>
+        </div>
+      </div>
+    </div>`:''}
+
+    <!-- Info grid -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px">
+      <div><span style="color:var(--gray-500)">Nama Satker:</span><br/><strong>${esc(g.namaSatker||'—')}</strong></div>
+      <div>
+        <span style="color:var(--gray-500)">Nama KPA:</span>
+        <br/><strong>${esc(g.namaKpa||'—')}</strong>
+        ${g.nip?`<span style="font-size:11px;color:var(--gray-500);margin-left:4px">NIP: ${esc(g.nip)}</span>`:''}
+      </div>
+      <div><span style="color:var(--gray-500)">Pengguna Semula → Menjadi:</span><br/><strong>${semula.length} → ${menjadi.length}</strong> pengguna</div>
+      <div><span style="color:var(--gray-500)">Tanggal Pengajuan:</span><br/><strong>${fmtTgl(g.createdAt||g.tanggalDaftar)}</strong></div>
+    </div>
+
+    ${sudahUpload?`
+    <div style="background:#FAF5FF;border:1px solid #DDD6FE;border-radius:8px;padding:12px 16px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:#6D28D9;margin-bottom:8px">📎 Dokumen Pergantian (${fileKeys.length})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${fileKeys.map(key => {
+          const f = filesJson[key] || {};
+          const label = resolveLabelPg(key);
+          return `<button onclick="satkerDownloadDokumen('${esc(f.url||'')}','${esc(label)}')"
+            style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #DDD6FE;color:#6D28D9;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:.15s"
+            onmouseover="this.style.background='#F3E8FF'"
+            onmouseout="this.style.background='#fff'">
+            📥 ${esc(label)}
+          </button>`;
+        }).join('')}
+      </div>
+    </div>`:''}
+
+    ${(semula.length||menjadi.length)?`
+    <details style="margin-bottom:12px" ${isLatest?'open':''}>
+      <summary style="cursor:pointer;font-size:12px;font-weight:600;color:#7C3AED;padding:6px 0">👥 Lihat detail Semula → Menjadi (${semula.length} → ${menjadi.length})</summary>
+      <div style="margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px">📋 Data Pengguna Semula</div>
+        <div style="overflow-x:auto"><table class="tbl" style="font-size:12px">
+          <thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Peran</th><th>Ket.</th></tr></thead>
+          <tbody>${semula.map(renderUserMini).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--gray-400);font-style:italic">—</td></tr>'}</tbody>
+        </table></div>
+        <div style="font-size:11px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 4px">✅ Data Pengguna Menjadi</div>
+        <div style="overflow-x:auto"><table class="tbl" style="font-size:12px">
+          <thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Peran</th><th>Ket.</th></tr></thead>
+          <tbody>${menjadi.map(renderUserMini).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--gray-400);font-style:italic">—</td></tr>'}</tbody>
+        </table></div>
+      </div>
+    </details>`:''}
+  </div>`;
 }
 
+// ════════════════════════════════════════════════════════
+// UPLOAD DOKUMEN PENDAFTARAN USER SAKTI
+// ════════════════════════════════════════════════════════
+let udRefKode   = '';
+let udNamaSatker= '';
+let udFiles     = {}; // { fileKey: File }
+let udUploading = {};
+
+const PERAN_BUTUH_SK   = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM',
+                           'SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU','SATKER_BENDAHARA_PENERIMAAN'];
+const PERAN_BUTUH_OTP  = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+
+function bukaModalUploadDokumen(info) {
+  udRefKode    = info.refKode    || '';
+  udNamaSatker = info.namaSatker || '';
+  udFiles      = {};
+  udUploading  = {};
+
+  const users        = info.usersJson    || [];
+  const filesExist   = info.filesJson    || {}; // { key: {url,name} } dari data existing
+  const needsReupload= !!info.needsReupload;    // true saat habis perbaikan → harus upload ulang
+  const semuaPeran   = users.flatMap(u => u.peranList || []);
+  const butuhSK    = semuaPeran.some(p => PERAN_BUTUH_SK.includes(p));
+  const butuhOTP   = semuaPeran.some(p => PERAN_BUTUH_OTP.includes(p));
+
+  // Build dokumen list — KTP dipisah per pengguna yang didaftarkan
+  const ktpDocs = users.map((u, idx) => {
+    const nama = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
+    const nip  = (u.nipnrp || '').trim();
+    const desc = nip ? ('KTP ' + nama + ' (NIP/NRP: ' + nip + ')') : ('KTP ' + nama);
+    return {
+      key: 'ktp_user_' + idx,
+      label: 'Scan KTP — ' + nama,
+      desc: desc,
+      required: true,
+      acceptImage: true   // izinkan PDF + gambar
+    };
+  });
+
+  const dokumen = [
+    { key:'formPendaftaran', label:'Form Pendaftaran User SAKTI',    desc:'Form pendaftaran yang sudah ditandatangani KPA', required:true },
+    { key:'skPengguna',      label:'SK Pengguna SAKTI',              desc:'Surat Keputusan penetapan pengguna SAKTI dari pimpinan satker', required:true },
+    ...ktpDocs,
+    ...(butuhSK ? [
+      { key:'skPejabat',     label:'SK Pejabat Perbendaharaan',      desc:'SK pengangkatan KPA, PPK, PPSPM, atau Bendahara yang masih berlaku', required:true },
+    ] : []),
+    ...(butuhOTP ? [
+      { key:'formOTP',       label:'Form Aktivasi OTP',              desc:'Form permohonan aktivasi OTP untuk KPA/PPK/PPSPM', required:true },
+      { key:'spesimen',      label:'Spesimen Tanda Tangan',          desc:'Lembar spesimen tanda tangan untuk KPA/PPK/PPSPM', required:true },
+    ] : []),
+    { key:'dokumenLain',     label:'Dokumen Lainnya (opsional)',     desc:'Dokumen pendukung tambahan jika ada', required:false },
+  ];
+
+  const body = document.getElementById('uploadDokumenBody');
+  body.innerHTML = `
+    <div style="background:var(--blue-pale);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">
+      <strong>Ref:</strong> <span style="font-family:monospace;font-weight:700">${esc(udRefKode)}</span>
+      &nbsp;·&nbsp; ${esc(udNamaSatker)}
+    </div>
+    ${needsReupload ? `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#9a3412;line-height:1.6">
+      ⚠️ <strong>Mode perbaikan dokumen</strong> — dokumen yang sudah pernah diupload <u>tetap tersimpan</u> dan masih bisa di-download (📥). Pilih hanya dokumen yang perlu diganti dengan tombol <strong>🔄 Ganti</strong>, atau hapus saja yang salah dengan <strong>🗑️ Hapus</strong>. Yang tidak Anda sentuh akan tetap dipertahankan.
+    </div>` : ''}
+    <p style="font-size:12px;color:var(--gray-600);margin-bottom:14px">Format <strong>PDF</strong> untuk dokumen, <strong>PDF/JPG/JPEG/PNG</strong> untuk Scan KTP. Maks. <strong>2 MB</strong> per file.</p>
+    <div id="udDokGrid">
+      ${dokumen.map(dok => {
+        const existing = filesExist[dok.key];
+        const sudahAda = !!(existing && existing.url);
+        const rowBg     = sudahAda ? (needsReupload ? '#fffbeb' : '#f0fdf4') : '#fff';
+        const rowBorder = sudahAda ? (needsReupload ? '#fcd34d' : '#A5D6A7') : 'var(--gray-200)';
+        return `
+        <div id="ud_row_${dok.key}" style="border:1px solid ${rowBorder};border-radius:8px;padding:12px 14px;margin-bottom:8px;background:${rowBg};transition:.15s">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:700;color:var(--gray-800)">
+                ${dok.required?'<span style="color:var(--red)">*</span> ':''}${esc(dok.label)}
+              </div>
+              <div style="font-size:11px;color:var(--gray-500);margin-top:1px">${esc(dok.desc)}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+              ${sudahAda ? `
+                <span id="ud_status_${dok.key}" style="font-size:11px;color:${needsReupload?'#92400e':'var(--green)'};font-weight:600">${needsReupload?'⚠️ Perlu dicek':'✅ Terupload'}</span>
+                <button onclick="satkerDownloadDokumen('${esc(existing.url||'')}','${esc(dok.label)}')"
+                  style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid ${needsReupload?'#fcd34d':'#A5D6A7'};color:${needsReupload?'#92400e':'var(--green)'};border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">
+                  📥 Download
+                </button>` : ''}
+              <label style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">
+                <input type="file" accept="${dok.acceptImage?'.pdf,application/pdf,image/*':'.pdf,application/pdf'}" style="display:none" onchange="udSelectFile('${dok.key}',this,${dok.acceptImage?'true':'false'})"/>
+                ${sudahAda ? '🔄 Ganti' : (dok.acceptImage ? '📄 Pilih File' : '📄 Pilih PDF')}
+              </label>
+              ${sudahAda ? `<button onclick="udHapusFile('${dok.key}','${esc(dok.label)}')" title="Hapus dokumen lama tanpa upload baru"
+                style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid #fca5a5;color:#b91c1c;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">🗑️ Hapus</button>` : ''}
+            </div>
+          </div>
+          <div id="ud_preview_${dok.key}" style="display:none;margin-top:8px;background:#e0f2fe;border:1px solid #7dd3fc;border-radius:6px;padding:7px 10px;align-items:center;gap:8px">
+            <span style="font-size:14px;flex-shrink:0">📄</span>
+            <div style="flex:1;font-size:11px;font-weight:600;color:var(--gray-700)" id="ud_flabel_${dok.key}"></div>
+            <div style="font-size:10px;color:var(--gray-500)" id="ud_fsize_${dok.key}"></div>
+            <button onclick="udClearFile('${dok.key}')" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--gray-400);padding:0" title="Batal">✕</button>
+            <button id="ud_btn_${dok.key}" onclick="udUploadFile('${dok.key}')" class="btn btn-primary btn-sm" style="font-size:11px;padding:4px 10px;flex-shrink:0">📤 Upload</button>
+          </div>
+          <div id="ud_done_${dok.key}" style="display:none;margin-top:6px;font-size:11px;color:var(--green);font-weight:600">✅ Berhasil diupload sesi ini</div>
+          <div id="ud_err_${dok.key}" style="display:none;margin-top:5px;font-size:11px;color:var(--red)"></div>
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  openModal('modalUploadDokumen');
+}
+
+function udSelectFile(key, input, allowImage) {
+  const file = input.files[0];
+  if (!file) return;
+  const errEl = document.getElementById('ud_err_'+key);
+  errEl.style.display='none';
+
+  const fname = (file.name || '').toLowerCase();
+  const isPdf   = file.type === 'application/pdf' || fname.endsWith('.pdf');
+  const isImage = (file.type || '').startsWith('image/') ||
+                  /\.(jpg|jpeg|png|gif|bmp|webp|heic|heif)$/i.test(fname);
+
+  if (allowImage) {
+    if (!isPdf && !isImage) {
+      errEl.textContent='File KTP harus berformat PDF atau gambar (JPG, JPEG, PNG, dll).';
+      errEl.style.display='block'; input.value=''; return;
+    }
+  } else {
+    if (!isPdf) {
+      errEl.textContent='File harus berformat PDF.';
+      errEl.style.display='block'; input.value=''; return;
+    }
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    errEl.textContent=`Ukuran file ${(file.size/1024/1024).toFixed(1)} MB melebihi batas maksimal 2 MB. Kompres file terlebih dahulu.`;
+    errEl.style.display='block'; input.value=''; return;
+  }
+
+  udFiles[key] = file;
+  // Tampilkan label dokumen (bukan nama file asli)
+  const labelEl = document.getElementById('ud_flabel_'+key);
+  if (labelEl) {
+    const rowEl = document.getElementById('ud_row_'+key);
+    const labelText = rowEl?.querySelector('div[style*="font-weight:700"]')?.innerText?.replace(/^\*/,'').trim() || key;
+    labelEl.textContent = labelText + ' — siap diupload';
+  }
+  document.getElementById('ud_fsize_'+key).textContent = (file.size/1024).toFixed(1)+' KB';
+  const prev = document.getElementById('ud_preview_'+key);
+  prev.style.display='flex';
+  // Reset done state jika upload ulang
+  document.getElementById('ud_done_'+key).style.display='none';
+  document.getElementById('ud_btn_'+key).disabled=false;
+  document.getElementById('ud_btn_'+key).textContent='📤 Upload';
+  // Highlight row
+  document.getElementById('ud_row_'+key).style.borderColor='var(--blue-pale2)';
+}
+
+function udClearFile(key) {
+  delete udFiles[key];
+  document.getElementById('ud_preview_'+key).style.display='none';
+  document.getElementById('ud_done_'+key).style.display='none';
+  document.getElementById('ud_err_'+key).style.display='none';
+  document.getElementById('ud_row_'+key).style.borderColor='var(--gray-200)';
+}
+
+// Hapus dokumen lama tanpa upload baru — file di Drive akan di-trash & key dihapus dari filesJson
+async function udHapusFile(key, label) {
+  if (!confirm('Hapus dokumen "' + label + '" yang sudah pernah diupload?\n\nFile akan dipindahkan ke trash di Drive dan referensi-nya dihapus dari sistem. Anda perlu upload ulang dokumen ini sebelum pendaftaran bisa diproses.')) return;
+  const errEl = document.getElementById('ud_err_'+key);
+  if (errEl) { errEl.style.display='none'; }
+  try {
+    const result = await apiPost({
+      action:    'hapusDokumenSatker',
+      refKode:   udRefKode,
+      fileKey:   key,
+    });
+    if (!result || !result.success) {
+      if (errEl) { errEl.textContent = result?.message || 'Gagal hapus.'; errEl.style.display='block'; }
+      showToast(result?.message || 'Gagal menghapus dokumen', true);
+      return;
+    }
+    showToast('🗑️ Dokumen "' + label + '" berhasil dihapus', false, true);
+    // Update UI row jadi seperti baru (kosong)
+    const row = document.getElementById('ud_row_'+key);
+    if (row) {
+      row.style.background = '#fff';
+      row.style.borderColor = 'var(--gray-200)';
+    }
+    const status = document.getElementById('ud_status_'+key);
+    if (status) { status.textContent = '🗑️ Dihapus'; status.style.color = '#b91c1c'; }
+    // Hapus tombol Download & Hapus, ganti label tombol upload jadi "Pilih File"
+    const dlBtn = row?.querySelector('button[onclick^="satkerDownloadDokumen"]');
+    if (dlBtn) dlBtn.remove();
+    const hapusBtn = row?.querySelector('button[onclick^="udHapusFile"]');
+    if (hapusBtn) hapusBtn.remove();
+    // Tandai di udUploading bahwa sesi ini melakukan perubahan (agar refresh saat selesai)
+    udUploading[key+'_deleted'] = true;
+  } catch(e) {
+    if (errEl) { errEl.textContent='Gagal terhubung ke server.'; errEl.style.display='block'; }
+    showToast('Gagal terhubung ke server', true);
+  }
+}
+
+async function udUploadFile(key) {
+  const file = udFiles[key];
+  if (!file) return;
+  const btn   = document.getElementById('ud_btn_'+key);
+  const errEl = document.getElementById('ud_err_'+key);
+  errEl.style.display='none';
+  btn.disabled=true; btn.textContent='⏳ Mengupload...';
+
+  try {
+    const b64 = await new Promise((res,rej) => {
+      const fr = new FileReader();
+      fr.onload  = () => res(fr.result.split(',')[1]);
+      fr.onerror = rej;
+      fr.readAsDataURL(file);
+    });
+
+    const result = await apiPost({
+      action:      'uploadFile',
+      refKode:     udRefKode,
+      namaSatker:  udNamaSatker,
+      fileKey:     key,
+      fileName:    file.name,
+      fileData:    b64,
+      mimeType:    'application/pdf',
+    });
+
+    if (!result.success) {
+      errEl.textContent = result.message || 'Gagal upload. Coba lagi.';
+      errEl.style.display='block';
+      btn.disabled=false; btn.textContent='📤 Upload';
+      return;
+    }
+
+    // Sukses
+    btn.style.display='none';
+    document.getElementById('ud_done_'+key).style.display='block';
+    document.getElementById('ud_row_'+key).style.borderColor='#A5D6A7';
+    document.getElementById('ud_row_'+key).style.background='#f0fdf4';
+    showToast('✅ '+file.name+' berhasil diupload', false, true);
+
+    // Mark uploaded
+    udUploading[key] = true;
+
+  } catch(e) {
+    errEl.textContent='Gagal terhubung ke server.';
+    errEl.style.display='block';
+    btn.disabled=false; btn.textContent='📤 Upload';
+  }
+}
+
+function udSelesai() {
+  closeModal('modalUploadDokumen');
+  // Refresh riwayat jika ada yang terupload
+  if (Object.keys(udUploading).length > 0) {
+    udUploading = {};
+    initUserRiwayat(); // refresh kartu riwayat agar status dokumen terupdate
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// DOWNLOAD DOKUMEN SATKER
+// ════════════════════════════════════════════════════════
+async function satkerDownloadDokumen(fileUrl, labelDokumen) {
+  if (!fileUrl) { showToast('URL dokumen tidak tersedia', true); return; }
+  showToast('⏳ Mengunduh '+labelDokumen+'...');
+  try {
+    const res = await apiPost({ action:'getDriveFile', fileUrl });
+    if (!res.success) { showToast(res.message || 'Gagal mengunduh dokumen', true); return; }
+    const bytes = Uint8Array.from(atob(res.fileBase64), c => c.charCodeAt(0));
+    const blob  = new Blob([bytes], { type: res.mimeType || 'application/pdf' });
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement('a');
+    a.href = url; a.download = labelDokumen + '.pdf'; a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ '+labelDokumen+' berhasil diunduh', false, true);
+  } catch(e) { showToast('❌ Gagal mengunduh dokumen', true); }
+}
+
+// ════════════════════════════════════════════════════════
+// PERBAIKI DATA (saat Ditolak)
+// ════════════════════════════════════════════════════════
+let pdData = null; // data pendaftaran yang sedang diperbaiki
+const _pdCache = {}; // cache data per refKode agar aman dari HTML injection
+
+function bukaUploadDokumenByRef(refKode, forceReupload) {
+  const info = _pdCache[refKode];
+  if (!info) { showToast('Data tidak ditemukan', true); return; }
+  // Kalau forceReupload (flow setelah ditolak), kirim flag agar modal pakai mode "upload ulang"
+  bukaModalUploadDokumen({ ...info, needsReupload: !!forceReupload });
+}
+
+// ── Unduh Form Excel dari riwayat ──────────────────────────────
+async function satkerUnduhFormExcel(refKode) {
+  const info = _pdCache[refKode];
+  if (!info) { showToast('Data tidak tersedia', true); return; }
+  showToast('⏳ Menyiapkan Form Excel...');
+  try {
+    const users = (info.usersJson || []).map(u => ({
+      nama: u.nama || '', nipnrp: u.nipnrp || '', email: u.email || '',
+      peranList: u.peranList || [], jabatan: u.jabatan || ''
+    }));
+    const res = await apiPost({
+      action: 'generateExcel',
+      refKode: info.refKode,
+      kodeSatker: info.kodeSatker || '',
+      namaSatker: info.namaSatker || '',
+      levelSatker: info.levelSatker || '',
+      namaKpa: info.namaKpa || '',
+      nip: info.nip || '',
+      kota: 'Jayapura',
+      tglStr: new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),
+      users,
+    });
+    if (!res.success) { showToast(res.message || 'Gagal generate Excel', true); return; }
+    const bytes = Uint8Array.from(atob(res.fileBase64), c => c.charCodeAt(0));
+    const blob  = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement('a');
+    a.href = url;
+    a.download = 'Form_Pendaftaran_SAKTI_' + info.refKode + '.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ Form Excel berhasil diunduh', false, true);
+  } catch(e) { showToast('❌ Gagal mengunduh form Excel', true); }
+}
+
+// ── Edit Riwayat Pendaftaran (form lengkap) ──────────────────────
+let _editRiwayatRef = null;
+
+function bukaEditRiwayat(refKode) {
+  const info = _pdCache[refKode];
+  if (!info) { showToast('Data tidak ditemukan', true); return; }
+  _editRiwayatRef = refKode;
+
+  // Reset dan load ulang ubUsers dari data cache
+  ubUsers.length = 0; ubUserIdSeq = 0; ubLocked = false;
+
+  const kode = currentUser?.username || '';
+  const LEVEL_OPT = ['Satker','Satker BLU','Satker PNBP','Kantor Pusat','Kantor Wilayah'];
+
+  // Render form lengkap ke dalam modal body
+  document.getElementById('editRiwayatBody').innerHTML = `
+    <div class="info-box blue" style="margin-bottom:16px;font-size:12px">
+      📝 Edit data pendaftaran — Ref: <strong>${esc(info.refKode)}</strong>.
+      Perubahan disimpan ke server. Jika ada perubahan pengguna, Anda perlu <strong>upload ulang dokumen</strong>.
+    </div>
+
+    <!-- Data Satker -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">🏢 Data Satker</div>
+      <div class="ub-form-row">
+        <div class="ub-form-group" style="max-width:160px">
+          <label>Kode Satker</label>
+          <input type="text" value="${esc(kode)}" readonly style="background:var(--gray-100);font-family:monospace;font-weight:700;letter-spacing:1px"/>
+        </div>
+        <div class="ub-form-group">
+          <label>Nama Satker <span style="color:var(--red)">*</span></label>
+          <input type="text" id="er_namaSatker" value="${esc(info.namaSatker||'')}"/>
+        </div>
+        <input type="hidden" id="er_levelSatker" value="Satker"/>
+      </div>
+    </div>
+
+    <!-- Data KPA -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">🏛️ Data KPA (Penandatangan)</div>
+      <div class="ub-form-row">
+        <div class="ub-form-group">
+          <label>Nama KPA <span style="color:var(--red)">*</span></label>
+          <input type="text" id="er_namaKpa" value="${esc(info.namaKpa||'')}" placeholder="Nama lengkap KPA"/>
+        </div>
+        <div class="ub-form-group">
+          <label>NIP KPA <span style="color:var(--red)">*</span></label>
+          <input type="text" id="er_nip" value="${esc(info.nip||'')}" placeholder="199001012020011001" maxlength="18" style="font-family:monospace"/>
+        </div>
+      </div>
+      <div class="ub-form-row">
+        <div class="ub-form-group">
+          <label>No. HP / WA <span style="color:var(--red)">*</span></label>
+          <input type="text" id="er_noHp" value="${esc(info.noHp||'')}" placeholder="08xx-xxxx-xxxx"/>
+        </div>
+        <div class="ub-form-group">
+          <label>Kota / Tempat TTD</label>
+          <input type="text" id="er_kota" value="${esc(info.kota||'Jayapura')}" placeholder="Jayapura"/>
+        </div>
+        <div class="ub-form-group">
+          <label>Tanggal Surat</label>
+          <input type="text" id="er_tglSurat" value="${esc(info.tglSurat||'')}" placeholder="Pilih tanggal..." readonly style="cursor:pointer"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daftar Pengguna -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">👥 Data Pengguna yang Akan Didaftarkan</div>
+      <div id="erUserList"></div>
+      <button class="btn-add-user" onclick="erTambahPengguna()">+ Tambah Pengguna</button>
+    </div>
+  `;
+
+  // Isi ubUsers dari cache dan render ke erUserList
+  (info.usersJson || []).forEach(u => {
+    const id = ++ubUserIdSeq;
+    ubUsers.push({ id, nama:u.nama||'', nipnrp:u.nipnrp||'', nik:u.nik||'', email:u.email||'',
+      hp:u.hp||'', sk:u.sk||'', tglsk:u.tglsk||'', peranList:u.peranList||[] });
+    erRenderUserCard(id);
+  });
+  ubReindexUsers();
+
+  openModal('modalEditRiwayat');
+  setTimeout(() => {
+    ubInitFlatpickrSurat(document.getElementById('er_tglSurat'));
+    ubInitFlatpickrSurat = ubInitFlatpickrSurat; // no-op reference keep
+    // Init flatpickr tanggal surat di modal edit
+    if (window.flatpickr) {
+      flatpickr('#er_tglSurat', {
+        locale:'id', dateFormat:'d-m-Y',
+        defaultDate: document.getElementById('er_tglSurat')?.value || null,
+      });
+    }
+  }, 80);
+}
+
+// Render kartu pengguna di dalam modal edit riwayat (reuse erUserList)
+function erRenderUserCard(id) {
+  const u = ubGetUserById(id);
+  const wrap = document.getElementById('erUserList');
+  if (!wrap) return;
+  document.getElementById(`eruc-${id}`)?.remove();
+  const div = document.createElement('div');
+  div.className = 'user-card'; div.id = `eruc-${id}`;
+  div.innerHTML = `
+    <div class="user-card-header">
+      <span class="user-card-num" id="erucnum-${id}">Pengguna</span>
+      <div class="user-card-actions">
+        <button class="btn btn-outline btn-sm" onclick="erOpenEditModal(${id})">✏️ Edit</button>
+        ${ubUsers.length > 1 ? `<button class="btn btn-danger btn-sm" onclick="erRemoveUser(${id})">✕ Hapus</button>` : ''}
+      </div>
+    </div>
+    <div id="erucSummary-${id}"></div>`;
+  wrap.appendChild(div);
+  erRenderUserSummary(id);
+}
+function erRenderUserSummary(id) {
+  const u = ubGetUserById(id);
+  const el = document.getElementById(`erucSummary-${id}`);
+  if (!el || !u) return;
+  const kelompoks = [...new Set(u.peranList.map(k => ubGetKelompok(k)).filter(Boolean))];
+  const kbCls = kelompoks.length > 1 ? 'kb-M' : kelompoks[0] ? `kb-${kelompoks[0][0]}` : '';
+  el.innerHTML = `<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--gray-700)">
+    <span><strong>Nama:</strong> ${u.nama || '<em style="color:var(--gray-400)">belum diisi</em>'}</span>
+    <span style="color:var(--gray-300)">|</span>
+    <span><strong>NIP/NRP:</strong> ${u.nipnrp || '—'}</span>
+    <span style="color:var(--gray-300)">|</span>
+    <span><strong>Email:</strong> ${u.email || '—'}</span>
+    <span style="color:var(--gray-300)">|</span>
+    <span><strong>Peran:</strong> ${u.peranList.length ? u.peranList.map(k => `<span class="kb ${kbCls}">${ubGetLabel(k)}</span>`).join('') : '<em style="color:var(--red)">belum dipilih</em>'}</span>
+  </div>`;
+}
+function erRemoveUser(id) {
+  if (ubUsers.length <= 1) { showToast('Minimal harus ada 1 pengguna', true); return; }
+  const idx = ubUsers.findIndex(u => u.id === id);
+  if (idx !== -1) ubUsers.splice(idx, 1);
+  document.getElementById(`eruc-${id}`)?.remove();
+  // Re-render semua agar tombol hapus refresh
+  const wrap = document.getElementById('erUserList');
+  if (wrap) { wrap.innerHTML = ''; ubUsers.forEach(u => erRenderUserCard(u.id)); }
+  ubReindexUsers();
+}
+function erTambahPengguna() {
+  const id = ++ubUserIdSeq;
+  ubUsers.push({ id, nama:'', nipnrp:'', nik:'', email:'', hp:'', sk:'', tglsk:'', peranList:[] });
+  erRenderUserCard(id);
+  ubReindexUsers();
+  // Langsung buka modal edit pengguna baru
+  erOpenEditModal(id);
+}
+
+// Edit pengguna pakai modal ubEditUB yang sudah ada (reuse penuh)
+// Mode "edit-riwayat": override ubSaveEdit agar save ke kartu erucSummary, bukan ubucSummary
+function erOpenEditModal(id) {
+  ubOpenEditModal(id);
+  window._erEditingId = id;
+  // Hanya simpan original SEKALI (di first invocation), supaya panggilan berikutnya
+  // tidak menimpa _erOrigSave dengan versi yang sudah di-hijack.
+  if (!window._erOrigSave) window._erOrigSave = window.ubSaveEdit;
+  window.ubSaveEdit = function () {
+    const nama      = (document.getElementById('ube-nama')   ?.value || '').trim();
+    const nipnrp    = (document.getElementById('ube-nipnrp') ?.value || '').trim();
+    const nik       = (document.getElementById('ube-nik')    ?.value || '').trim();
+    const email     = (document.getElementById('ube-email')  ?.value || '').trim();
+    const hp        = (document.getElementById('ube-hp')     ?.value || '').trim();
+    const sk        = (document.getElementById('ube-sk')     ?.value || '').trim();
+    const tglsk     = (document.getElementById('ube-tglsk')  ?.value || '').trim();
+    const peranList = ubGetCheckedPeran();
+    const emailErr  = document.getElementById('ube-email-err');
+    if (email) {
+      const el = email.toLowerCase();
+      if (!el.endsWith('.go.id') && !el.endsWith('.mil.id')) {
+        emailErr.style.display = 'block';
+        document.getElementById('ube-email')?.classList.add('err');
+        showToast('Email harus berakhiran .go.id atau .mil.id', true); return;
+      }
+    }
+    emailErr.style.display = 'none';
+    document.getElementById('ube-email')?.classList.remove('err');
+    if (!nama)               { showToast('Nama wajib diisi', true); return; }
+    if (!nipnrp)             { showToast('NIP/NRP wajib diisi', true); return; }
+    if (!peranList.length)   { showToast('Pilih minimal satu peran', true); return; }
+
+    // Validasi duplikat lintas pengguna lain (selain yang sedang diedit)
+    const editingId = window._erEditingId;
+    const dupNIP = ubUsers.find(u => u.id !== editingId && u.nipnrp && u.nipnrp === nipnrp);
+    if (dupNIP) { showToast(`❌ NIP/NRP sudah digunakan oleh: ${dupNIP.nama}`, true); return; }
+    if (nik) {
+      const dupNIK = ubUsers.find(u => u.id !== editingId && u.nik && u.nik === nik);
+      if (dupNIK) { showToast(`❌ NIK sudah digunakan oleh: ${dupNIK.nama}`, true); return; }
+    }
+    if (email) {
+      const dupEmail = ubUsers.find(u => u.id !== editingId && u.email && u.email.toLowerCase() === email.toLowerCase());
+      if (dupEmail) { showToast(`❌ Email sudah digunakan oleh: ${dupEmail.nama}`, true); return; }
+    }
+
+    const u = ubGetUserById(editingId); if (!u) return;
+    u.nama=nama; u.nipnrp=nipnrp; u.nik=nik; u.email=email; u.hp=hp; u.sk=sk; u.tglsk=tglsk; u.peranList=peranList;
+    erRenderUserSummary(editingId);
+    closeModal('modalEditUB');
+    showToast('✅ Data pengguna disimpan');
+  };
+}
+
+// Restore ubSaveEdit ke versi original saat keluar dari modal edit-riwayat.
+// Dipanggil saat tombol Batal/Close di modalEditRiwayat di-klik.
 function erRestoreSaveEdit() {
-  _erCurrentRef = null;
-  _erSavedState = null;
+  if (window._erOrigSave) {
+    window.ubSaveEdit = window._erOrigSave;
+    window._erOrigSave = null;
+  }
+  window._erEditingId = null;
 }
 
 async function doSimpanEditRiwayat() {
-  var refKode = _erCurrentRef;
-  if (!refKode) { showToast('Referensi tidak ditemukan', true); return; }
+  const info = _pdCache[_editRiwayatRef];
+  if (!info) return;
 
-  var namaKpa     = (document.getElementById('er_namaKpa')     ? document.getElementById('er_namaKpa').value     : '').trim();
-  var nip         = (document.getElementById('er_nip')         ? document.getElementById('er_nip').value         : '').trim();
-  var noHp        = (document.getElementById('er_noHp')        ? document.getElementById('er_noHp').value        : '').trim();
-  var levelSatker = (document.getElementById('er_levelSatker') ? document.getElementById('er_levelSatker').value : 'Satker');
+  const namaSatker = document.getElementById('er_namaSatker')?.value.trim() || '';
+  const levelSatker = document.getElementById('er_levelSatker')?.value || '';
+  const namaKpa = document.getElementById('er_namaKpa')?.value.trim() || '';
+  const nip = document.getElementById('er_nip')?.value.trim() || '';
+  const noHp = document.getElementById('er_noHp')?.value.trim() || '';
+  const kota = document.getElementById('er_kota')?.value.trim() || 'Jayapura';
+  const tglSurat = document.getElementById('er_tglSurat')?.value.trim() || '';
 
-  var errEl = document.getElementById('erErrMsg');
-  function erErr(msg){ errEl.style.display='block'; errEl.textContent=msg; }
-  errEl.style.display = 'none';
+  // Validasi wajib
+  if (!namaSatker) { showToast('Nama Satker wajib diisi', true); return; }
+  if (!namaKpa) { showToast('Nama KPA wajib diisi', true); return; }
+  if (!nip) { showToast('NIP KPA wajib diisi', true); return; }
+  if (!noHp) { showToast('No. HP wajib diisi', true); return; }
+  if (!ubUsers.length) { showToast('Tambahkan minimal satu pengguna', true); return; }
+  for (let i = 0; i < ubUsers.length; i++) {
+    const u = ubUsers[i]; const n = i + 1;
+    if (!u.nama) { showToast(`Pengguna ${n}: Nama wajib diisi`, true); return; }
+    if (!u.nipnrp) { showToast(`Pengguna ${n}: NIP/NRP wajib diisi`, true); return; }
+    if (!u.peranList.length) { showToast(`Pengguna ${n}: Pilih minimal satu peran`, true); return; }
+  }
 
-  if (!namaKpa) { erErr('Nama KPA wajib diisi'); return; }
-  if (!nip)     { erErr('NIP wajib diisi'); return; }
-  if (!noHp)    { erErr('No. HP wajib diisi'); return; }
+  const usersJson = ubUsers.map(u => ({
+    nama: u.nama, nipnrp: u.nipnrp, nik: u.nik, email: u.email,
+    hp: u.hp, sk: u.sk, tglsk: u.tglsk, peranList: u.peranList,
+  }));
 
-  var saved = _erSavedState;
-  var usersArr = (saved && saved.usersJson) ? saved.usersJson : [];
-  var updatedUsers = usersArr.map(function(u, i){
-    return Object.assign({}, u, {
-      nama:   (document.getElementById('er_nama_'+i)   ? document.getElementById('er_nama_'+i).value.trim()   : '') || u.nama   || '',
-      nipnrp: (document.getElementById('er_nipnrp_'+i) ? document.getElementById('er_nipnrp_'+i).value.trim() : '') || u.nipnrp || '',
-      email:  (document.getElementById('er_email_'+i)  ? document.getElementById('er_email_'+i).value.trim()  : '') || u.email  || '',
-      hp:     (document.getElementById('er_hp_'+i)     ? document.getElementById('er_hp_'+i).value.trim()     : '') || u.hp || u.noHp || '',
-    });
-  });
+  const btn = document.getElementById('btnSimpanEditRiwayat');
+  const btns = document.querySelectorAll('#modalEditRiwayat button.btn-primary');
+  btns.forEach(b => { b.disabled = true; b.textContent = '⏳ Menyimpan...'; });
 
-  var btn = document.getElementById('btnSimpanEditRiwayat');
-  if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan...'; }
+  const isDitolakNow = (info.status || '').toLowerCase() === 'ditolak';
+  const kodeSatker = currentUser?.username || '';
+  const tglStr = new Date().toLocaleDateString('id-ID', {day:'2-digit',month:'long',year:'numeric'});
 
   try {
-    var res = await apiPost({
-      action: 'editPendaftaran',
-      refKode: refKode, namaKpa: namaKpa, nip: nip, noHp: noHp,
-      levelSatker: levelSatker, usersJson: updatedUsers,
+    // Jika status Ditolak → pakai updatePendaftaran (reset ke Menunggu) + generate Excel baru
+    if (isDitolakNow) {
+      btns.forEach(b => b.textContent = '⏳ Membuat Excel baru...');
+      const resXls = await apiPost({
+        action: 'generateExcel',
+        refKode: info.refKode, kodeSatker, namaSatker, levelSatker,
+        namaKpa, nip, kota, tglStr,
+        users: usersJson,
+      });
+      if (!resXls.success) throw new Error(resXls.message || 'Gagal generate Excel');
+      const bytes = Uint8Array.from(atob(resXls.fileBase64), c => c.charCodeAt(0));
+      const blob  = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const xlsUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = xlsUrl;
+      a.download = resXls.fileName || `Form-SAKTI-${kodeSatker}.xlsx`; a.click();
+      URL.revokeObjectURL(xlsUrl);
+
+      btns.forEach(b => b.textContent = '⏳ Menyimpan perbaikan...');
+      const resUpd = await apiPost({
+        action: 'updatePendaftaran',
+        refKode: info.refKode, namaKpa, nip, noHp, levelSatker, namaSatker, kodeSatker, resetStatus: true,
+      });
+      if (!resUpd.success) throw new Error(resUpd.message || 'Gagal menyimpan');
+
+      const filesJsonLama = info.filesJson || {};
+      _pdCache[_editRiwayatRef] = {
+        ...info, namaSatker, levelSatker, namaKpa, nip, noHp, kota, tglSurat, usersJson,
+        filesJson: filesJsonLama, needsReupload: true,
+      };
+      erRestoreSaveEdit();
+      closeModal('modalEditRiwayat');
+      showToast('✅ Data disimpan! Silakan upload ulang dokumen.', false, true);
+      setTimeout(() => {
+        initUserRiwayat();
+        bukaModalUploadDokumen(_pdCache[_editRiwayatRef]);
+      }, 800);
+
+    } else {
+      // Status Menunggu (belum upload) → editPendaftaran biasa
+      const res = await apiPost({
+        action: 'editPendaftaran',
+        refKode: info.refKode,
+        namaSatker, levelSatker, namaKpa, nip, noHp, kota, tglSurat, usersJson,
+      });
+      if (!res.success) { showToast(res.message || 'Gagal menyimpan', true); return; }
+      Object.assign(_pdCache[_editRiwayatRef], { namaSatker, levelSatker, namaKpa, nip, noHp, kota, tglSurat, usersJson });
+      showToast('✅ Data pendaftaran berhasil diperbarui', false, true);
+      erRestoreSaveEdit();
+      closeModal('modalEditRiwayat');
+      initUserRiwayat();
+    }
+  } catch(e) { showToast('❌ ' + (e.message || 'Gagal menyimpan data'), true); }
+  finally { btns.forEach(b => { b.disabled = false; b.textContent = '💾 Simpan Perubahan'; }); }
+}
+
+function bukaPerbaikiData(refKode) {
+  const info = _pdCache[refKode];
+  if (!info) { showToast('Data tidak ditemukan', true); return; }
+  pdData = info;
+  const LEVEL_OPT = ['Satker','Satker BLU','Satker PNBP','Kantor Pusat','Kantor Wilayah'];
+  const users = info.usersJson || [];
+
+  document.getElementById('perbaikiDataBody').innerHTML = `
+    <div style="background:#fff1f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#991b1b">
+      <strong>Pendaftaran Ditolak — Ref: ${esc(info.refKode)}</strong><br/>
+      Perbaiki data di bawah, lalu klik <strong>Simpan & Unduh Form Baru</strong>.
+      Form Excel baru akan otomatis terundu
+      Form Excel baru akan otomatis terunduh dan Anda diarahkan ke halaman upload dokumen.
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div class="form-group" style="margin:0">
+        <label>Level Satker</label>
+        <select id="pd_levelSatker" style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 10px;font-size:13px;font-family:inherit">
+          ${LEVEL_OPT.map(v=>`<option value="${v}" ${v===(info.levelSatker||'Satker')?'selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Nama Satker</label>
+        <input id="pd_namaSatker" type="text" value="${esc(info.namaSatker||currentUser?.namaSatker||'')}" readonly
+          style="width:100%;border:1.5px solid var(--gray-200);border-radius:var(--radius);padding:9px 10px;font-size:13px;font-family:inherit;background:var(--gray-50);color:var(--gray-500)"/>
+      </div>
+    </div>
+
+    <!-- KPA -->
+    <div style="background:var(--blue-pale);border-left:3px solid var(--blue);padding:8px 14px;margin-bottom:12px;font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.4px;text-transform:uppercase;border-radius:0 6px 6px 0">
+      👤 Data KPA / Pimpinan Satker
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="form-group" style="margin:0">
+        <label>Nama KPA</label>
+        <input id="pd_namaKpa" type="text" value="${esc(info.namaKpa||'')}" placeholder="Nama lengkap KPA"
+          style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 10px;font-size:13px;font-family:inherit"/>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>NIP KPA</label>
+        <input id="pd_nip" type="text" value="${esc(info.nip||'')}" placeholder="18 digit NIP"
+          style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 10px;font-size:13px;font-family:inherit"/>
+      </div>
+      <div class="form-group" style="grid-column:1/-1;margin:0">
+        <label>No. HP KPA (WhatsApp)</label>
+        <input id="pd_noHp" type="tel" value="${esc(info.noHp||'')}" placeholder="Contoh: 08123456789"
+          style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:9px 10px;font-size:13px;font-family:inherit"/>
+      </div>
+    </div>
+
+    <!-- Daftar pengguna (read-only, bisa dilihat) -->
+    ${users.length ? `
+    <details style="margin-bottom:12px">
+      <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--blue);padding:4px 0">
+        👥 ${users.length} Pengguna terdaftar (klik untuk lihat)
+      </summary>
+      <div style="margin-top:8px;overflow-x:auto">
+        <table class="tbl" style="font-size:11px">
+          <thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Peran</th></tr></thead>
+          <tbody>${users.map((u,i)=>`<tr>
+            <td style="text-align:center">${i+1}</td>
+            <td>${esc(u.nama||'')}</td>
+            <td style="font-family:monospace">${esc(u.nipnrp||'')}</td>
+            <td>${(u.peranList||[]).map(p=>`<span style="font-size:10px;background:var(--blue-pale);color:var(--blue);padding:1px 5px;border-radius:8px;margin:1px;display:inline-block">${esc(p.replace('SATKER_',''))}</span>`).join('')}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </details>` : ''}
+
+    <div id="pdErrBox" style="display:none;background:var(--red-pale);border:1px solid #FFCDD2;border-radius:6px;padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:8px"></div>`;
+
+  openModal('modalPerbaikiData');
+}
+
+async function doSimpanPerbaikan() {
+  if (!pdData) return;
+  const namaKpa = (document.getElementById('pd_namaKpa')?.value||'').trim();
+  const nip     = (document.getElementById('pd_nip')?.value||'').trim();
+  const noHp    = (document.getElementById('pd_noHp')?.value||'').trim();
+  const levelSatker = document.getElementById('pd_levelSatker')?.value || 'Satker';
+  const errBox  = document.getElementById('pdErrBox');
+  errBox.style.display='none';
+
+  if (!namaKpa) { errBox.textContent='Nama KPA wajib diisi.'; errBox.style.display='block'; return; }
+  if (!nip)     { errBox.textContent='NIP KPA wajib diisi.'; errBox.style.display='block'; return; }
+  if (!noHp)    { errBox.textContent='No. HP KPA wajib diisi.'; errBox.style.display='block'; return; }
+
+  const btn = document.getElementById('btnSimpanPerbaikan');
+  btn.disabled = true; btn.textContent = '⏳ Menyimpan...';
+
+  try {
+    const kodeSatker = currentUser?.username || '';
+    const namaSatker = pdData.namaSatker || currentUser?.namaSatker || '';
+    const tglStr = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+
+    showToast('⏳ Membuat form Excel baru...');
+    const resXls = await apiPost({
+      action:'generateExcel',
+      refKode: pdData.refKode, kodeSatker, namaSatker, levelSatker,
+      namaKpa, nip, kota:'Jayapura', tglStr,
+      users: (pdData.usersJson||[]).map(u=>({
+        nama:u.nama||'',nipnrp:u.nipnrp||'',nik:u.nik||'',
+        email:u.email||'',hp:u.hp||'',sk:u.sk||'',
+        tglsk:u.tglsk||'',peranList:u.peranList||[]
+      }))
     });
-    if (!res.success) {
-      erErr(res.message || 'Gagal menyimpan');
-      if (btn) { btn.disabled = false; btn.textContent = 'Simpan Perubahan'; }
+    if (!resXls.success) throw new Error(resXls.message || 'Gagal generate Excel');
+    const bytes = Uint8Array.from(atob(resXls.fileBase64),c=>c.charCodeAt(0));
+    const blob  = new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const xlsUrl= URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=xlsUrl; a.download=resXls.fileName||`Form-SAKTI-${kodeSatker}.xlsx`; a.click();
+    URL.revokeObjectURL(xlsUrl);
+
+    showToast('⏳ Menyimpan perbaikan...');
+    const resUpd = await apiPost({
+      action: 'updatePendaftaran',
+      refKode: pdData.refKode,
+      namaKpa, nip, noHp, levelSatker,
+      namaSatker, kodeSatker,
+      resetStatus: true,
+    });
+    if (!resUpd.success) throw new Error(resUpd.message || 'Gagal menyimpan perbaikan');
+
+    closeModal('modalPerbaikiData');
+    showToast('✅ Data disimpan! Silakan upload ulang dokumen pendukung.', false, true);
+
+    setTimeout(() => {
+      initUserRiwayat();
+      const uploadInfo = {
+        refKode:    pdData.refKode,
+        namaSatker: namaSatker,
+        usersJson:  pdData.usersJson || [],
+        // Pertahankan filesJson dari data lama agar dokumen sebelumnya masih kelihatan
+        // dan bisa dipakai sebagai referensi/download. Upload ulang akan overwrite per-key.
+        filesJson:  pdData.filesJson || {},
+        needsReupload: true,
+      };
+      bukaModalUploadDokumen(uploadInfo);
+    }, 800);
+
+  } catch(e) {
+    errBox.textContent = '❌ ' + (e.message||'Terjadi kesalahan. Coba lagi.');
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 Simpan & Unduh Form Baru';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════════════════
+function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function fmtTgl(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+}
+function fmtTglWaktu(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function badgeStatus(s) {
+  const map = {
+    'Menunggu':  'badge-menunggu',
+    'Diproses':  'badge-proses',
+    'Selesai':   'badge-selesai',
+    'Terdaftar': 'badge-selesai',
+    'Ditolak':   'badge-ditolak',
+    'submitted': 'badge-menunggu',
+    'diproses':  'badge-proses',
+    'terdaftar': 'badge-selesai',
+    'ditolak':   'badge-ditolak',
+    'draft':     'badge-draft',
+  };
+  return `<span class="badge ${map[s]||'badge-draft'}">${esc(s||'—')}</span>`;
+}
+
+let toastT;
+function showToast(msg, isErr=false, isOk=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'on' + (isErr?' err':isOk?' ok':'');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { t.className = ''; }, 3500);
+}
+
+// ════════════════════════════════════════════════════════
+// AUTO-LOGIN — validasi token ke server dulu
+// ════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', async () => {
+  const saved = sessionStorage.getItem('sakti_satker');
+  if (!saved) return;
+  try {
+    currentUser = JSON.parse(saved);
+    if (!currentUser?.token) { sessionStorage.removeItem('sakti_satker'); currentUser=null; return; }
+    // Validasi token: kalau gagal, anggap session expired & balik ke login
+    const v = await apiPost({ action:'validateToken' });
+    if (!v || !v.success) {
+      sessionStorage.removeItem('sakti_satker');
+      currentUser = null;
       return;
     }
-    if (_pdCache && _pdCache[refKode]) {
-      _pdCache[refKode] = Object.assign({}, _pdCache[refKode], {
-        namaKpa: namaKpa, nip: nip, noHp: noHp,
-        levelSatker: levelSatker, usersJson: updatedUsers,
-      });
-    }
-    closeModal('modalEditRiwayat');
-    erRestoreSaveEdit();
-    showToast('Data berhasil diperbaiki. Status dikembalikan ke Menunggu.', false, true);
-    await initUserRiwayat();
-  } catch(err) {
-    erErr('Error: ' + err.message);
-    if (btn) { btn.disabled = false; btn.textContent = 'Simpan Perubahan'; }
+    showApp();
+  } catch(e) {
+    sessionStorage.removeItem('sakti_satker');
+    currentUser = null;
   }
-}
-
-function bukaPerbaikiData(refKode) { bukaEditRiwayat(refKode); }
-async function doSimpanPerbaikan() { await doSimpanEditRiwayat(); }
-
-// ════════════════════════════════════════════════════════
-// AJUKAN PERMOHONAN ULANG — EMAIL SAKTI (DITOLAK)
-// ════════════════════════════════════════════════════════
-let _aueOpsiSelected = null;
-
-function bukaModalAjukanUlangEmail(id) {
-  const e = emailRiwayat.find(x => x.id === id);
-  if (!e) return;
-  _aueOpsiSelected = null;
-  document.getElementById('aueCurrentId').value = id;
-  document.getElementById('aueSubmitBtn').disabled = true;
-
-  const alasanBox = document.getElementById('aueAlasanBox');
-  if (e.alasanTolak) {
-    alasanBox.innerHTML = '<strong>Alasan Penolakan:</strong> ' + esc(e.alasanTolak);
-    alasanBox.style.display = 'block';
-  } else {
-    alasanBox.style.display = 'none';
-  }
-
-  ['Data','Pdf','Both'].forEach(k => {
-    const card  = document.getElementById('aueOpsi' + k);
-    const check = document.getElementById('aueOpsi' + k + 'Check');
-    if (card)  { card.style.border = '2px solid var(--gray-200)'; card.style.background = '#fff'; }
-    if (check) { check.style.display = 'none'; }
-  });
-
-  openModal('modalAjukanUlangEmail');
-}
-
-function aueSelectOpsi(opsi) {
-  _aueOpsiSelected = opsi;
-  const keyMap = { data:'Data', pdf:'Pdf', both:'Both' };
-  Object.keys(keyMap).forEach(k => {
-    const suffix  = keyMap[k];
-    const card    = document.getElementById('aueOpsi' + suffix);
-    const check   = document.getElementById('aueOpsi' + suffix + 'Check');
-    const selected = (k === opsi);
-    if (card)  { card.style.border = selected ? '2px solid var(--blue)' : '2px solid var(--gray-200)'; card.style.background = selected ? 'var(--blue-pale)' : '#fff'; }
-    if (check) { check.style.display = selected ? 'block' : 'none'; }
-  });
-  document.getElementById('aueSubmitBtn').disabled = false;
-}
-
-function aueDoLanjutkan() {
-  const id = document.getElementById('aueCurrentId').value;
-  if (!id || !_aueOpsiSelected) return;
-  closeModal('modalAjukanUlangEmail');
-  if (_aueOpsiSelected === 'data' || _aueOpsiSelected === 'both') {
-    ajukanUlangEmail(id);
-    if (_aueOpsiSelected === 'both') {
-      showToast('📝 Perbaiki data pegawai, submit, lalu upload ulang dokumen PDF di step berikutnya.', false);
-    }
-  } else if (_aueOpsiSelected === 'pdf') {
-    bukaUploadPdfModal(id);
-    showToast('📤 Silakan upload ulang dokumen PDF yang sudah diperbaiki.', false);
-  }
-}
-
-// ════════════════════════════════════════════════════════
-// NOTIFIKASI REGISTRASI EMAIL SAKTI MANDIRI
-// ════════════════════════════════════════════════════════
-function notifRegistrasiMandiri(inline) {
-  const sz    = inline ? '13px' : '14px';
-  const szSm  = inline ? '12px' : '13px';
-  const pad   = inline ? '14px 16px' : '18px 20px';
-  const mt    = inline ? '12px' : '14px';
-  const icon  = inline ? '22px' : '26px';
-  const lnkPad = inline ? '7px 14px' : '9px 18px';
-  return `
-    <div style="background:linear-gradient(135deg,#E8F5E9 0%,#F1F8E9 100%);border:2px solid #4CAF50;border-radius:12px;padding:${pad};margin-top:${mt}">
-      <div style="display:flex;align-items:flex-start;gap:12px">
-        <span style="font-size:${icon};flex-shrink:0">✅</span>
-        <div>
-          <div style="font-size:${sz};font-weight:800;color:#1B5E20;margin-bottom:5px">Email SAKTI Telah Selesai Diproses KPPN</div>
-          <div style="font-size:${szSm};color:#2E7D32;line-height:1.65">
-            Setiap pengguna <strong>wajib melakukan registrasi email SAKTI secara mandiri</strong> melalui link berikut:<br/>
-            <a href="https://dashboard.mail.go.id/sakti/registrasi/"
-               target="_blank" rel="noopener noreferrer"
-               style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:${lnkPad};background:#1B5E20;color:#fff;border-radius:8px;font-weight:800;font-size:${sz};text-decoration:none;letter-spacing:0.2px;box-shadow:0 2px 8px rgba(0,0,0,.18);border:2px solid #2E7D32"
-               onmouseover="this.style.background='#2E7D32'" onmouseout="this.style.background='#1B5E20'">
-              🔗 <strong style="text-decoration:underline;text-underline-offset:2px">dashboard.mail.go.id/sakti/registrasi/</strong>
-            </a>
-          </div>
-          <div style="font-size:11px;color:#388E3C;margin-top:8px;background:rgba(255,255,255,.6);border-radius:6px;padding:6px 10px;border-left:3px solid #4CAF50">
-            ⚠️ <strong>Perhatian:</strong> Registrasi mandiri harus diselesaikan oleh masing-masing pengguna agar dapat menggunakan email SAKTI. Hubungi KPPN Jayapura jika mengalami kendala.
-          </div>
-        </div>
-      </div>
-    </div>`;
-}
-
-// ════════════════════════════════════════════════════════
-// GENERATE EXCEL CLIENT-SIDE — full text per cell + border
-// ════════════════════════════════════════════════════════
-function ebGenerateExcelClient(opts) {
-  const WB = XLSX.utils.book_new();
-
-  const borderThin = {
-    top:    { style:'thin', color:{ rgb:'AAAAAA' } },
-    bottom: { style:'thin', color:{ rgb:'AAAAAA' } },
-    left:   { style:'thin', color:{ rgb:'AAAAAA' } },
-    right:  { style:'thin', color:{ rgb:'AAAAAA' } },
-  };
-  const styleHeader = {
-    font:      { bold:true, sz:11, color:{ rgb:'FFFFFF' } },
-    fill:      { fgColor:{ rgb:'1565C0' }, patternType:'solid' },
-    alignment: { horizontal:'center', vertical:'center', wrapText:true },
-    border:    borderThin,
-  };
-  const styleCell = {
-    font:      { sz:10 },
-    alignment: { horizontal:'left', vertical:'center', wrapText:false },
-    border:    borderThin,
-  };
-  const styleCellCenter = {
-    font:      { sz:10 },
-    alignment: { horizontal:'center', vertical:'center' },
-    border:    borderThin,
-  };
-  const styleLabelBold = {
-    font:      { bold:true, sz:10 },
-    alignment: { horizontal:'left', vertical:'center' },
-    border:    borderThin,
-  };
-  const styleTitle = {
-    font:      { bold:true, sz:14, color:{ rgb:'0D47A1' } },
-    alignment: { horizontal:'center', vertical:'center' },
-  };
-  const styleSubtitle = {
-    font:      { bold:true, sz:11 },
-    alignment: { horizontal:'center', vertical:'center' },
-  };
-
-  // cell helper: selalu plain text type:'s'
-  function c(val, style) { return { t:'s', v: String(val ?? ''), s: style || styleCell }; }
-  function cn(val, style) { return { t:'s', v: String(val ?? ''), s: style || styleCellCenter }; }
-
-  const p = opts.pegawai || [];
-  const rows = [];
-
-  rows.push([ c('DAFTAR PENGGUNA PENDAFTARAN EMAIL SAKTI', styleTitle) ]);
-  rows.push([ c('KPPN Jayapura', styleSubtitle) ]);
-  rows.push([ c('') ]);
-  rows.push([ c('Nama Satker', styleLabelBold), c(':', styleLabelBold), c(opts.namaSatker||'', styleCell) ]);
-  rows.push([ c('Nama KPA',    styleLabelBold), c(':', styleLabelBold), c(opts.namaKpa||'',    styleCell) ]);
-  rows.push([ c('NIP KPA',     styleLabelBold), c(':', styleLabelBold), c(opts.nipKpa||'',     styleCell) ]);
-  rows.push([ c('Kota',        styleLabelBold), c(':', styleLabelBold), c(opts.kota||'Jayapura', styleCell) ]);
-  rows.push([ c('Tanggal',     styleLabelBold), c(':', styleLabelBold), c(opts.tanggal||'',    styleCell) ]);
-  rows.push([ c('') ]);
-
-  // Header tabel (row index 9)
-  rows.push([
-    cn('No.',               styleHeader),
-    c('Nama Pegawai',       styleHeader),
-    c('NIP / NRP',          styleHeader),
-    c('NIK',                styleHeader),
-    c('Status Kepegawaian', styleHeader),
-  ]);
-
-  // Baris data
-  const statusMap = {'1':'TNI','2':'POLRI','3':'PNS','4':'PPNPN','5':'PPPK'};
-  p.forEach((pegawai, i) => {
-    rows.push([
-      cn(String(i + 1)),
-      c(String(pegawai.nama   || '')),
-      c(String(pegawai.nipnrp || '')),
-      c(String(pegawai.nik    || '')),
-      c(statusMap[String(pegawai.status)] || String(pegawai.status || '')),
-    ]);
-  });
-
-  // Tanda tangan
-  rows.push([ c('') ]);
-  rows.push([ c('') ]);
-  rows.push([ c(''), c(''), c(''), c(''), c((opts.kota||'Jayapura') + ', ' + (opts.tanggal||''), { font:{sz:10}, alignment:{horizontal:'right'} }) ]);
-  rows.push([ c(''), c(''), c(''), c(''), c('Kuasa Pengguna Anggaran,',    { font:{sz:10}, alignment:{horizontal:'right'} }) ]);
-  rows.push([ c('') ]); rows.push([ c('') ]); rows.push([ c('') ]); rows.push([ c('') ]);
-  rows.push([ c(''), c(''), c(''), c(''), c(opts.namaKpa||'',             { font:{bold:true,sz:10}, alignment:{horizontal:'right'} }) ]);
-  rows.push([ c(''), c(''), c(''), c(''), c('NIP: '+(opts.nipKpa||''),    { font:{sz:10}, alignment:{horizontal:'right'} }) ]);
-
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-
-  ws['!cols'] = [
-    { wch:6  },   // No.
-    { wch:34 },   // Nama Pegawai
-    { wch:22 },   // NIP/NRP
-    { wch:20 },   // NIK
-    { wch:24 },   // Status
-  ];
-
-  ws['!merges'] = [
-    { s:{r:0,c:0}, e:{r:0,c:4} },
-    { s:{r:1,c:0}, e:{r:1,c:4} },
-  ];
-
-  XLSX.utils.book_append_sheet(WB, ws, 'Form Email SAKTI');
-
-  const wbout = XLSX.write(WB, { bookType:'xlsx', type:'array', cellStyles:true });
-  const blob  = new Blob([wbout], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const url   = URL.createObjectURL(blob);
-  const a     = document.createElement('a');
-  a.href      = url;
-  a.download  = 'Form_Pendaftaran_Email_SAKTI_' + (opts.namaSatker||'satker').replace(/\s+/g,'_') + '.xlsx';
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
+});
 </script>
 </body>
 </html>
