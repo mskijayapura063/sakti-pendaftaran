@@ -1522,8 +1522,7 @@ async function selesaiProses(refKode){
     renderOTPPejabatList();
     openModal('modalAktivasiOTP');
   } else {
-    // Tidak ada pejabat OTP → langsung tandai Terdaftar/Selesai
-    if(!confirm('Tidak ada KPA/PPK/PPSPM. Tandai pendaftaran ' + refKode + ' selesai?')) return;
+    // Tidak ada KPA/PPK/PPSPM → langsung selesai tanpa konfirmasi
     try{
       const res = await apiPost({action:'tandaiTerdaftar', refKode});
       if(!res.success){showToast(res.message||'Gagal',true);return;}
@@ -1612,32 +1611,76 @@ async function doRollback() {
 // ════════════════════════════════════════════════════════
 function renderOTP(){
   return `<div class="page-title">Monitoring Aktivasi OTP</div>
-  <div class="page-sub">Satker yang sudah terdaftar namun belum aktivasi OTP di SAKTI</div>
+  <div class="page-sub">Status aktivasi OTP seluruh satker terdaftar</div>
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+    <button class="btn btn-secondary btn-sm" onclick="loadOTP()">🔄 Refresh</button>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title" style="color:var(--orange)">⏳ Menunggu Aktivasi OTP</div>
+    <div id="otpBodyPending"><p style="color:var(--gray-400);font-size:13px">Memuat...</p></div>
+  </div>
   <div class="card">
-    <div class="card-title">Belum Aktivasi OTP</div>
-    <div id="otpBody"><p style="color:var(--gray-400);font-size:13px">Memuat...</p></div>
+    <div class="card-title" style="color:var(--green)">✅ Riwayat OTP — Sudah Aktif</div>
+    <div id="otpBodyDone"><p style="color:var(--gray-400);font-size:13px">Memuat...</p></div>
   </div>`;
 }
 
 async function loadOTP(){
-  const body=document.getElementById('otpBody');
-  if(!body) return;
+  const pending=document.getElementById('otpBodyPending');
+  const done=document.getElementById('otpBodyDone');
+  if(!pending||!done) return;
+  pending.innerHTML='<p style="color:var(--gray-400);font-size:13px">Memuat...</p>';
+  done.innerHTML='<p style="color:var(--gray-400);font-size:13px">Memuat...</p>';
   try{
     const res=await apiPost({action:'getDaftarList'});
-    if(!res.success){body.innerHTML=`<p style="color:var(--red)">❌ ${esc(res.message)}</p>`;return;}
-    const list=(res.list||[]).filter(s=>s.sudahTerdaftar&&!s.otpAktif&&s.hasOTP);
-    if(!list.length){body.innerHTML='<p style="color:var(--green);font-weight:600">✅ Semua satker yang terdaftar sudah aktivasi OTP.</p>';return;}
-    body.innerHTML=`<table class="tbl">
-      <thead><tr><th>Ref</th><th>Satker</th><th>Kode OTP</th><th>Aksi</th></tr></thead>
-      <tbody>${list.map(s=>`<tr>
-        <td style="font-family:monospace;font-size:11px">${esc(s.refKode)}</td>
-        <td><strong>${esc(s.namaSatker)}</strong></td>
-        <td style="font-family:monospace;font-weight:700;color:var(--purple)">${esc(s.otpCode||'—')}</td>
-        <td><button class="btn btn-primary btn-sm" onclick="aktivasiOTP('${esc(s.refKode)}')">✅ Tandai Aktif</button></td>
-      </tr>`).join('')}</tbody>
-    </table>
-    <p style="font-size:12px;color:var(--gray-500);margin-top:8px">${list.length} satker belum aktivasi OTP</p>`;
-  }catch(e){body.innerHTML='<p style="color:var(--red)">❌ Gagal memuat</p>';}
+    if(!res.success){
+      pending.innerHTML=`<p style="color:var(--red)">❌ ${esc(res.message||'Gagal')}</p>`;
+      done.innerHTML='';
+      return;
+    }
+    const all = res.list||[];
+    // Satker yang butuh OTP = sudah Terdaftar/Selesai, punya field hasOTP atau otpCode, belum aktif
+    const listPending = all.filter(s=>(s.status==='Terdaftar'||s.status==='Diproses'||s.sudahTerdaftar)&&!s.otpAktif&&(s.hasOTP||s.otpCode));
+    const listDone    = all.filter(s=>s.otpAktif||(s.status==='Selesai'&&(s.hasOTP||s.otpCode)));
+
+    // -- Tabel pending --
+    if(!listPending.length){
+      pending.innerHTML='<p style="color:var(--green);font-weight:600;padding:8px 0">✅ Tidak ada satker yang menunggu aktivasi OTP.</p>';
+    } else {
+      pending.innerHTML=`<div style="overflow-x:auto"><table class="tbl">
+        <thead><tr><th>Ref</th><th>Satker</th><th>Status</th><th>Kode OTP</th><th>Aksi</th></tr></thead>
+        <tbody>${listPending.map(s=>`<tr>
+          <td style="font-family:monospace;font-size:11px">${esc(s.refKode)}</td>
+          <td><strong>${esc(s.namaSatker||'—')}</strong></td>
+          <td>${bstat(s.status)}</td>
+          <td style="font-family:monospace;font-weight:700;color:var(--purple)">${esc(s.otpCode||'—')}</td>
+          <td><button class="btn btn-primary btn-sm" onclick="aktivasiOTP('${esc(s.refKode)}')">🔐 Aktivasi OTP</button></td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+      <p style="font-size:12px;color:var(--gray-500);margin-top:8px">${listPending.length} satker menunggu aktivasi OTP</p>`;
+    }
+
+    // -- Tabel riwayat sudah aktif --
+    if(!listDone.length){
+      done.innerHTML='<p style="color:var(--gray-400);font-size:13px;padding:8px 0">Belum ada riwayat aktivasi OTP yang selesai.</p>';
+    } else {
+      done.innerHTML=`<div style="overflow-x:auto"><table class="tbl">
+        <thead><tr><th>Ref</th><th>Satker</th><th>Status</th><th>Kode OTP</th><th>Tgl Aktivasi</th><th>Metode</th></tr></thead>
+        <tbody>${listDone.map(s=>`<tr>
+          <td style="font-family:monospace;font-size:11px">${esc(s.refKode)}</td>
+          <td><strong>${esc(s.namaSatker||'—')}</strong></td>
+          <td>${bstat(s.status)}</td>
+          <td style="font-family:monospace;font-weight:700;color:var(--purple)">${esc(s.otpCode||'—')}</td>
+          <td style="font-size:12px">${fmtTgl(s.otpTanggal||s.tanggalOTP||s.updatedAt||'')}</td>
+          <td style="font-size:12px">${esc(s.otpMetode||s.metodePejabat||'—')}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+      <p style="font-size:12px;color:var(--gray-500);margin-top:8px">${listDone.length} satker OTP sudah aktif</p>`;
+    }
+  }catch(e){
+    pending.innerHTML=`<p style="color:var(--red)">❌ Error: ${esc(e.message)}</p>`;
+    done.innerHTML='';
+  }
 }
 
 // ── State untuk modal OTP ──────────────────────────────────────────
