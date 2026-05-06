@@ -1244,6 +1244,57 @@ async function adminDownloadDriveFile(fileUrl, fileName){
   }catch(e){showToast('❌ Gagal download file',true);}
 }
 
+
+// Fallback client-side: admin tetap bisa mengunduh Excel walaupun route generate di Apps Script belum ter-deploy.
+// Library XLSX sudah dimuat di <head>, jadi fallback ini tidak memerlukan akses Drive/UrlFetchApp.
+function adminSafeFileName(name){return String(name||'file.xlsx').replace(/[\\/:*?"<>|]/g,'_');}
+function adminRoleText(peranList){
+  const labels={SATKER_KPA:'KPA',SATKER_PPK:'PPK',SATKER_PPK_DFDD:'PPK DFDD',SATKER_PPSPM:'PPSPM',SATKER_BENDAHARA_PENGELUARAN:'Bendahara Pengeluaran',SATKER_BENDAHARA_PENERIMAAN:'Bendahara Penerimaan',SATKER_OPERATOR:'Operator',SATKER_ADMIN:'Admin Satker'};
+  return (Array.isArray(peranList)?peranList:[]).map(k=>labels[k]||String(k).replace('SATKER_','').replace(/_/g,' ')).join(', ');
+}
+function adminParseUsers(val){
+  if(Array.isArray(val)) return val;
+  try{return JSON.parse(val||'[]')||[];}catch(e){return [];}
+}
+function adminDownloadAOAExcel(fileName, sheets){
+  if(!window.XLSX){showToast('Library XLSX belum termuat. Refresh halaman lalu coba lagi.',true);return false;}
+  const wb=XLSX.utils.book_new();
+  sheets.forEach(s=>{
+    const ws=XLSX.utils.aoa_to_sheet(s.rows);
+    const maxCols=s.rows.reduce((m,r)=>Math.max(m,r.length),0);
+    ws['!cols']=Array.from({length:maxCols},(_,i)=>({wch:i===0?6:Math.min(38,Math.max(14,...s.rows.map(r=>String(r[i]||'').length+2)))}));
+    XLSX.utils.book_append_sheet(wb,ws,s.name.slice(0,31));
+  });
+  XLSX.writeFile(wb,adminSafeFileName(fileName));
+  return true;
+}
+function adminClientDownloadPendaftaranExcel(s){
+  const users=adminParseUsers(s.users||s.usersJson);
+  const rows=[
+    ['FORM PENDAFTARAN USER SAKTI'],['KPPN Jayapura'],[],
+    ['Kode Referensi',s.refKode||''],['Kode Satker',s.kodeSatker||''],['Nama Satker',s.namaSatker||''],['Level Satker',s.levelSatker||'Satker'],['Nama KPA',s.namaKpa||''],['NIP KPA',s.nip||''],['Tempat/Tanggal','Jayapura, '+new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})],[],
+    ['No','Nama Pengguna','NIP/NRP','NIK','Email','No. HP','Nomor SK','Tanggal SK','Peran/Jabatan']
+  ];
+  (users.length?users:[{}]).forEach((u,i)=>rows.push([users.length?i+1:'',u.nama||'Belum ada data pengguna',u.nipnrp||'',u.nik||'',u.email||'',u.hp||'',u.sk||'',u.tglsk||'',adminRoleText(u.peranList)]));
+  const ok=adminDownloadAOAExcel('Form_Pendaftaran_SAKTI_'+(s.kodeSatker||'Satker')+'_'+(s.refKode||'')+'.xlsx',[{name:'Form Pendaftaran',rows}]);
+  if(ok) showToast('✅ Excel berhasil didownload (fallback browser)',false,true);
+}
+function adminClientDownloadPerubahanExcel(p){
+  const semula=Array.isArray(p.semula)?p.semula:[];
+  const menjadi=Array.isArray(p.menjadi)?p.menjadi:[];
+  const tgl=p.tglSurat||p.createdAt||'';
+  const rows=[
+    ['FORM PERGANTIAN/PERUBAHAN USER SAKTI'],['KPPN Jayapura'],[],
+    ['ID Pengajuan',p.id||''],['Kode Satker',p.kodeSatker||''],['Nama Satker',p.namaSatker||''],['Nama KPA',p.namaKpa||''],['NIP KPA',p.nip||''],['No. HP/WA',p.noHp||''],['Tempat/Tanggal','Jayapura, '+(tgl?fmtTgl(tgl):new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}))],[],
+    ['DATA SEMULA'],['No','Nama Pengguna','NIP/NRP','NIK','Email','No. HP','Nomor SK','Tanggal SK','Peran','Keterangan']
+  ];
+  (semula.length?semula:[{}]).forEach((u,i)=>rows.push([semula.length?i+1:'',u.nama||'Belum ada data pengguna',u.nipnrp||'',u.nik||'',u.email||'',u.hp||'',u.sk||'',u.tglsk||'',adminRoleText(u.peranList),u.keterangan||'']));
+  rows.push([],['DATA MENJADI'],['No','Nama Pengguna','NIP/NRP','NIK','Email','No. HP','Nomor SK','Tanggal SK','Peran','Keterangan']);
+  (menjadi.length?menjadi:[{}]).forEach((u,i)=>rows.push([menjadi.length?i+1:'',u.nama||'Belum ada data pengguna',u.nipnrp||'',u.nik||'',u.email||'',u.hp||'',u.sk||'',u.tglsk||'',adminRoleText(u.peranList),u.keterangan||'']));
+  const ok=adminDownloadAOAExcel('Form_Pergantian_SAKTI_'+(p.kodeSatker||'Satker')+'_'+(p.id||'')+'.xlsx',[{name:'Form Pergantian',rows}]);
+  if(ok) showToast('✅ Excel pergantian berhasil didownload (fallback browser)',false,true);
+}
+
 async function adminDownloadPendaftaranExcel(s){
   if(!s){showToast('Data tidak tersedia',true);return;}
   showToast('⏳ Menyiapkan Excel...');
@@ -1260,14 +1311,21 @@ async function adminDownloadPendaftaranExcel(s){
       tglStr:      new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),
       users:       (s.users||[]).map(u=>({...u, tglsk:(u.tglsk||'').replace(/\//g,'-')})),
     });
-    if(!res.success){showToast(res.message||'Gagal generate Excel',true);return;}
+    if(!res.success){
+      console.warn('[generateExcel] Backend gagal, memakai fallback browser:',res.message);
+      adminClientDownloadPendaftaranExcel(s);
+      return;
+    }
     const bytes=Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
     const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;a.download=res.fileName||'Form_SAKTI.xlsx';a.click();
     URL.revokeObjectURL(url);
     showToast('✅ Excel berhasil didownload',false,true);
-  }catch(e){showToast('❌ Gagal download Excel',true);}
+  }catch(e){
+    console.warn('[generateExcel] Exception, memakai fallback browser:',e);
+    adminClientDownloadPendaftaranExcel(s);
+  }
 }
 
 // Unduh Excel pendaftaran langsung dari tabel (tanpa buka modal detail dulu)
@@ -2361,6 +2419,7 @@ async function adminUnduhExcelPg(id){
     const res = await apiPost({
       action:     'generatePerubahanExcel',
       id:         p.id||'',
+      kodeSatker: p.kodeSatker||'',
       namaSatker: p.namaSatker||'',
       namaKpa:    p.namaKpa||'',
       nip:        p.nip||'',
@@ -2370,15 +2429,23 @@ async function adminUnduhExcelPg(id){
       tglSurat,
       semula,
       menjadi,
+      downloadOnly: true,
     });
-    if(!res.success){showToast(res.message||'Gagal generate Excel',true);return;}
+    if(!res.success){
+      console.warn('[generatePerubahanExcel] Backend gagal, memakai fallback browser:',res.message);
+      adminClientDownloadPerubahanExcel(p);
+      return;
+    }
     const bytes=Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
     const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;a.download=res.fileName||'Form_Perubahan_SAKTI.xlsx';a.click();
     URL.revokeObjectURL(url);
     showToast('✅ Excel berhasil didownload',false,true);
-  }catch(e){showToast('❌ Gagal download Excel: '+e.message,true);}
+  }catch(e){
+    console.warn('[generatePerubahanExcel] Exception, memakai fallback browser:',e);
+    adminClientDownloadPerubahanExcel(p);
+  }
 }
 
 // ════════════════════════════════════════════════════════
