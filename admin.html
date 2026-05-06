@@ -474,39 +474,16 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
 
 <!-- ══ MODAL AKTIVASI OTP ══ -->
 <div class="modal-overlay" id="modalAktivasiOTP">
-  <div class="modal-box" style="max-width:600px;max-height:90vh;overflow-y:auto">
+  <div class="modal-box" style="max-width:640px;max-height:92vh;overflow-y:auto">
     <div class="modal-title">🔐 Aktivasi OTP</div>
-    <div style="margin-bottom:14px;font-size:13px;color:var(--gray-600)">
+    <div style="margin-bottom:6px;font-size:13px;color:var(--gray-600)">
       Ref: <strong id="otpRefKode" style="font-family:monospace;color:var(--blue)">—</strong>
     </div>
-
-    <!-- Mode Selector -->
-    <div style="margin-bottom:18px">
-      <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:8px">Metode Aktivasi</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <label id="lblHadir" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:2px solid var(--blue);border-radius:10px;cursor:pointer;background:#EFF6FF">
-          <input type="radio" name="otpMode" value="hadir_langsung" checked onchange="otpModeChange()" style="margin-top:2px;accent-color:var(--blue)"/>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:var(--blue)">🏢 Hadir Langsung</div>
-            <div style="font-size:11px;color:var(--gray-500);margin-top:2px">Pejabat hadir ke KPPN. Foto opsional.</div>
-          </div>
-        </label>
-        <label id="lblDaring" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:2px solid var(--gray-300);border-radius:10px;cursor:pointer;background:#fff">
-          <input type="radio" name="otpMode" value="daring" onchange="otpModeChange()" style="margin-top:2px;accent-color:var(--blue)"/>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:var(--gray-700)">💻 Daring / Online</div>
-            <div style="font-size:11px;color:var(--gray-500);margin-top:2px">Via online. Foto wajib diupload per pejabat.</div>
-          </div>
-        </label>
-      </div>
+    <div class="info-box blue" style="margin-bottom:16px;font-size:12px">
+      Pilih metode aktivasi <strong>per pejabat</strong>. Pilih <em>Online</em> jika pejabat tidak hadir langsung — foto wajib diupload (maks 2 MB, JPG/PNG).
     </div>
 
-    <!-- Info mode -->
-    <div id="otpModeInfo" class="info-box blue" style="margin-bottom:14px;font-size:12px">
-      ℹ️ Mode <strong>Hadir Langsung</strong>: Upload foto bersifat opsional.
-    </div>
-
-    <!-- Daftar pejabat dengan upload foto -->
+    <!-- Daftar pejabat dengan mode per-pejabat -->
     <div id="otpPejabatList" style="margin-bottom:16px"></div>
 
     <!-- Catatan -->
@@ -517,7 +494,7 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
 
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modalAktivasiOTP')">Batal</button>
-      <button class="btn btn-primary" onclick="doAktivasiOTP()" id="btnDoAktivasiOTP">🔐 Aktivasi OTP</button>
+      <button class="btn btn-primary" onclick="doAktivasiOTP()" id="btnDoAktivasiOTP">🔐 Konfirmasi Aktivasi OTP</button>
     </div>
   </div>
 </div>
@@ -1317,7 +1294,7 @@ function renderSubTable(list){
             }
             <button class="btn btn-danger btn-sm" onclick="bukaTolak('${esc(s.refKode)}')">❌ Tolak</button>
           `:''}
-          ${s.status==='Diproses'?`<button class="btn btn-primary btn-sm" onclick="doTandaiTerdaftar('${esc(s.refKode)}')">🏷️ Tandai Terdaftar</button>`:''}
+          ${s.status==='Diproses'?`<button class="btn btn-success btn-sm" onclick="selesaiProses('${esc(s.refKode)}')">✅ Selesai Proses</button>`:''}
           ${s.status==='Terdaftar'?`<button class="btn btn-warning btn-sm" onclick="aktivasiOTP('${esc(s.refKode)}')">🔐 Aktivasi OTP</button>`:''}
           ${isAdmin&&!s.sudahTerdaftar?`<button class="btn btn-secondary btn-sm" onclick="bukaHapus('${esc(s.refKode)}')">🗑️</button>`:''}
           ${isAdmin&&['Diproses','Terdaftar'].includes(s.status)?`<button class="btn btn-outline btn-sm" style="color:var(--orange);border-color:var(--orange)" onclick="bukaRollback('${esc(s.refKode)}','${esc(s.status)}')">↩️</button>`:''}
@@ -1419,6 +1396,11 @@ async function lihatDetail(refKode){
         <button class="btn btn-danger btn-sm" onclick="closeModal('modalDetail');bukaTolak('${esc(s.refKode)}')">❌ Tolak</button>
       </div>
       ${!s.sudahUpload?`<div style="margin-top:8px;font-size:11px;color:#991b1b">🔒 Dokumen belum diupload — tombol Proses dikunci sampai dokumen tersedia.</div>`:''}`:''}
+      ${s.status==='Diproses'?`
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gray-200)">
+        <button class="btn btn-success btn-sm" onclick="closeModal('modalDetail');selesaiProses('${esc(s.refKode)}')">✅ Selesai Proses</button>
+        <div style="font-size:11px;color:var(--gray-500);margin-top:4px">Tandai pendaftaran ini selesai diproses. Jika ada KPA/PPK/PPSPM akan diarahkan ke Aktivasi OTP.</div>
+      </div>`:''}
       ${['Admin','SuperAdmin'].includes(currentUser?.role)&&['Diproses','Terdaftar'].includes(s.status)?`
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gray-200)">
         <button class="btn btn-outline btn-sm" style="color:var(--orange);border-color:var(--orange);font-size:12px" onclick="closeModal('modalDetail');bukaRollback('${esc(s.refKode)}','${esc(s.status)}')">
@@ -1450,26 +1432,54 @@ async function doProses(){
   btn.disabled=false; btn.innerHTML='✅ Proses';
 }
 
-async function doTandaiTerdaftar(refKode){
-  if(!confirm('Tandai pendaftaran ' + refKode + ' sudah terdaftar di SAKTI?')) return;
+// Fungsi utama tombol "Selesai Proses" — cek OTP dulu, arahkan ke modal atau langsung selesai
+async function selesaiProses(refKode){
+  const PERAN_OTP_LIST = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+  // Load detail untuk cek ada/tidaknya pejabat OTP
+  let users = [];
   try{
-    const res=await apiPost({action:'tandaiTerdaftar',refKode});
-    if(!res.success){showToast(res.message||'Gagal',true);return;}
-    if(res.needsOTP){
-      showToast('✅ Berhasil ditandai Terdaftar. Lanjutkan ke Aktivasi OTP.',false,true);
-      // Langsung tawarkan aktivasi OTP
-      setTimeout(()=>{
-        if(confirm('Ada pengguna yang membutuhkan Aktivasi OTP (KPA/PPK/PPSPM).\nLanjutkan Aktivasi OTP sekarang?')){
-          aktivasiOTP(refKode);
-          return;
-        }
-        loadSubmissions();
-      },300);
-    } else {
-      showToast('✅ Berhasil. Status otomatis Selesai (tidak ada pengguna OTP).',false,true);
-      loadSubmissions();
+    const res = await apiPost({action:'getDetail', refKode});
+    if(res.success) users = res.users || res.usersJson || [];
+  }catch(e){}
+
+  const pejabatOTP = [];
+  users.forEach(u=>{
+    const matchPeran = (u.peranList||[]).filter(p=>PERAN_OTP_LIST.includes(p));
+    if(matchPeran.length){
+      const PERAN_LABEL = {SATKER_KPA:'KPA',SATKER_PPK:'PPK',SATKER_PPK_DFDD:'PPK DFDD',SATKER_PPSPM:'PPSPM'};
+      pejabatOTP.push({
+        nama: u.nama||u.namaLengkap||'—',
+        peran: matchPeran.map(p=>PERAN_LABEL[p]||p).join(', '),
+        peranRaw: matchPeran[0],
+        mode: 'hadir_langsung', // default per pejabat
+        photoBase64:'', photoName:'', mimeType:''
+      });
     }
-  }catch(e){showToast('Gagal: '+e.message,true);}
+  });
+
+  if(pejabatOTP.length > 0){
+    // Ada KPA/PPK/PPSPM → buka modal Aktivasi OTP
+    _otpRefKode = refKode;
+    _otpPejabatData = pejabatOTP;
+    document.getElementById('otpRefKode').textContent = refKode;
+    document.getElementById('otpCatatan').value = '';
+    renderOTPPejabatList();
+    openModal('modalAktivasiOTP');
+  } else {
+    // Tidak ada pejabat OTP → langsung tandai Terdaftar/Selesai
+    if(!confirm('Tidak ada KPA/PPK/PPSPM. Tandai pendaftaran ' + refKode + ' selesai?')) return;
+    try{
+      const res = await apiPost({action:'tandaiTerdaftar', refKode});
+      if(!res.success){showToast(res.message||'Gagal',true);return;}
+      showToast('✅ Pendaftaran berhasil diselesaikan.',false,true);
+      loadSubmissions();
+    }catch(e){showToast('Gagal: '+e.message,true);}
+  }
+}
+
+// Tetap ada untuk backward compat (dipanggil dari monitoring OTP)
+async function doTandaiTerdaftar(refKode){
+  await selesaiProses(refKode);
 }
 
 function bukaTolak(refKode){
@@ -1576,19 +1586,16 @@ async function loadOTP(){
 
 // ── State untuk modal OTP ──────────────────────────────────────────
 let _otpRefKode = '';
-let _otpPejabatData = []; // [{nama,peran,photoBase64,photoName,mimeType}]
+let _otpPejabatData = []; // [{nama,peran,peranRaw,mode,photoBase64,photoName,mimeType}]
 
+// Dipanggil dari monitoring OTP (satker sudah terdaftar, tinggal aktivasi OTP)
 async function aktivasiOTP(refKode){
+  const PERAN_OTP_LIST = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+  const PERAN_LABEL    = {SATKER_KPA:'KPA',SATKER_PPK:'PPK',SATKER_PPK_DFDD:'PPK DFDD',SATKER_PPSPM:'PPSPM'};
   _otpRefKode = refKode;
   _otpPejabatData = [];
   document.getElementById('otpRefKode').textContent = refKode;
   document.getElementById('otpCatatan').value = '';
-  // Reset mode to hadir_langsung
-  document.querySelectorAll('input[name="otpMode"]').forEach(r=>{ r.checked = r.value==='hadir_langsung'; });
-
-  // Load daftar pejabat OTP dari data pendaftaran
-  const PERAN_OTP_LIST = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
-  const PERAN_LABEL = {SATKER_KPA:'KPA',SATKER_PPK:'PPK',SATKER_PPK_DFDD:'PPK DFDD',SATKER_PPSPM:'PPSPM'};
   try{
     const res = await apiPost({action:'getDetail', refKode});
     const users = res.users || res.usersJson || [];
@@ -1596,66 +1603,95 @@ async function aktivasiOTP(refKode){
     users.forEach(u=>{
       const matchPeran = (u.peranList||[]).filter(p=>PERAN_OTP_LIST.includes(p));
       if(matchPeran.length){
-        pejabat.push({ nama: u.nama||u.username||'—', peran: matchPeran.map(p=>PERAN_LABEL[p]||p).join(', '), peranRaw: matchPeran[0], photoBase64:'', photoName:'', mimeType:'' });
+        pejabat.push({
+          nama: u.nama||u.username||'—',
+          peran: matchPeran.map(p=>PERAN_LABEL[p]||p).join(', '),
+          peranRaw: matchPeran[0],
+          mode: 'hadir_langsung',
+          photoBase64:'', photoName:'', mimeType:''
+        });
       }
     });
-    _otpPejabatData = pejabat.length ? pejabat : [{ nama:'(tidak diketahui)', peran:'—', peranRaw:'', photoBase64:'', photoName:'', mimeType:'' }];
+    _otpPejabatData = pejabat.length ? pejabat : [{
+      nama:'(tidak diketahui)', peran:'—', peranRaw:'', mode:'hadir_langsung',
+      photoBase64:'', photoName:'', mimeType:''
+    }];
   }catch(e){
-    _otpPejabatData = [{ nama:'(gagal memuat)', peran:'—', peranRaw:'', photoBase64:'', photoName:'', mimeType:'' }];
+    _otpPejabatData = [{
+      nama:'(gagal memuat)', peran:'—', peranRaw:'', mode:'hadir_langsung',
+      photoBase64:'', photoName:'', mimeType:''
+    }];
   }
-  otpModeChange();
+  renderOTPPejabatList();
   openModal('modalAktivasiOTP');
 }
 
-function otpModeChange(){
-  const mode = document.querySelector('input[name="otpMode"]:checked')?.value || 'hadir_langsung';
-  const lblH = document.getElementById('lblHadir');
-  const lblD = document.getElementById('lblDaring');
-  const info = document.getElementById('otpModeInfo');
-
-  if(mode==='hadir_langsung'){
-    lblH.style.borderColor='var(--blue)'; lblH.style.background='#EFF6FF';
-    lblD.style.borderColor='var(--gray-300)'; lblD.style.background='#fff';
-    info.innerHTML='ℹ️ Mode <strong>Hadir Langsung</strong>: Pejabat datang ke KPPN. Upload foto bersifat <strong>opsional</strong>.';
-    info.className='info-box blue';
-  } else {
-    lblD.style.borderColor='#7C3AED'; lblD.style.background='#FAF5FF';
-    lblH.style.borderColor='var(--gray-300)'; lblH.style.background='#fff';
-    info.innerHTML='⚠️ Mode <strong>Daring</strong>: Foto tiap pejabat <strong>wajib diupload</strong> (maks 2 MB/foto).';
-    info.className='info-box orange';
-  }
-  renderOTPPejabatList(mode);
-}
-
-function renderOTPPejabatList(mode){
+// Render list pejabat OTP dengan toggle mode per-pejabat
+function renderOTPPejabatList(){
   const container = document.getElementById('otpPejabatList');
   if(!container) return;
   if(!_otpPejabatData.length){ container.innerHTML=''; return; }
-  const wajib = mode==='daring';
   container.innerHTML = `
-    <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:10px">
-      Pejabat dengan Peran OTP <span style="font-size:11px;font-weight:400;color:var(--gray-500)">(${_otpPejabatData.length} orang)</span>
+    <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:12px">
+      Pejabat dengan Peran OTP
+      <span style="font-size:11px;font-weight:400;color:var(--gray-500)">(${_otpPejabatData.length} orang)</span>
     </div>
-    ${_otpPejabatData.map((p,i)=>`
-    <div style="border:1.5px solid ${wajib?'#E9D5FF':'var(--gray-200)'};border-radius:10px;padding:12px 14px;margin-bottom:10px;background:${wajib?'#FAF5FF':'#FAFAFA'}">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <span style="font-size:18px">${wajib?'🔐':'👤'}</span>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--gray-800)">${esc(p.nama)}</div>
-          <div style="font-size:11px;color:#7C3AED;font-weight:600">${esc(p.peran)}</div>
+    ${_otpPejabatData.map((p,i)=>{
+      const isDaring = p.mode === 'daring';
+      return `
+      <div id="otpCard_${i}" style="border:2px solid ${isDaring?'#7C3AED':'#BFDBFE'};border-radius:12px;padding:14px 16px;margin-bottom:12px;background:${isDaring?'#FAF5FF':'#EFF6FF'};transition:all .2s">
+        <!-- Header pejabat -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <span style="font-size:22px">${isDaring?'💻':'🏢'}</span>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700;color:var(--gray-800)">${esc(p.nama)}</div>
+            <div style="font-size:11px;color:${isDaring?'#7C3AED':'var(--blue)'};font-weight:600;margin-top:1px">${esc(p.peran)}</div>
+          </div>
+          ${p.photoName?`<span style="font-size:11px;color:var(--green);font-weight:600;white-space:nowrap">✅ ${esc(p.photoName)}</span>`:''}
         </div>
-        ${p.photoName?`<span style="margin-left:auto;font-size:11px;color:var(--green);font-weight:600">✅ ${esc(p.photoName)}</span>`:''}
-      </div>
-      <div>
-        <label style="font-size:12px;color:var(--gray-600);font-weight:500;display:block;margin-bottom:4px">
-          Foto Pejabat ${wajib?'<span style="color:var(--red)">*wajib</span>':'<span style="color:var(--gray-400)">(opsional)</span>'}
-          <span style="color:var(--gray-400);font-weight:400"> — maks 2 MB, format JPG/PNG</span>
-        </label>
-        <input type="file" accept="image/jpeg,image/png,image/jpg" id="otpPhoto_${i}"
-          onchange="otpPhotoChange(${i}, this)"
-          style="font-size:12px;width:100%;padding:6px;border:1.5px dashed ${wajib?'#7C3AED':'var(--gray-300)'};border-radius:6px;cursor:pointer;background:#fff"/>
-      </div>
-    </div>`).join('')}`;
+        <!-- Toggle mode: Hadir Langsung / Online -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:${isDaring?'12px':'0'}">
+          <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:2px solid ${!isDaring?'var(--blue)':'var(--gray-300)'};border-radius:8px;cursor:pointer;background:${!isDaring?'#DBEAFE':'#fff'};transition:all .15s">
+            <input type="radio" name="otpMode_${i}" value="hadir_langsung" ${!isDaring?'checked':''} onchange="otpSetMode(${i},'hadir_langsung')" style="accent-color:var(--blue)"/>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:${!isDaring?'var(--blue)':'var(--gray-600)'}">🏢 Hadir Langsung</div>
+              <div style="font-size:10px;color:var(--gray-500);margin-top:1px">Foto opsional</div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:2px solid ${isDaring?'#7C3AED':'var(--gray-300)'};border-radius:8px;cursor:pointer;background:${isDaring?'#EDE9FE':'#fff'};transition:all .15s">
+            <input type="radio" name="otpMode_${i}" value="daring" ${isDaring?'checked':''} onchange="otpSetMode(${i},'daring')" style="accent-color:#7C3AED"/>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:${isDaring?'#7C3AED':'var(--gray-600)'}">💻 Online</div>
+              <div style="font-size:10px;color:var(--gray-500);margin-top:1px">Foto wajib ≤2 MB</div>
+            </div>
+          </label>
+        </div>
+        <!-- Upload foto (hanya tampil jika mode Online) -->
+        ${isDaring?`
+        <div style="margin-top:2px">
+          <label style="font-size:12px;color:#7C3AED;font-weight:600;display:block;margin-bottom:6px">
+            📷 Foto Pejabat <span style="color:var(--red)">*wajib</span>
+            <span style="font-weight:400;color:var(--gray-500)"> — JPG/PNG, maks 2 MB</span>
+          </label>
+          <input type="file" accept="image/jpeg,image/png,image/jpg" id="otpPhoto_${i}"
+            onchange="otpPhotoChange(${i}, this)"
+            style="font-size:12px;width:100%;padding:8px;border:2px dashed #7C3AED;border-radius:8px;cursor:pointer;background:#fff"/>
+          ${p.photoBase64?`<div style="font-size:11px;color:var(--green);margin-top:4px;font-weight:600">✅ ${esc(p.photoName)} siap diupload</div>`:'<div style="font-size:11px;color:var(--orange);margin-top:4px">⚠️ Belum ada foto dipilih</div>'}
+        </div>`:''}
+      </div>`;
+    }).join('')}`;
+}
+
+// Set mode per-pejabat dan re-render card tersebut
+function otpSetMode(idx, mode){
+  _otpPejabatData[idx].mode = mode;
+  if(mode === 'hadir_langsung'){
+    // Reset foto jika switch ke hadir langsung
+    _otpPejabatData[idx].photoBase64 = '';
+    _otpPejabatData[idx].photoName   = '';
+    _otpPejabatData[idx].mimeType    = '';
+  }
+  renderOTPPejabatList();
 }
 
 function otpPhotoChange(idx, input){
@@ -1670,50 +1706,49 @@ function otpPhotoChange(idx, input){
   }
   const reader = new FileReader();
   reader.onload = function(e){
-    const b64 = e.target.result.split(',')[1];
-    _otpPejabatData[idx].photoBase64 = b64;
+    _otpPejabatData[idx].photoBase64 = e.target.result.split(',')[1];
     _otpPejabatData[idx].photoName   = file.name;
     _otpPejabatData[idx].mimeType    = file.type;
-    // Update label
-    const mode = document.querySelector('input[name="otpMode"]:checked')?.value||'hadir_langsung';
-    renderOTPPejabatList(mode);
-    // Re-assign file input value handling (re-rendered, need new listeners)
+    renderOTPPejabatList();
   };
   reader.readAsDataURL(file);
 }
 
 async function doAktivasiOTP(){
-  const mode    = document.querySelector('input[name="otpMode"]:checked')?.value || 'hadir_langsung';
   const catatan = (document.getElementById('otpCatatan')?.value||'').trim();
 
-  // Validasi daring: semua foto harus ada
-  if(mode==='daring'){
-    const missing = _otpPejabatData.filter(p=>!p.photoBase64);
-    if(missing.length){
-      showToast('Mode Daring: Upload foto untuk semua pejabat wajib! ('+missing.map(p=>p.nama).join(', ')+')', true);
-      return;
-    }
+  // Validasi: pejabat Online wajib ada foto
+  const missingPhoto = _otpPejabatData.filter(p=>p.mode==='daring' && !p.photoBase64);
+  if(missingPhoto.length){
+    showToast('Upload foto wajib untuk pejabat Online: ' + missingPhoto.map(p=>p.nama).join(', '), true);
+    return;
   }
 
   const btn = document.getElementById('btnDoAktivasiOTP');
   btn.disabled=true; btn.textContent='⏳ Memproses...';
   try{
+    // Tandai terdaftar dulu (jika belum) — Apps Script akan handle idempoten
+    const resTandai = await apiPost({action:'tandaiTerdaftar', refKode:_otpRefKode});
+    // Lanjut aktivasi OTP
     const payload = {
       action: 'aktivasiOTP',
       refKode: _otpRefKode,
-      mode,
       catatan,
-      photos: _otpPejabatData.map(p=>({ nama:p.nama, peran:p.peran, photoBase64:p.photoBase64||'', photoName:p.photoName||'', mimeType:p.mimeType||'' }))
+      photos: _otpPejabatData.map(p=>({
+        nama: p.nama, peran: p.peran, mode: p.mode,
+        photoBase64: p.photoBase64||'', photoName: p.photoName||'', mimeType: p.mimeType||''
+      }))
     };
     const res = await apiPost(payload);
-    if(!res.success){ showToast(res.message||'Gagal', true); btn.disabled=false; btn.innerHTML='🔐 Aktivasi OTP'; return; }
-    showToast('✅ OTP berhasil diaktivasi! Mode: '+(mode==='daring'?'Daring':'Hadir Langsung'), false, true);
+    if(!res.success){ showToast(res.message||'Gagal aktivasi OTP', true); btn.disabled=false; btn.innerHTML='🔐 Konfirmasi Aktivasi OTP'; return; }
+    const modeRingkas = _otpPejabatData.map(p=>`${p.nama} (${p.mode==='daring'?'Online':'Hadir'})`).join(', ');
+    showToast('✅ OTP berhasil diaktivasi! ' + modeRingkas, false, true);
     closeModal('modalAktivasiOTP');
     if(typeof loadOTP==='function') loadOTP();
     if(typeof loadSubmissions==='function') loadSubmissions();
     if(typeof loadPergantian==='function') loadPergantian();
   }catch(e){ showToast('Gagal: '+e.message, true); }
-  btn.disabled=false; btn.innerHTML='🔐 Aktivasi OTP';
+  btn.disabled=false; btn.innerHTML='🔐 Konfirmasi Aktivasi OTP';
 }
 
 // ════════════════════════════════════════════════════════
