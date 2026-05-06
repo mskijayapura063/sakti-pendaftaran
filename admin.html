@@ -548,6 +548,62 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
 // ════════════════════════════════════════════════════════
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-LEjXzM-3XaNNn_bR343B4b-Z4H33eU0CVHz18oQPO-dT8xCtJmPsGXs_q7oBMCjsoA/exec';
 
+// ════════════════════════════════════════════════════════
+// UTILITY / HELPER FUNCTIONS
+// ════════════════════════════════════════════════════════
+function esc(str){
+  return String(str==null?'':str)
+    .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+    .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let _toastTimer;
+function showToast(msg, isErr=false, isSuccess=false){
+  let el=document.getElementById('toast');
+  if(!el){ el=document.createElement('div'); el.id='toast'; document.body.appendChild(el); }
+  el.textContent=msg;
+  el.className='on'+(isErr?' err':isSuccess?' ok':'');
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>{ el.className=''; },3800);
+}
+
+function fmtTgl(val){
+  if(!val) return '—';
+  try{
+    const d=new Date(val);
+    if(isNaN(d)) return String(val);
+    return d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+  }catch(e){ return String(val); }
+}
+
+function fmtTglWaktu(val){
+  if(!val) return '—';
+  try{
+    const d=new Date(val);
+    if(isNaN(d)) return String(val);
+    return d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})
+      +' '+d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){ return String(val); }
+}
+
+const STATUS_MAP={
+  'submitted':   {label:'Tersubmit',  cls:'blue'},
+  'Menunggu':    {label:'Menunggu',   cls:'orange'},
+  'Diproses':    {label:'Diproses',   cls:'blue'},
+  'Terdaftar':   {label:'Terdaftar',  cls:'green'},
+  'Selesai':     {label:'Selesai',    cls:'green'},
+  'Ditolak':     {label:'Ditolak',    cls:'red'},
+  'draft':       {label:'Draft',      cls:'gray'},
+  'OTP_Aktif':   {label:'OTP Aktif',  cls:'green'},
+};
+function bstat(status){
+  const s=STATUS_MAP[status]||{label:status||'—',cls:'gray'};
+  const C={blue:'background:#DBEAFE;color:#1E40AF',orange:'background:#FEF3C7;color:#92400E',
+    green:'background:#D1FAE5;color:#065F46',red:'background:#FEE2E2;color:#991B1B',
+    gray:'background:#F3F4F6;color:#6B7280'};
+  return `<span style="${C[s.cls]||C.gray};padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700">${esc(s.label)}</span>`;
+}
+
 let currentUser       = null;
 let cachedSubmissions = [];
 let cachedEmailDaftar = [];
@@ -2173,20 +2229,19 @@ function renderPengaturan(){
     +'</div></div>';
 }
 async function doUbahPassword(){
-  const lamaEl=document.getElementById('pwLama');
-  const baruEl=document.getElementById('pwBaru');
-  const konfEl=document.getElementById('pwBaruKonfirm');
-  const passwordLama=lamaEl?lamaEl.value:'';
-  const passwordBaru=baruEl?baruEl.value:'';
-  const konfirm=konfEl?konfEl.value:'';
-  if(!passwordLama||!passwordBaru){showToast('Semua field wajib diisi',true);return;}
-  if(passwordBaru.length<6){showToast('Password baru minimal 6 karakter',true);return;}
-  if(passwordBaru!==konfirm){showToast('Konfirmasi password tidak cocok',true);return;}
+  const lama=(document.getElementById('pwLama')?document.getElementById('pwLama').value:'');
+  const baru=(document.getElementById('pwBaru')?document.getElementById('pwBaru').value:'');
+  const konfirm=(document.getElementById('pwBaruKonfirm')?document.getElementById('pwBaruKonfirm').value:'');
+  if(!lama||!baru){showToast('Semua field wajib diisi',true);return;}
+  if(baru.length<6){showToast('Password baru minimal 6 karakter',true);return;}
+  if(baru!==konfirm){showToast('Konfirmasi password tidak cocok',true);return;}
   try{
-    const res=await apiPost({action:'changePassword',passwordLama:passwordLama,passwordBaru:passwordBaru});
+    const res=await apiPost({action:'changePassword',passwordLama:lama,passwordBaru:baru});
     if(!res.success){showToast(res.message||'Gagal',true);return;}
-    showToast('Password berhasil diubah',false,true);
-    lamaEl.value=''; baruEl.value=''; konfEl.value='';
+    showToast('✅ Password berhasil diubah',false,true);
+    document.getElementById('pwLama').value='';
+    document.getElementById('pwBaru').value='';
+    document.getElementById('pwBaruKonfirm').value='';
   }catch(err){showToast('Error: '+err.message,true);}
 }
 </script>
