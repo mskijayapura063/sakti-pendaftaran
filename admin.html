@@ -539,6 +539,34 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
   </div>
 </div>
 
+<!-- ══ MODAL EDIT PENDAFTARAN (Admin) ══ -->
+<div class="modal-overlay" id="modalEditDaftar">
+  <div class="modal-box" style="max-width:680px;max-height:92vh;overflow-y:auto">
+    <div class="modal-title">✏️ Edit Data Pendaftaran</div>
+    <div id="editDaftarBody">
+      <div style="text-align:center;padding:24px;color:var(--gray-400)">Memuat data...</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalEditDaftar')">Batal</button>
+      <button class="btn btn-primary" onclick="doSaveEditDaftar()" id="btnSaveEditDaftar">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL EDIT PERGANTIAN (Admin) ══ -->
+<div class="modal-overlay" id="modalEditPg">
+  <div class="modal-box" style="max-width:680px;max-height:92vh;overflow-y:auto">
+    <div class="modal-title">✏️ Edit Data Pergantian User</div>
+    <div id="editPgBody">
+      <div style="text-align:center;padding:24px;color:var(--gray-400)">Memuat data...</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalEditPg')">Batal</button>
+      <button class="btn btn-primary" onclick="doSaveEditPg()" id="btnSaveEditPg">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ TOAST ══ -->
 <div id="toast"></div>
 
@@ -1344,6 +1372,7 @@ function renderSubTable(list){
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="lihatDetail('${esc(s.refKode)}')">🔍 Detail</button>
           ${['submitted','Menunggu'].includes(s.status)?`
+            <button class="btn btn-outline btn-sm" style="color:var(--blue);border-color:var(--blue)" onclick="adminEditDaftar('${esc(s.refKode)}')">✏️ Edit</button>
             ${belumUpload
               ? `<button class="btn btn-secondary btn-sm" title="Dokumen belum diupload satker" disabled style="opacity:.5;cursor:not-allowed">🔒 Proses</button>`
               : `<button class="btn btn-success btn-sm" onclick="bukaProses('${esc(s.refKode)}')">✅ Proses</button>`
@@ -1936,7 +1965,9 @@ function renderPgTable(list){
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="lihatDetailPg('${esc(p.id)}')">🔍 Detail</button>
+          <button class="btn btn-outline btn-sm" style="color:#7C3AED;border-color:#7C3AED" onclick="adminUnduhExcelPg('${esc(p.id)}')">📥 Excel</button>
           ${isMenunggu?`
+            <button class="btn btn-outline btn-sm" style="color:var(--blue);border-color:var(--blue)" onclick="adminEditPg('${esc(p.id)}')">✏️ Edit</button>
             ${belumUpload
               ? `<button class="btn btn-secondary btn-sm" title="Dokumen belum diupload satker" disabled style="opacity:.5;cursor:not-allowed">🔒 Proses</button>`
               : `<button class="btn btn-success btn-sm" onclick="prosesPg('${esc(p.id)}')">✅ Proses</button>`}
@@ -2257,6 +2288,7 @@ async function doResetPassword(username){
   }catch(err){showToast('Error: '+err.message,true);}
 }
 
+
 // ── PANEL PENGATURAN ─────────────────────────────────────────────
 function renderPengaturan(){
   return '<div class="section-header"><h2 class="section-title">⚙️ Pengaturan Akun</h2></div>'
@@ -2286,6 +2318,245 @@ async function doUbahPassword(){
     document.getElementById('pwBaru').value='';
     document.getElementById('pwBaruKonfirm').value='';
   }catch(err){showToast('Error: '+err.message,true);}
+}
+
+// ════════════════════════════════════════════════════════
+// ADMIN: UNDUH EXCEL PERGANTIAN
+// ════════════════════════════════════════════════════════
+async function adminUnduhExcelPg(id){
+  const p = cachedPergantian.find(x=>x.id===id);
+  if(!p){showToast('Data tidak ditemukan',true);return;}
+  showToast('⏳ Menyiapkan Excel...');
+  try{
+    const tglSurat = p.tglSurat||'';
+    const tglStr   = tglSurat
+      ? new Date(tglSurat).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})
+      : new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+    const semula  = Array.isArray(p.semula)?p.semula:[];
+    const menjadi = Array.isArray(p.menjadi)?p.menjadi:[];
+    const res = await apiPost({
+      action:     'generatePerubahanExcel',
+      id:         p.id||'',
+      namaSatker: p.namaSatker||'',
+      namaKpa:    p.namaKpa||'',
+      nip:        p.nip||'',
+      noHp:       p.noHp||'',
+      kota:       'Jayapura',
+      tglStr,
+      tglSurat,
+      semula,
+      menjadi,
+    });
+    if(!res.success){showToast(res.message||'Gagal generate Excel',true);return;}
+    const bytes=Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
+    const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=res.fileName||'Form_Perubahan_SAKTI.xlsx';a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ Excel berhasil didownload',false,true);
+  }catch(e){showToast('❌ Gagal download Excel: '+e.message,true);}
+}
+
+// ════════════════════════════════════════════════════════
+// ADMIN: EDIT PERGANTIAN USER
+// ════════════════════════════════════════════════════════
+const PERAN_ALL = [
+  {val:'SATKER_KPA',                            lbl:'KPA'},
+  {val:'SATKER_PPK',                            lbl:'PPK'},
+  {val:'SATKER_PPK_DFDD',                       lbl:'PPK DFDD'},
+  {val:'SATKER_PPSPM',                          lbl:'PPSPM'},
+  {val:'SATKER_BENDAHARA_PENGELUARAN',          lbl:'Bendahara Pengeluaran'},
+  {val:'SATKER_BENDAHARA_PENGELUARAN_PEMBANTU', lbl:'Bendahara Pengeluaran Pembantu'},
+  {val:'SATKER_BENDAHARA_PENERIMAAN',           lbl:'Bendahara Penerimaan'},
+];
+
+let _editPgId = null;
+
+function adminEditPg(id){
+  const p = cachedPergantian.find(x=>x.id===id);
+  if(!p){showToast('Data tidak ditemukan',true);return;}
+  _editPgId = id;
+
+  const menjadi = Array.isArray(p.menjadi)?p.menjadi:[];
+
+  let html = '';
+
+  // KPA / Header
+  html += '<div style="background:var(--blue-pale);border-left:3px solid var(--blue);padding:8px 14px;margin-bottom:12px;font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.4px;text-transform:uppercase;border-radius:0 6px 6px 0">👤 Data KPA / Penandatangan</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">';
+  html += '<label style="font-size:13px;display:flex;flex-direction:column;gap:4px">Nama KPA<input id="epg_namaKpa" class="form-control" value="'+escHtml(p.namaKpa||'')+'" placeholder="Nama KPA"/></label>';
+  html += '<label style="font-size:13px;display:flex;flex-direction:column;gap:4px">NIP KPA<input id="epg_nip" class="form-control" value="'+escHtml(p.nip||'')+'" placeholder="NIP"/></label>';
+  html += '<label style="font-size:13px;display:flex;flex-direction:column;gap:4px">No HP KPA<input id="epg_noHp" class="form-control" value="'+escHtml(p.noHp||'')+'" placeholder="08xx..."/></label>';
+  html += '<label style="font-size:13px;display:flex;flex-direction:column;gap:4px">Tgl Surat<input id="epg_tglSurat" class="form-control" type="date" value="'+escHtml(p.tglSurat||'')+'"/></label>';
+  html += '</div>';
+
+  // Pengguna Menjadi
+  if(menjadi.length){
+    html += '<div style="background:#f5f3ff;border-left:3px solid #7C3AED;padding:8px 14px;margin-bottom:12px;font-size:11px;font-weight:700;color:#7C3AED;letter-spacing:.4px;text-transform:uppercase;border-radius:0 6px 6px 0">👥 Data Pengguna Menjadi</div>';
+    menjadi.forEach(function(u,i){
+      const peranChecks = PERAN_ALL.map(function(pr){
+        const chk = (u.peranList||[]).includes(pr.val)?'checked':'';
+        return '<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" class="epg_peran_'+i+'" value="'+pr.val+'" '+chk+'> '+pr.lbl+'</label>';
+      }).join('');
+      html += '<div style="border:1px solid var(--gray-200);border-radius:8px;padding:12px;margin-bottom:10px">';
+      html += '<div style="font-weight:700;font-size:13px;color:var(--gray-700);margin-bottom:8px">Pengguna Menjadi #'+(i+1)+'</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">';
+      html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">Nama<input class="form-control" id="epg_nama_'+i+'" value="'+escHtml(u.nama||'')+'" placeholder="Nama Lengkap"/></label>';
+      html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">NIP/NRP<input class="form-control" id="epg_nipnrp_'+i+'" value="'+escHtml(u.nipnrp||'')+'" placeholder="NIP/NRP"/></label>';
+      html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">NIK<input class="form-control" id="epg_nik_'+i+'" value="'+escHtml(u.nik||'')+'" placeholder="16 digit NIK"/></label>';
+      html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">Email<input class="form-control" id="epg_email_'+i+'" value="'+escHtml(u.email||'')+'" type="email" placeholder="email@domain.com"/></label>';
+      html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">No HP<input class="form-control" id="epg_hp_'+i+'" value="'+escHtml(u.hp||'')+'" placeholder="08xx..."/></label>';
+      html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">No SK<input class="form-control" id="epg_sk_'+i+'" value="'+escHtml(u.sk||'')+'" placeholder="Nomor SK"/></label>';
+      html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">Tgl SK<input class="form-control" id="epg_tglsk_'+i+'" value="'+escHtml(u.tglsk||'')+'" placeholder="DD-MM-YYYY"/></label>';
+      html += '</div>';
+      html += '<div style="font-size:12px;margin-bottom:4px;font-weight:600;color:var(--gray-600)">Peran:</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:8px;">'+peranChecks+'</div>';
+      html += '</div>';
+    });
+  } else {
+    html += '<p style="font-size:13px;color:var(--gray-400);text-align:center;margin:12px 0">Tidak ada pengguna menjadi.</p>';
+  }
+
+  document.getElementById('editPgBody').innerHTML = html;
+  openModal('modalEditPg');
+}
+
+async function doSaveEditPg(){
+  const btn = document.getElementById('btnSaveEditPg');
+  btn.disabled=true; btn.textContent='⏳ Menyimpan...';
+  try{
+    const id = _editPgId;
+    const p  = cachedPergantian.find(x=>x.id===id);
+    if(!p){showToast('Data tidak ditemukan',true);return;}
+
+    const namaKpa  = (document.getElementById('epg_namaKpa')?document.getElementById('epg_namaKpa').value:'').trim();
+    const nip      = (document.getElementById('epg_nip')?document.getElementById('epg_nip').value:'').trim();
+    const noHp     = (document.getElementById('epg_noHp')?document.getElementById('epg_noHp').value:'').trim();
+    const tglSurat = (document.getElementById('epg_tglSurat')?document.getElementById('epg_tglSurat').value:'').trim();
+
+    const menjadiSrc = Array.isArray(p.menjadi)?p.menjadi:[];
+    const menjadi = menjadiSrc.map(function(u,i){
+      const peranList = Array.from(document.querySelectorAll('.epg_peran_'+i+':checked')).map(function(el){return el.value;});
+      return {
+        nama:       (document.getElementById('epg_nama_'+i)?document.getElementById('epg_nama_'+i).value:'').trim(),
+        nipnrp:     (document.getElementById('epg_nipnrp_'+i)?document.getElementById('epg_nipnrp_'+i).value:'').trim(),
+        nik:        (document.getElementById('epg_nik_'+i)?document.getElementById('epg_nik_'+i).value:'').trim(),
+        email:      (document.getElementById('epg_email_'+i)?document.getElementById('epg_email_'+i).value:'').trim(),
+        hp:         (document.getElementById('epg_hp_'+i)?document.getElementById('epg_hp_'+i).value:'').trim(),
+        sk:         (document.getElementById('epg_sk_'+i)?document.getElementById('epg_sk_'+i).value:'').trim(),
+        tglsk:      (document.getElementById('epg_tglsk_'+i)?document.getElementById('epg_tglsk_'+i).value:'').trim(),
+        keterangan: u.keterangan||'',
+        peranList:  peranList,
+      };
+    });
+
+    const res = await apiPost({action:'editPerubahan', id:id, namaKpa:namaKpa, nip:nip, noHp:noHp, tglSurat:tglSurat, menjadi:menjadi});
+    if(!res.success){showToast(res.message||'Gagal menyimpan',true);return;}
+
+    // Update cache lokal
+    p.namaKpa=namaKpa; p.nip=nip; p.noHp=noHp; p.tglSurat=tglSurat; p.menjadi=menjadi;
+    showToast('✅ Data pergantian berhasil diperbarui',false,true);
+    closeModal('modalEditPg');
+    loadPergantian();
+  }catch(e){showToast('❌ '+e.message,true);}
+  finally{btn.disabled=false; btn.textContent='💾 Simpan';}
+}
+
+// ════════════════════════════════════════════════════════
+// ADMIN: EDIT PENDAFTARAN USER
+// ════════════════════════════════════════════════════════
+let _editDaftarRef = null;
+
+async function adminEditDaftar(refKode){
+  _editDaftarRef = refKode;
+  document.getElementById('editDaftarBody').innerHTML='<div style="text-align:center;padding:24px;color:var(--gray-400)">⏳ Memuat data...</div>';
+  openModal('modalEditDaftar');
+  try{
+    const res = await apiPost({action:'getDetail', refKode:refKode});
+    if(!res.success){document.getElementById('editDaftarBody').innerHTML='<p style="color:red;text-align:center">Gagal memuat data</p>';return;}
+    const s = res;
+    const users = Array.isArray(s.users)?s.users:(Array.isArray(s.usersJson)?s.usersJson:[]);
+
+    let html = '';
+
+    // KPA
+    html += '<div style="background:var(--blue-pale);border-left:3px solid var(--blue);padding:8px 14px;margin-bottom:12px;font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.4px;text-transform:uppercase;border-radius:0 6px 6px 0">👤 Data KPA / Pimpinan Satker</div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">';
+    html += '<label style="font-size:13px;display:flex;flex-direction:column;gap:4px">Nama KPA<input id="ed_namaKpa" class="form-control" value="'+escHtml(s.namaKpa||'')+'" placeholder="Nama KPA"/></label>';
+    html += '<label style="font-size:13px;display:flex;flex-direction:column;gap:4px">NIP KPA<input id="ed_nip" class="form-control" value="'+escHtml(s.nip||'')+'" placeholder="NIP"/></label>';
+    html += '<label style="font-size:13px;display:flex;flex-direction:column;gap:4px">No HP KPA<input id="ed_noHp" class="form-control" value="'+escHtml(s.noHp||'')+'" placeholder="08xx..."/></label>';
+    html += '</div>';
+
+    // Users
+    if(users.length){
+      html += '<div style="background:#f0fdf4;border-left:3px solid #16a34a;padding:8px 14px;margin-bottom:12px;font-size:11px;font-weight:700;color:#15803d;letter-spacing:.4px;text-transform:uppercase;border-radius:0 6px 6px 0">👥 Data Pengguna</div>';
+      users.forEach(function(u,i){
+        const peranChecks = PERAN_ALL.map(function(pr){
+          const chk = (u.peranList||[]).includes(pr.val)?'checked':'';
+          return '<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" class="ed_peran_'+i+'" value="'+pr.val+'" '+chk+'> '+pr.lbl+'</label>';
+        }).join('');
+        html += '<div style="border:1px solid var(--gray-200);border-radius:8px;padding:12px;margin-bottom:10px">';
+        html += '<div style="font-weight:700;font-size:13px;color:var(--gray-700);margin-bottom:8px">Pengguna #'+(i+1)+'</div>';
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">';
+        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">Nama<input class="form-control" id="ed_nama_'+i+'" value="'+escHtml(u.nama||u.namaLengkap||'')+'" placeholder="Nama Lengkap"/></label>';
+        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">NIP/NRP<input class="form-control" id="ed_nipnrp_'+i+'" value="'+escHtml(u.nipnrp||'')+'" placeholder="NIP/NRP"/></label>';
+        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">NIK<input class="form-control" id="ed_nik_'+i+'" value="'+escHtml(u.nik||'')+'" placeholder="16 digit NIK"/></label>';
+        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">Email<input class="form-control" id="ed_email_'+i+'" value="'+escHtml(u.email||'')+'" type="email" placeholder="email@domain.com"/></label>';
+        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">No HP<input class="form-control" id="ed_hp_'+i+'" value="'+escHtml(u.hp||'')+'" placeholder="08xx..."/></label>';
+        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">No SK<input class="form-control" id="ed_sk_'+i+'" value="'+escHtml(u.sk||'')+'" placeholder="Nomor SK"/></label>';
+        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">Tgl SK<input class="form-control" id="ed_tglsk_'+i+'" value="'+escHtml(u.tglsk||'')+'" placeholder="DD-MM-YYYY"/></label>';
+        html += '</div>';
+        html += '<div style="font-size:12px;margin-bottom:4px;font-weight:600;color:var(--gray-600)">Peran:</div>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:8px;">'+peranChecks+'</div>';
+        html += '</div>';
+      });
+    }
+
+    document.getElementById('editDaftarBody').innerHTML = html;
+    document.getElementById('editDaftarBody').dataset.userCount = users.length;
+  }catch(e){document.getElementById('editDaftarBody').innerHTML='<p style="color:red;text-align:center">Error: '+escHtml(e.message)+'</p>';}
+}
+
+async function doSaveEditDaftar(){
+  const btn = document.getElementById('btnSaveEditDaftar');
+  btn.disabled=true; btn.textContent='⏳ Menyimpan...';
+  try{
+    const refKode  = _editDaftarRef;
+    const namaKpa  = (document.getElementById('ed_namaKpa')?document.getElementById('ed_namaKpa').value:'').trim();
+    const nip      = (document.getElementById('ed_nip')?document.getElementById('ed_nip').value:'').trim();
+    const noHp     = (document.getElementById('ed_noHp')?document.getElementById('ed_noHp').value:'').trim();
+
+    const userCount = parseInt((document.getElementById('editDaftarBody')?document.getElementById('editDaftarBody').dataset.userCount:'0')||'0',10);
+    const usersJson = [];
+    for(var i=0;i<userCount;i++){
+      const peranList = Array.from(document.querySelectorAll('.ed_peran_'+i+':checked')).map(function(el){return el.value;});
+      usersJson.push({
+        nama:    (document.getElementById('ed_nama_'+i)?document.getElementById('ed_nama_'+i).value:'').trim(),
+        nipnrp:  (document.getElementById('ed_nipnrp_'+i)?document.getElementById('ed_nipnrp_'+i).value:'').trim(),
+        nik:     (document.getElementById('ed_nik_'+i)?document.getElementById('ed_nik_'+i).value:'').trim(),
+        email:   (document.getElementById('ed_email_'+i)?document.getElementById('ed_email_'+i).value:'').trim(),
+        hp:      (document.getElementById('ed_hp_'+i)?document.getElementById('ed_hp_'+i).value:'').trim(),
+        sk:      (document.getElementById('ed_sk_'+i)?document.getElementById('ed_sk_'+i).value:'').trim(),
+        tglsk:   (document.getElementById('ed_tglsk_'+i)?document.getElementById('ed_tglsk_'+i).value:'').trim(),
+        peranList: peranList,
+      });
+    }
+
+    const res = await apiPost({action:'editPendaftaran', refKode:refKode, namaKpa:namaKpa, nip:nip, noHp:noHp, usersJson:usersJson});
+    if(!res.success){showToast(res.message||'Gagal menyimpan',true);return;}
+
+    showToast('✅ Data pendaftaran berhasil diperbarui',false,true);
+    closeModal('modalEditDaftar');
+    loadSubmissions();
+  }catch(e){showToast('❌ '+e.message,true);}
+  finally{btn.disabled=false; btn.textContent='💾 Simpan';}
+}
+
+// Helper HTML-escape untuk string didalam innerHTML builder
+function escHtml(str){
+  return String(str==null?'':str)
+    .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+    .replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 </script>
 </body>
