@@ -509,38 +509,79 @@ function renderKTPSection(draft){
 }
 
 // ─── DOK GLOBAL ───────────────────────────────────────────
-// Mapping peran → jenis sertifikat BNT/PNT yang dibutuhkan
-// Peran yang wajib sertifikat pelatihan nasional teknis
-const BNT_MAP = {
-  'SATKER_BENDAHARA_PENGELUARAN':         'BNT Pengeluaran',
-  'SATKER_BENDAHARA_PENERIMAAN':          'BNT Penerimaan',
-  'SATKER_BENDAHARA_PENGELUARAN_PEMBANTU':'BNT Pengeluaran Pembantu',
-  'SATKER_PPSPM':                         'SNT PPSPM',
-};
+// Mapping peran → jenis sertifikat yang dibutuhkan
+// BNT  = Bendahara Negara Tersertifikasi (Bendahara Pengeluaran/Penerimaan/Pembantu)
+// PNT  = PPK Negara Tersertifikasi (PPK & PPK DFDD)
+// SNT  = PPSPM Negara Tersertifikasi (PPSPM)
+// PENGECUALIAN: PPK atau PPSPM yang dirangkap oleh KPA (peranList user tsb juga ada SATKER_KPA)
+//               → sertifikat PNT/SNT TIDAK diminta
 
 function getDokList(draft){
   const allPeran=draft.users.flatMap(u=>u.peranList);
-  const hasPejabat=allPeran.some(k=>['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM','SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENERIMAAN','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU'].includes(k));
+  const hasPejabat=allPeran.some(k=>['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM',
+    'SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENERIMAAN','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU'].includes(k));
   const hasOTP=allPeran.some(k=>['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'].includes(k));
 
-  // Buat daftar dokumen sertifikat BNT per bendahara yang ada
-  const bntDoks=[];
+  // Sertifikat per-user berdasarkan peran, dengan pengecualian rangkap KPA
+  const sertDoks=[];
   draft.users.forEach(u=>{
-    (u.peranList||[]).forEach(peran=>{
-      if(BNT_MAP[peran]){
-        const jenis=BNT_MAP[peran];
-        const key=`bnt_${peran.toLowerCase()}_${(u.nipnrp||u.nama||'').replace(/\W/g,'_')}`;
-        bntDoks.push({
-          key,
-          name:`Sertifikat ${jenis}`,
-          desc:`Sertifikat ${jenis} atas nama ${u.nama||'(nama kosong)'} (NIP: ${u.nipnrp||'-'})`,
-          accept:'.pdf,.jpg,.jpeg,.png',
-          req:true,
-          icon:'🎓',
-          note:`Wajib — ${u.nama||'user ini'} didaftarkan sebagai Bendahara (${jenis})`
-        });
-      }
-    });
+    const peran=u.peranList||[];
+    const isKPA=peran.includes('SATKER_KPA');
+    const nama=u.nama||'(nama kosong)';
+    const nip=u.nipnrp||'-';
+    const safeKey=(u.nipnrp||u.nama||'u').replace(/\W/g,'_');
+
+    // BNT — Bendahara Pengeluaran
+    if(peran.includes('SATKER_BENDAHARA_PENGELUARAN')){
+      sertDoks.push({
+        key:`sertBNT_pengeluaran_${safeKey}`,
+        name:`Sertifikat BNT Pengeluaran — ${nama}`,
+        desc:`Sertifikat Bendahara Negara Tersertifikasi (BNT) Pengeluaran atas nama ${nama} (NIP: ${nip})`,
+        accept:'.pdf,.jpg,.jpeg,.png',req:true,icon:'🎓',
+        note:`Wajib — ${nama} didaftarkan sebagai Bendahara Pengeluaran`
+      });
+    }
+    // BNT — Bendahara Pengeluaran Pembantu
+    if(peran.includes('SATKER_BENDAHARA_PENGELUARAN_PEMBANTU')){
+      sertDoks.push({
+        key:`sertBNT_pembantu_${safeKey}`,
+        name:`Sertifikat BNT Pengeluaran Pembantu — ${nama}`,
+        desc:`Sertifikat BNT Pengeluaran Pembantu atas nama ${nama} (NIP: ${nip})`,
+        accept:'.pdf,.jpg,.jpeg,.png',req:true,icon:'🎓',
+        note:`Wajib — ${nama} didaftarkan sebagai Bendahara Pengeluaran Pembantu`
+      });
+    }
+    // BNT — Bendahara Penerimaan
+    if(peran.includes('SATKER_BENDAHARA_PENERIMAAN')){
+      sertDoks.push({
+        key:`sertBNT_penerimaan_${safeKey}`,
+        name:`Sertifikat BNT Penerimaan — ${nama}`,
+        desc:`Sertifikat BNT Penerimaan atas nama ${nama} (NIP: ${nip})`,
+        accept:'.pdf,.jpg,.jpeg,.png',req:true,icon:'🎓',
+        note:`Wajib — ${nama} didaftarkan sebagai Bendahara Penerimaan`
+      });
+    }
+    // PNT — PPK (tidak berlaku jika PPK dirangkap KPA)
+    const isPPK=peran.includes('SATKER_PPK')||peran.includes('SATKER_PPK_DFDD');
+    if(isPPK && !isKPA){
+      sertDoks.push({
+        key:`sertPNT_${safeKey}`,
+        name:`Sertifikat PNT — ${nama}`,
+        desc:`Sertifikat PPK Negara Tersertifikasi (PNT) atas nama ${nama} (NIP: ${nip})`,
+        accept:'.pdf,.jpg,.jpeg,.png',req:true,icon:'🎓',
+        note:`Wajib — ${nama} didaftarkan sebagai PPK`
+      });
+    }
+    // SNT — PPSPM (tidak berlaku jika PPSPM dirangkap KPA)
+    if(peran.includes('SATKER_PPSPM') && !isKPA){
+      sertDoks.push({
+        key:`sertSNT_${safeKey}`,
+        name:`Sertifikat SNT — ${nama}`,
+        desc:`Sertifikat PPSPM Negara Tersertifikasi (SNT) atas nama ${nama} (NIP: ${nip})`,
+        accept:'.pdf,.jpg,.jpeg,.png',req:true,icon:'🎓',
+        note:`Wajib — ${nama} didaftarkan sebagai PPSPM`
+      });
+    }
   });
 
   return [
@@ -548,7 +589,7 @@ function getDokList(draft){
     {key:'form_ttd_kpa',name:'Formulir Pendaftaran Bertandatangan KPA (PDF)',desc:'File Excel yang sudah dicetak, ditandatangani KPA, dan discan ke PDF',accept:'.pdf',req:true,icon:'📝'},
     {key:'sk_pejabat',name:'SK Pejabat Perbendaharaan',desc:'SK pengangkatan KPA, PPK, PPSPM, dan/atau Bendahara',accept:'.pdf',req:hasPejabat,show:hasPejabat,icon:'📜',note:hasPejabat?'Wajib — ada pejabat perbendaharaan dalam daftar':null},
     {key:'specimen_ttd',name:'Specimen Tanda Tangan Pejabat',desc:'Lembar specimen tanda tangan pejabat perbendaharaan yang dilegalisir',accept:'.pdf,.jpg,.jpeg,.png',req:hasPejabat,show:hasPejabat,icon:'✍️',note:hasPejabat?'Wajib — ada pejabat perbendaharaan dalam daftar':null},
-    ...bntDoks,
+    ...sertDoks,
     {key:'formulir_otp',name:'Formulir Permohonan Aktivasi OTP',desc:'Formulir permohonan aktivasi token OTP untuk KPA/PPK/PPSPM',accept:'.pdf',req:hasOTP,show:hasOTP,icon:'🔐',note:hasOTP?'Wajib — ada user KPA/PPK/PPSPM yang memerlukan OTP':null},
   ].filter(d=>d.show!==false);
 }

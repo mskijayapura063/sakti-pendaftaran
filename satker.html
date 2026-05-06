@@ -3023,13 +3023,18 @@ function pgBuildDokumenList(menjadiUsers) {
   (menjadiUsers || []).forEach((u, idx) => {
     const nama  = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
     const peran = u.peranList || [];
+    // Cek apakah user ini merangkap KPA — jika ya, PNT dan SNT tidak diminta
+    const isKPA = peran.includes('SATKER_KPA');
+    // BNT — Bendahara (pengeluaran, pengeluaran pembantu, penerimaan)
     if (peran.some(p => PG_PERAN_BNT.includes(p))) list.push({ key:'sertBNT_'+idx,
       label:'Sertifikat BNT — ' + nama,
       desc:'Sertifikat Bendahara Negara Tersertifikasi (BNT) untuk Bendahara Pengeluaran/Penerimaan', required:true });
-    if (peran.some(p => PG_PERAN_PNT.includes(p))) list.push({ key:'sertPNT_'+idx,
+    // PNT — PPK, tapi tidak jika PPK dirangkap KPA
+    if (!isKPA && peran.some(p => PG_PERAN_PNT.includes(p))) list.push({ key:'sertPNT_'+idx,
       label:'Sertifikat PNT — ' + nama,
       desc:'Sertifikat PPK Negara Tersertifikasi (PNT) untuk role PPK', required:true });
-    if (peran.some(p => PG_PERAN_SNT.includes(p))) list.push({ key:'sertSNT_'+idx,
+    // SNT — PPSPM, tapi tidak jika PPSPM dirangkap KPA
+    if (!isKPA && peran.some(p => PG_PERAN_SNT.includes(p))) list.push({ key:'sertSNT_'+idx,
       label:'Sertifikat SNT — ' + nama,
       desc:'Sertifikat PPSPM Negara Tersertifikasi (SNT) untuk role PPSPM', required:true });
   });
@@ -4253,6 +4258,46 @@ function bukaModalUploadDokumen(info) {
     };
   });
 
+  // Sertifikat per-user: BNT (Bendahara), PNT (PPK), SNT (PPSPM)
+  // Pengecualian: PPK atau PPSPM yang dirangkap KPA → PNT/SNT TIDAK diminta
+  const PERAN_BNT_UD = ['SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU','SATKER_BENDAHARA_PENERIMAAN'];
+  const PERAN_PNT_UD = ['SATKER_PPK','SATKER_PPK_DFDD'];
+  const BNT_LABEL_UD = {
+    'SATKER_BENDAHARA_PENGELUARAN':         'BNT Pengeluaran',
+    'SATKER_BENDAHARA_PENGELUARAN_PEMBANTU':'BNT Pengeluaran Pembantu',
+    'SATKER_BENDAHARA_PENERIMAAN':          'BNT Penerimaan',
+  };
+  const sertDocs = [];
+  users.forEach((u, idx) => {
+    const nama  = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
+    const nip   = (u.nipnrp || '').trim();
+    const peran = u.peranList || [];
+    const isKPA = peran.includes('SATKER_KPA');
+    // BNT — semua jenis bendahara (boleh rangkap apapun)
+    peran.forEach(p => {
+      if (PERAN_BNT_UD.includes(p)) sertDocs.push({
+        key: 'sertBNT_' + idx + '_' + p,
+        label: 'Sertifikat ' + (BNT_LABEL_UD[p]||'BNT') + ' — ' + nama,
+        desc:  'Sertifikat ' + (BNT_LABEL_UD[p]||'BNT') + ' atas nama ' + nama + (nip?' (NIP: '+nip+')':''),
+        required: true
+      });
+    });
+    // PNT — PPK, tidak berlaku jika dirangkap KPA
+    if (!isKPA && peran.some(p => PERAN_PNT_UD.includes(p))) sertDocs.push({
+      key: 'sertPNT_' + idx,
+      label: 'Sertifikat PNT — ' + nama,
+      desc:  'Sertifikat PPK Negara Tersertifikasi (PNT) atas nama ' + nama + (nip?' (NIP: '+nip+')':''),
+      required: true
+    });
+    // SNT — PPSPM, tidak berlaku jika dirangkap KPA
+    if (!isKPA && peran.includes('SATKER_PPSPM')) sertDocs.push({
+      key: 'sertSNT_' + idx,
+      label: 'Sertifikat SNT — ' + nama,
+      desc:  'Sertifikat PPSPM Negara Tersertifikasi (SNT) atas nama ' + nama + (nip?' (NIP: '+nip+')':''),
+      required: true
+    });
+  });
+
   const dokumen = [
     { key:'formPendaftaran', label:'Form Pendaftaran User SAKTI',    desc:'Form pendaftaran yang sudah ditandatangani KPA', required:true },
     { key:'skPengguna',      label:'SK Pengguna SAKTI',              desc:'Surat Keputusan penetapan pengguna SAKTI dari pimpinan satker', required:true },
@@ -4260,6 +4305,7 @@ function bukaModalUploadDokumen(info) {
     ...(butuhSK ? [
       { key:'skPejabat',     label:'SK Pejabat Perbendaharaan',      desc:'SK pengangkatan KPA, PPK, PPSPM, atau Bendahara yang masih berlaku', required:true },
     ] : []),
+    ...sertDocs,
     ...(butuhOTP ? [
       { key:'formOTP',       label:'Form Aktivasi OTP',              desc:'Form permohonan aktivasi OTP untuk KPA/PPK/PPSPM', required:true },
       { key:'spesimen',      label:'Spesimen Tanda Tangan',          desc:'Lembar spesimen tanda tangan untuk KPA/PPK/PPSPM', required:true },
