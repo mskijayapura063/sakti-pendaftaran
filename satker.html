@@ -3747,11 +3747,15 @@ function rwRenderRow(x) {
   // Tombol aksi cepat di kolom kanan (tergantung kondisi)
   let aksi = '';
   if (isGanti) {
+    // Tombol Excel selalu tampil untuk pergantian
+    aksi += `<button onclick="event.stopPropagation();satkerUnduhExcelPergantian('${esc(id)}')"
+      style="display:inline-flex;align-items:center;gap:3px;background:#fff;border:1.5px solid #7C3AED;color:#7C3AED;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;margin-right:4px"
+      onmouseover="this.style.background='#F3E8FF'" onmouseout="this.style.background='#fff'">📥 Excel</button>`;
     if (isDitolak) {
-      aksi = `<button onclick="event.stopPropagation();pgPerbaikiData('${esc(id)}')"
+      aksi += `<button onclick="event.stopPropagation();pgPerbaikiData('${esc(id)}')"
         style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">✏️ Perbaiki</button>`;
     } else if (belumUpload) {
-      aksi = `<button onclick="event.stopPropagation();pgBukaUploadModal('${esc(id)}')"
+      aksi += `<button onclick="event.stopPropagation();pgBukaUploadModal('${esc(id)}')"
         style="background:#7C3AED;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">📤 Upload</button>`;
     }
   } else {
@@ -4026,7 +4030,17 @@ function rwRenderDetailGanti(g, rowKey){
       </div>
     </details>` : '';
 
-  return stepperHtml + banner + infoGrid + dokumenHtml + usersHtml;
+  // Action footer
+  const actionFooterGanti = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;margin-top:8px">
+      <button onclick="satkerUnduhExcelPergantian('${esc(g.id)}')"
+        style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1.5px solid #7C3AED;color:#7C3AED;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;transition:.15s"
+        onmouseover="this.style.background='#F3E8FF'" onmouseout="this.style.background='#fff'">
+        📥 Unduh Form Excel
+      </button>
+    </div>`;
+
+  return stepperHtml + banner + infoGrid + dokumenHtml + usersHtml + actionFooterGanti;
 }
 
 // ════════════════════════════════════════════════════════
@@ -4615,6 +4629,50 @@ async function satkerUnduhFormExcel(refKode) {
     URL.revokeObjectURL(url);
     showToast('✅ Form Excel berhasil diunduh', false, true);
   } catch(e) { showToast('❌ Gagal mengunduh form Excel', true); }
+}
+
+// ── Unduh Form Excel Pergantian dari riwayat ──────────────────────
+async function satkerUnduhExcelPergantian(id) {
+  // Ambil data dari cache pergantian
+  const cache = window._pgRiwayatCache || {};
+  const g = cache[id];
+  if (!g) { showToast('Data tidak tersedia. Coba refresh halaman.', true); return; }
+  showToast('⏳ Menyiapkan Form Excel Pergantian...');
+  try {
+    const tglSurat = g.tglSurat || g.createdAt || '';
+    function parseTglPg(s){
+      if(!s) return new Date();
+      const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+      if(m) return new Date(+m[3], +m[2]-1, +m[1]);
+      const d = new Date(s); return isNaN(d)?new Date():d;
+    }
+    const tglStr = parseTglPg(tglSurat).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+    const semula  = Array.isArray(g.semula)  ? g.semula  : [];
+    const menjadi = Array.isArray(g.menjadi) ? g.menjadi : [];
+    const res = await apiPost({
+      action:     'generatePerubahanExcel',
+      id:         g.id || id,
+      namaSatker: g.namaSatker || '',
+      namaKpa:    g.namaKpa    || '',
+      nip:        g.nip        || '',
+      noHp:       g.noHp       || '',
+      kota:       'Jayapura',
+      tglStr,
+      tglSurat,
+      semula,
+      menjadi,
+    });
+    if (!res.success) { showToast(res.message || 'Gagal generate Excel', true); return; }
+    const bytes = Uint8Array.from(atob(res.fileBase64), c => c.charCodeAt(0));
+    const blob  = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement('a');
+    a.href = url;
+    a.download = res.fileName || ('Form_Pergantian_SAKTI_' + id + '.xlsx');
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ Form Excel Pergantian berhasil diunduh', false, true);
+  } catch(e) { showToast('❌ Gagal mengunduh form Excel: ' + e.message, true); }
 }
 
 // ── Edit Riwayat Pendaftaran (form lengkap) ──────────────────────

@@ -1270,6 +1270,22 @@ async function adminDownloadPendaftaranExcel(s){
   }catch(e){showToast('❌ Gagal download Excel',true);}
 }
 
+// Unduh Excel pendaftaran langsung dari tabel (tanpa buka modal detail dulu)
+async function adminUnduhExcelDaftar(refKode){
+  // Cari di cache dulu
+  let s = cachedSubmissions.find(x=>x.refKode===refKode);
+  if(!s){showToast('Data tidak ditemukan di cache. Coba refresh.',true);return;}
+  // Jika data users belum ada di cache, fetch dulu
+  if(!s.users && !s.usersJson){
+    showToast('⏳ Memuat detail data...');
+    try{
+      const res = await apiPost({action:'getDetail', refKode});
+      if(res.success) s = {...s, ...res};
+    }catch(e){}
+  }
+  await adminDownloadPendaftaranExcel(s);
+}
+
 async function adminDownloadEmailExcel(id){
   showToast('⏳ Menyiapkan Excel...');
   try{
@@ -1371,6 +1387,7 @@ function renderSubTable(list){
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="lihatDetail('${esc(s.refKode)}')">🔍 Detail</button>
+          <button class="btn btn-outline btn-sm" style="color:var(--green);border-color:var(--green)" onclick="adminUnduhExcelDaftar('${esc(s.refKode)}')">📥 Excel</button>
           ${['submitted','Menunggu'].includes(s.status)?`
             <button class="btn btn-outline btn-sm" style="color:var(--blue);border-color:var(--blue)" onclick="adminEditDaftar('${esc(s.refKode)}')">✏️ Edit</button>
             ${belumUpload
@@ -2329,9 +2346,16 @@ async function adminUnduhExcelPg(id){
   showToast('⏳ Menyiapkan Excel...');
   try{
     const tglSurat = p.tglSurat||'';
-    const tglStr   = tglSurat
-      ? new Date(tglSurat).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})
-      : new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+    // Fungsi parse tanggal tahan berbagai format (ISO, DD/MM/YYYY, DD-MM-YYYY)
+    function parseTgl(s){
+      if(!s) return new Date();
+      // DD/MM/YYYY atau DD-MM-YYYY
+      const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+      if(m) return new Date(+m[3], +m[2]-1, +m[1]);
+      const d = new Date(s);
+      return isNaN(d) ? new Date() : d;
+    }
+    const tglStr = parseTgl(tglSurat).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
     const semula  = Array.isArray(p.semula)?p.semula:[];
     const menjadi = Array.isArray(p.menjadi)?p.menjadi:[];
     const res = await apiPost({
