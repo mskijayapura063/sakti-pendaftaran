@@ -2361,7 +2361,6 @@ async function adminUnduhExcelPg(id){
     const res = await apiPost({
       action:     'generatePerubahanExcel',
       id:         p.id||'',
-      kodeSatker: p.kodeSatker||'',
       namaSatker: p.namaSatker||'',
       namaKpa:    p.namaKpa||'',
       nip:        p.nip||'',
@@ -2371,7 +2370,6 @@ async function adminUnduhExcelPg(id){
       tglSurat,
       semula,
       menjadi,
-      downloadOnly: true,
     });
     if(!res.success){showToast(res.message||'Gagal generate Excel',true);return;}
     const bytes=Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
