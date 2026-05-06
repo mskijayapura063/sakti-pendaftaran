@@ -3242,14 +3242,18 @@ async function pgudUploadFile(key) {
 }
 
 function pgUploadSelesai() {
+  // Cek semua dokumen wajib — BLOKIR jika belum lengkap, tidak bisa ditembus
   const wajibBelum = pgUploadDokList.filter(d => d.required && !pgUploadDoneMap[d.key]);
   if (wajibBelum.length) {
-    const proceed = confirm(
-      'Masih ada ' + wajibBelum.length + ' dokumen wajib yang belum diupload:\n\n' +
-      wajibBelum.map(d => '• ' + d.label).join('\n') +
-      '\n\nTutup modal sekarang? Anda bisa kembali untuk melanjutkan upload kapan saja.'
+    showToast(
+      '⚠️ ' + wajibBelum.length + ' dokumen wajib belum diupload: ' +
+      wajibBelum.map(d => d.label).join(', '),
+      true
     );
-    if (!proceed) return;
+    // Scroll ke dokumen pertama yang belum diupload
+    const firstMissing = document.getElementById('pgud_row_' + wajibBelum[0].key);
+    if (firstMissing) firstMissing.scrollIntoView({ behavior:'smooth', block:'center' });
+    return; // HARD BLOCK — tidak bisa lanjut
   }
   closeModal('modalUploadPerubahan');
   if (Object.keys(pgUploadDoneMap).length > 0) {
@@ -4226,6 +4230,8 @@ let udRefKode   = '';
 let udNamaSatker= '';
 let udFiles     = {}; // { fileKey: File }
 let udUploading = {};
+let udDokList   = []; // daftar dokumen aktif — untuk validasi wajib di udSelesai()
+let udDonemap   = {}; // { key: true } — file yang sudah berhasil diupload sesi ini atau sudah ada
 
 const PERAN_BUTUH_SK   = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM',
                            'SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU','SATKER_BENDAHARA_PENERIMAAN'];
@@ -4236,6 +4242,8 @@ function bukaModalUploadDokumen(info) {
   udNamaSatker = info.namaSatker || '';
   udFiles      = {};
   udUploading  = {};
+  udDokList    = [];
+  udDonemap    = {};
 
   const users        = info.usersJson    || [];
   const filesExist   = info.filesJson    || {}; // { key: {url,name} } dari data existing
@@ -4312,6 +4320,11 @@ function bukaModalUploadDokumen(info) {
     ] : []),
     { key:'dokumenLain',     label:'Dokumen Lainnya (opsional)',     desc:'Dokumen pendukung tambahan jika ada', required:false },
   ];
+
+  // Simpan ke state untuk validasi di udSelesai()
+  udDokList = dokumen;
+  // File yang sudah ada di server dianggap sudah "done"
+  dokumen.forEach(d => { if (filesExist[d.key] && filesExist[d.key].url) udDonemap[d.key] = true; });
 
   const body = document.getElementById('uploadDokumenBody');
   body.innerHTML = `
@@ -4503,6 +4516,7 @@ async function udUploadFile(key) {
 
     // Mark uploaded
     udUploading[key] = true;
+    udDonemap[key]   = true; // tandai untuk validasi wajib
 
   } catch(e) {
     errEl.textContent='Gagal terhubung ke server.';
@@ -4512,11 +4526,27 @@ async function udUploadFile(key) {
 }
 
 function udSelesai() {
+  // HARD BLOCK — tidak bisa tutup modal kalau dokumen wajib belum lengkap
+  if (udDokList.length) {
+    const wajibBelum = udDokList.filter(d => d.required && !udDonemap[d.key]);
+    if (wajibBelum.length) {
+      showToast(
+        '⚠️ ' + wajibBelum.length + ' dokumen wajib belum diupload: ' +
+        wajibBelum.map(d => d.label).join(', '),
+        true
+      );
+      const firstMissing = document.getElementById('ud_row_' + wajibBelum[0].key);
+      if (firstMissing) firstMissing.scrollIntoView({ behavior:'smooth', block:'center' });
+      return; // BLOKIR
+    }
+  }
   closeModal('modalUploadDokumen');
-  // Refresh riwayat jika ada yang terupload
+  // Refresh riwayat jika ada yang terupload sesi ini
   if (Object.keys(udUploading).length > 0) {
     udUploading = {};
-    initUserRiwayat(); // refresh kartu riwayat agar status dokumen terupdate
+    udDokList   = [];
+    udDonemap   = {};
+    initUserRiwayat();
   }
 }
 
