@@ -3003,6 +3003,7 @@ function pgBuildDokumenList(menjadiUsers) {
   const butuhOTP   = semuaPeran.some(p => PG_PERAN_OTP.includes(p));
   const butuhSK    = semuaPeran.some(p => PG_PERAN_SK.includes(p));
   const butuhSpec  = semuaPeran.some(p => PG_PERAN_SPEC.includes(p));
+  const PERAN_OTP_LABEL = {SATKER_KPA:'KPA', SATKER_PPK:'PPK', SATKER_PPK_DFDD:'PPK DFDD', SATKER_PPSPM:'PPSPM'};
   const list = [];
   if (butuhOTP) list.push({ key:'formOTP', label:'Form Permohonan Aktivasi OTP',
       desc:'Khusus untuk role KPA, PPK, dan PPSPM', required:true });
@@ -3012,6 +3013,22 @@ function pgBuildDokumenList(menjadiUsers) {
       desc:'Surat Keputusan penetapan pengguna SAKTI dari pimpinan satker', required:true });
   if (butuhSpec) list.push({ key:'spesimen', label:'Spesimen Tanda Tangan',
       desc:'Khusus untuk role KPA, PPK, PPSPM, dan Bendahara', required:true });
+  // Bukti foto aktivasi OTP per pejabat — wajib jika ada role KPA/PPK/PPSPM
+  if (butuhOTP) {
+    (menjadiUsers || []).forEach((u, idx) => {
+      const otpPeran = (u.peranList || []).filter(p => PG_PERAN_OTP.includes(p));
+      if (!otpPeran.length) return;
+      const nama     = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
+      const peranStr = otpPeran.map(p => PERAN_OTP_LABEL[p] || p).join('/');
+      list.push({
+        key:         'fotoOTP_' + idx,
+        label:       'Bukti Aktivasi OTP — ' + nama + ' (' + peranStr + ')',
+        desc:        'Foto/screenshot bukti aktivasi OTP dari aplikasi SAKTI untuk ' + nama + ' (' + peranStr + '). Format: JPG/PNG.',
+        required:    true,
+        acceptImage: true
+      });
+    });
+  }
   (menjadiUsers || []).forEach((u, idx) => {
     const nama = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
     const nip  = (u.nipnrp || '').trim();
@@ -3990,6 +4007,7 @@ function rwRenderDetailGanti(g, rowKey){
     if (key.startsWith('sertBNT_')) { const i=parseInt(key.slice(8),10); return 'BNT — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
     if (key.startsWith('sertPNT_')) { const i=parseInt(key.slice(8),10); return 'PNT — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
     if (key.startsWith('sertSNT_')) { const i=parseInt(key.slice(8),10); return 'SNT — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
+    if (key.startsWith('fotoOTP_')) { const i=parseInt(key.slice(8),10); return 'Foto OTP — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
     return key;
   };
 
@@ -4111,6 +4129,11 @@ function rwRenderKartuGanti(g, isLatest) {
       const idx = parseInt(key.slice('sertSNT_'.length), 10);
       const u = menjadi[idx];
       return 'Sertifikat SNT — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+    }
+    if (key.startsWith('fotoOTP_')) {
+      const idx = parseInt(key.slice('fotoOTP_'.length), 10);
+      const u = menjadi[idx];
+      return 'Foto OTP — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
     }
     return key;
   };
