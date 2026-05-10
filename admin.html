@@ -1768,63 +1768,99 @@ async function doRollback() {
 // MONITORING OTP
 // ════════════════════════════════════════════════════════
 function renderOTP(){
-  return `<div class="page-title">Monitoring Aktivasi OTP</div>
-  <div class="page-sub">Status aktivasi OTP dari pendaftaran user baru maupun pergantian user SAKTI</div>
-  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
-    <button class="btn btn-secondary btn-sm" onclick="loadOTP()">🔄 Refresh</button>
+  return `
+  <div class="page-title">🔐 Monitoring Aktivasi OTP</div>
+  <div class="page-sub">Pantau dan kelola aktivasi OTP untuk seluruh satker — pendaftaran user baru maupun pergantian user SAKTI</div>
+
+  <!-- Stats bar -->
+  <div id="otpStatsBar" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px">
+    ${['total','pending','selesai','pendaftaran','pergantian'].map(k=>`
+    <div id="otpStat_${k}" style="background:#fff;border:1px solid var(--gray-200);border-radius:10px;padding:12px 14px;text-align:center">
+      <div style="font-size:22px;font-weight:800;color:var(--gray-300)">—</div>
+      <div style="font-size:11px;color:var(--gray-500);margin-top:2px;font-weight:600">${
+        k==='total'?'Total OTP Role':k==='pending'?'Menunggu Aktivasi':k==='selesai'?'Sudah Aktif':k==='pendaftaran'?'Pendaftaran':' Pergantian'
+      }</div>
+    </div>`).join('')}
   </div>
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title" style="color:var(--orange)">⏳ Menunggu Aktivasi OTP</div>
+
+  <!-- Filter bar -->
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+    <input id="otpSearch" type="text" placeholder="🔍 Cari satker / ID..." oninput="filterOTP()"
+      style="padding:7px 12px;border:1px solid var(--gray-300);border-radius:8px;font-size:13px;min-width:220px;outline:none"/>
+    <select id="otpFilterSumber" onchange="filterOTP()"
+      style="padding:7px 10px;border:1px solid var(--gray-300);border-radius:8px;font-size:13px;outline:none;background:#fff">
+      <option value="">Semua Sumber</option>
+      <option value="Pendaftaran">Pendaftaran</option>
+      <option value="Pergantian">Pergantian</option>
+    </select>
+    <select id="otpFilterMode" onchange="filterOTP()"
+      style="padding:7px 10px;border:1px solid var(--gray-300);border-radius:8px;font-size:13px;outline:none;background:#fff">
+      <option value="">Semua Mode</option>
+      <option value="daring">🟢 Online</option>
+      <option value="hadir_langsung">🤝 Hadir Langsung</option>
+    </select>
+    <button class="btn btn-secondary btn-sm" onclick="loadOTP()" style="margin-left:auto">🔄 Refresh</button>
+  </div>
+
+  <!-- Pending section -->
+  <div class="card" style="margin-bottom:16px;border-left:4px solid var(--orange)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div class="card-title" style="color:var(--orange);margin:0">⏳ Menunggu Aktivasi OTP</div>
+      <span id="otpPendingCount" style="font-size:12px;background:#FFF7ED;color:#C2410C;padding:3px 10px;border-radius:20px;font-weight:700"></span>
+    </div>
     <div id="otpBodyPending"><p style="color:var(--gray-400);font-size:13px">Memuat...</p></div>
   </div>
-  <div class="card">
-    <div class="card-title" style="color:var(--green)">✅ Riwayat OTP — Sudah Aktif</div>
+
+  <!-- Done section -->
+  <div class="card" style="border-left:4px solid var(--green)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div class="card-title" style="color:var(--green);margin:0">✅ Sudah Aktif / Selesai</div>
+      <span id="otpDoneCount" style="font-size:12px;background:#F0FDF4;color:#166534;padding:3px 10px;border-radius:20px;font-weight:700"></span>
+    </div>
     <div id="otpBodyDone"><p style="color:var(--gray-400);font-size:13px">Memuat...</p></div>
   </div>`;
 }
 
 // Cache untuk data OTP monitoring
 let _otpAllData = [];
+let _otpFiltered = { pending: [], done: [] };
 
 async function loadOTP(){
   const pending=document.getElementById('otpBodyPending');
   const done=document.getElementById('otpBodyDone');
   if(!pending||!done) return;
-  pending.innerHTML='<p style="color:var(--gray-400);font-size:13px">Memuat...</p>';
-  done.innerHTML='<p style="color:var(--gray-400);font-size:13px">Memuat...</p>';
+  pending.innerHTML='<p style="color:var(--gray-400);font-size:13px;padding:12px 0">⏳ Memuat data...</p>';
+  done.innerHTML='<p style="color:var(--gray-400);font-size:13px;padding:12px 0">⏳ Memuat data...</p>';
   try{
-    // Load dari kedua sumber: pendaftaran user baru + pergantian user
     const [resPendaftaran, resPergantian] = await Promise.all([
       apiPost({action:'getDaftarList'}),
       apiPost({action:'getDaftarPerubahan'})
     ]);
 
     const OTP_ROLES = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
-
-    // Gabungkan dengan menambahkan label sumber
     let combined = [];
 
     // Dari pendaftaran user baru
     if(resPendaftaran.success){
       (resPendaftaran.list||[]).forEach(s=>{
-        // hasOTP dihitung di backend berdasarkan peranList; gunakan itu sebagai source of truth
-        const hasOtpRole = s.hasOTP || (s.users||s.usersJson||[]).some(u=>(u.peranList||[]).some(p=>OTP_ROLES.includes(p)));
-        if(hasOtpRole){
-          // Kumpulkan foto OTP dari filesJson (otpFotosJson) dan catatanAdmin (legacy META_OTP)
-          const fotosOTP = extractOtpFotos_(s.otpFotosJson||s.filesJson||{}, s.catatanAdmin||'');
-          combined.push({
-            id: s.refKode, refKode: s.refKode,
-            namaSatker: s.namaSatker||'—',
-            kodeSatker: s.kodeSatker||'',
-            status: s.status||'',
-            otpAktif: !!(s.otpAktif),
-            otpCode: s.otpCode||'',
-            updatedAt: s.updatedAt||s.tanggalDaftar||'',
-            sumber: 'Pendaftaran',
-            fotosOTP,
-            hasOtpRole
-          });
-        }
+        const hasOtpRole = !!(s.hasOTP);
+        if(!hasOtpRole) return;
+        const fotosOTP = extractOtpFotos_(s.otpFotosJson||s.filesJson||{}, s.catatanAdmin||'');
+        const modeList = fotosOTP.map(f=>f.mode||'hadir_langsung');
+        combined.push({
+          refKode: s.refKode,
+          namaSatker: s.namaSatker||'—',
+          kodeSatker: s.kodeSatker||'',
+          namaKpa: s.namaKpa||'',
+          status: s.status||'',
+          otpAktif: !!(s.otpAktif),
+          otpCode: s.otpCode||'',
+          updatedAt: s.updatedAt||s.tanggalDaftar||'',
+          sumber: 'Pendaftaran',
+          fotosOTP,
+          hasOtpRole,
+          modeList,
+        });
       });
     }
 
@@ -1832,91 +1868,199 @@ async function loadOTP(){
     if(resPergantian.success){
       (resPergantian.list||[]).forEach(p=>{
         const menjadi = p.menjadi || [];
-        const hasOtpRole = menjadi.some(u=>(u.peranList||[]).some(r=>OTP_ROLES.includes(r)));
-        if(hasOtpRole){
-          const fotosOTP = extractOtpFotos_(p.filesJson||{}, p.catatanAdmin||'');
-          const sudahAktif = (p.status==='Selesai');
-          combined.push({
-            id: p.id, refKode: p.id,
-            namaSatker: p.namaSatker||'—',
-            kodeSatker: p.kodeSatker||'',
-            status: p.status||'',
-            otpAktif: sudahAktif,
-            otpCode: '',
-            updatedAt: p.updatedAt||p.createdAt||'',
-            sumber: 'Pergantian',
-            fotosOTP,
-            hasOtpRole
-          });
-        }
+        const hasOtpRole = !!(p.needsOTP) || menjadi.some(u=>(u.peranList||[]).some(r=>OTP_ROLES.includes(r)));
+        if(!hasOtpRole) return;
+        const fotosOTP = extractOtpFotos_(p.filesJson||{}, p.catatanAdmin||'');
+        const modeList = fotosOTP.map(f=>f.mode||'hadir_langsung');
+        const otpAktif = p.status==='Selesai' || fotosOTP.some(f=>f.key&&f.key.startsWith('otpFoto_'));
+        // Kumpulkan nama pejabat OTP dari menjadi
+        const pejabatOTP = menjadi
+          .filter(u=>(u.peranList||[]).some(r=>OTP_ROLES.includes(r)))
+          .map(u=>u.nama||'—');
+        combined.push({
+          refKode: p.id,
+          namaSatker: p.namaSatker||'—',
+          kodeSatker: p.kodeSatker||'',
+          namaKpa: p.namaKpa||'',
+          status: p.status||'',
+          otpAktif,
+          otpCode: '',
+          updatedAt: p.updatedAt||p.createdAt||'',
+          sumber: 'Pergantian',
+          fotosOTP,
+          hasOtpRole,
+          modeList,
+          pejabatOTP,
+        });
       });
     }
 
     _otpAllData = combined;
 
-    const listPending = combined.filter(s=>!s.otpAktif && (s.status==='Terdaftar'||s.status==='Diproses'));
-    const listDone    = combined.filter(s=>s.otpAktif || ['Selesai','Aktif','OTP_Aktif'].includes(s.status));
+    // Update stats
+    const nPending = combined.filter(s=>s.hasOtpRole && !s.otpAktif && (s.status==='Terdaftar'||s.status==='Diproses')).length;
+    const nDone    = combined.filter(s=>s.hasOtpRole && (s.otpAktif || ['Selesai','Aktif','OTP_Aktif'].includes(s.status))).length;
+    const nPendaftaran = combined.filter(s=>s.sumber==='Pendaftaran').length;
+    const nPergantian  = combined.filter(s=>s.sumber==='Pergantian').length;
+    const statData = {total:combined.length, pending:nPending, selesai:nDone, pendaftaran:nPendaftaran, pergantian:nPergantian};
+    const statColors = {total:'var(--gray-700)', pending:'#C2410C', selesai:'#166534', pendaftaran:'var(--blue)', pergantian:'#7C3AED'};
+    ['total','pending','selesai','pendaftaran','pergantian'].forEach(k=>{
+      const el = document.getElementById('otpStat_'+k);
+      if(el) el.innerHTML = `<div style="font-size:26px;font-weight:800;color:${statColors[k]}">${statData[k]}</div>
+        <div style="font-size:11px;color:var(--gray-500);margin-top:2px;font-weight:600">${
+          k==='total'?'Total OTP Role':k==='pending'?'Menunggu Aktivasi':k==='selesai'?'Sudah Aktif':k==='pendaftaran'?'Pendaftaran':'Pergantian'
+        }</div>`;
+    });
 
-    // -- Tabel pending --
-    if(!listPending.length){
-      pending.innerHTML='<p style="color:var(--green);font-weight:600;padding:8px 0">✅ Tidak ada satker yang menunggu aktivasi OTP.</p>';
-    } else {
-      pending.innerHTML=`<div style="overflow-x:auto"><table class="tbl">
-        <thead><tr><th>ID / Ref</th><th>Satker</th><th>Sumber</th><th>Status</th><th>Kode OTP</th><th>Aksi</th></tr></thead>
-        <tbody>${listPending.map(s=>`<tr>
-          <td style="font-family:monospace;font-size:11px">${esc(s.refKode)}</td>
-          <td><strong>${esc(s.namaSatker)}</strong></td>
-          <td><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${s.sumber==='Pergantian'?'#EDE9FE':'#DBEAFE'};color:${s.sumber==='Pergantian'?'#7C3AED':'var(--blue)'}">${esc(s.sumber)}</span></td>
-          <td>${bstat(s.status)}</td>
-          <td style="font-family:monospace;font-weight:700;color:var(--purple)">${esc(s.otpCode||'—')}</td>
-          <td><button class="btn btn-primary btn-sm" onclick="aktivasiOTP('${esc(s.refKode)}')">🔐 Aktivasi OTP</button></td>
-        </tr>`).join('')}</tbody>
-      </table></div>
-      <p style="font-size:12px;color:var(--gray-500);margin-top:8px">${listPending.length} rekaman menunggu aktivasi OTP</p>`;
-    }
-
-    // -- Tabel riwayat sudah aktif --
-    if(!listDone.length){
-      done.innerHTML='<p style="color:var(--gray-400);font-size:13px;padding:8px 0">Belum ada riwayat aktivasi OTP yang selesai.</p>';
-    } else {
-      done.innerHTML=`<div style="overflow-x:auto"><table class="tbl">
-        <thead><tr><th>ID / Ref</th><th>Satker</th><th>Sumber</th><th>Status</th><th>Tgl Update</th><th>Foto OTP</th><th>Aksi</th></tr></thead>
-        <tbody>${listDone.map(s=>`<tr>
-          <td style="font-family:monospace;font-size:11px">${esc(s.refKode)}</td>
-          <td><strong>${esc(s.namaSatker)}</strong></td>
-          <td><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${s.sumber==='Pergantian'?'#EDE9FE':'#DBEAFE'};color:${s.sumber==='Pergantian'?'#7C3AED':'var(--blue)'}">${esc(s.sumber)}</span></td>
-          <td>${bstat(s.status)}</td>
-          <td style="font-size:12px">${fmtTgl(s.updatedAt||'')}</td>
-          <td>
-            ${s.fotosOTP.length
-              ? s.fotosOTP.map(f=>{
-                  const isOnline = !f.mode || f.mode==='daring' || f.mode==='online';
-                  const modeBadge = isOnline
-                    ? `<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#D1FAE5;color:#065F46;font-weight:700">🟢 Online</span>`
-                    : `<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#DBEAFE;color:#1D4ED8;font-weight:700">🤝 Hadir</span>`;
-                  if(!f.url){
-                    return `<div style="display:flex;align-items:center;gap:4px;margin:2px 0">${modeBadge}<span style="font-size:11px;color:var(--gray-600)">${esc(f.nama||'Hadir Langsung')}</span></div>`;
-                  }
-                  return `<div style="display:flex;align-items:center;gap:4px;margin:2px 0">
-                    ${modeBadge}
-                    <span style="font-size:11px;color:var(--gray-700)">${esc(f.nama||f.peran||'Foto')}</span>
-                    <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:11px" onclick="otpDownloadFoto('${esc(f.url)}','${esc(f.name||'foto_otp.jpg')}')">⬇️</button>
-                  </div>`;
-                }).join('')
-              : `<span style="font-size:11px;color:var(--gray-400)">—</span>`
-            }
-          </td>
-          <td>
-            <button class="btn btn-outline btn-sm" onclick="otpUploadFotoModal('${esc(s.refKode)}','${esc(s.namaSatker)}')">📤 Upload Foto</button>
-          </td>
-        </tr>`).join('')}</tbody>
-      </table></div>
-      <p style="font-size:12px;color:var(--gray-500);margin-top:8px">${listDone.length} rekaman OTP sudah aktif</p>`;
-    }
+    filterOTP();
   }catch(e){
-    pending.innerHTML=`<p style="color:var(--red)">❌ Error: ${esc(e.message)}</p>`;
-    done.innerHTML='';
+    const pending=document.getElementById('otpBodyPending');
+    const done=document.getElementById('otpBodyDone');
+    if(pending) pending.innerHTML=`<p style="color:var(--red);padding:8px 0">❌ Error: ${esc(e.message)}</p>`;
+    if(done) done.innerHTML='';
   }
+}
+
+function filterOTP(){
+  const q     = (document.getElementById('otpSearch')?.value||'').toLowerCase();
+  const sumb  = document.getElementById('otpFilterSumber')?.value||'';
+  const modeF = document.getElementById('otpFilterMode')?.value||'';
+
+  const match = s => {
+    const qOk = !q ||
+      (s.refKode||'').toLowerCase().includes(q) ||
+      (s.namaSatker||'').toLowerCase().includes(q) ||
+      (s.kodeSatker||'').toLowerCase().includes(q) ||
+      (s.namaKpa||'').toLowerCase().includes(q);
+    const sOk = !sumb || s.sumber===sumb;
+    const mOk = !modeF || (s.modeList||[]).some(m=>m===modeF) ||
+                (!s.fotosOTP.length && modeF==='hadir_langsung'); // no foto = hadir
+    return qOk && sOk && mOk;
+  };
+
+  const listPending = _otpAllData.filter(s=>s.hasOtpRole && !s.otpAktif && (s.status==='Terdaftar'||s.status==='Diproses') && match(s));
+  const listDone    = _otpAllData.filter(s=>s.hasOtpRole && (s.otpAktif || ['Selesai','Aktif','OTP_Aktif'].includes(s.status)) && match(s));
+
+  const pcEl = document.getElementById('otpPendingCount');
+  const dcEl = document.getElementById('otpDoneCount');
+  if(pcEl) pcEl.textContent = listPending.length + ' rekaman';
+  if(dcEl) dcEl.textContent = listDone.length + ' rekaman';
+
+  renderOTPPending_(listPending);
+  renderOTPDone_(listDone);
+}
+
+function _otpSumberBadge(sumber){
+  const isPg = sumber==='Pergantian';
+  return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;
+    background:${isPg?'#EDE9FE':'#DBEAFE'};color:${isPg?'#7C3AED':'#1D4ED8'}">
+    ${isPg?'🔄':'📝'} ${sumber}
+  </span>`;
+}
+
+function _otpModeBadge(mode){
+  const isOnline = !mode || mode==='daring' || mode==='online';
+  return isOnline
+    ? `<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:#D1FAE5;color:#065F46;font-weight:700">🟢 Online</span>`
+    : `<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:#DBEAFE;color:#1D4ED8;font-weight:700">🤝 Hadir</span>`;
+}
+
+function renderOTPPending_(list){
+  const el = document.getElementById('otpBodyPending');
+  if(!el) return;
+  if(!list.length){
+    el.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:14px 0;color:var(--green);font-weight:600;font-size:13px">✅ Tidak ada satker yang menunggu aktivasi OTP</div>';
+    return;
+  }
+  el.innerHTML=`<div style="overflow-x:auto">
+  <table class="tbl">
+    <thead><tr>
+      <th>ID / Ref</th><th>Satker</th><th>KPA</th><th>Sumber</th>
+      <th>Status</th><th>Kode OTP</th><th>Pejabat OTP</th><th style="min-width:130px">Aksi</th>
+    </tr></thead>
+    <tbody>
+    ${list.map(s=>{
+      const pejabat = s.pejabatOTP && s.pejabatOTP.length
+        ? s.pejabatOTP.map(n=>`<span style="display:inline-block;font-size:10px;background:#FEF9C3;color:#854D0E;padding:1px 6px;border-radius:8px;margin:1px">${esc(n)}</span>`).join('')
+        : '<span style="font-size:11px;color:var(--gray-400)">Lihat detail</span>';
+      return `<tr>
+        <td style="font-family:monospace;font-size:11px;white-space:nowrap">${esc(s.refKode)}</td>
+        <td><strong>${esc(s.namaSatker)}</strong><br/><span style="font-size:10px;color:var(--gray-400)">${esc(s.kodeSatker)}</span></td>
+        <td style="font-size:12px">${esc(s.namaKpa||'—')}</td>
+        <td>${_otpSumberBadge(s.sumber)}</td>
+        <td>${bstat(s.status)}</td>
+        <td style="font-family:monospace;font-size:12px;font-weight:700;color:#7C3AED;white-space:nowrap">${s.otpCode?esc(s.otpCode):'<span style="color:var(--gray-400)">—</span>'}</td>
+        <td style="max-width:180px">${pejabat}</td>
+        <td>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <button class="btn btn-warning btn-sm" onclick="aktivasiOTP('${esc(s.refKode)}')" style="white-space:nowrap">🔐 Aktivasi OTP</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+function renderOTPDone_(list){
+  const el = document.getElementById('otpBodyDone');
+  if(!el) return;
+  if(!list.length){
+    el.innerHTML='<p style="color:var(--gray-400);font-size:13px;padding:8px 0">Belum ada riwayat aktivasi OTP yang selesai.</p>';
+    return;
+  }
+  el.innerHTML=`<div style="overflow-x:auto">
+  <table class="tbl">
+    <thead><tr>
+      <th>ID / Ref</th><th>Satker</th><th>KPA</th><th>Sumber</th>
+      <th>Status</th><th>Tgl Selesai</th><th>Foto / Bukti OTP</th><th style="min-width:100px">Aksi</th>
+    </tr></thead>
+    <tbody>
+    ${list.map(s=>{
+      const fotoHtml = s.fotosOTP.length
+        ? s.fotosOTP.map(f=>{
+            const isSatkerBukti = f.isSatkerUpload || f.key.startsWith('fotoOTP_');
+            const badge = _otpModeBadge(f.mode);
+            const labelBadge = isSatkerBukti
+              ? `<span style="font-size:9px;background:#FEF3C7;color:#92400E;padding:1px 5px;border-radius:6px;font-weight:700">Satker</span>`
+              : `<span style="font-size:9px;background:#D1FAE5;color:#065F46;padding:1px 5px;border-radius:6px;font-weight:700">KPPN</span>`;
+            if(!f.url){
+              return `<div style="display:flex;align-items:center;gap:4px;margin:3px 0;flex-wrap:wrap">
+                ${badge}${labelBadge}
+                <span style="font-size:11px;color:var(--gray-600)">${esc(f.nama||f.peran||'Hadir Langsung')}</span>
+              </div>`;
+            }
+            return `<div style="display:flex;align-items:center;gap:4px;margin:3px 0;flex-wrap:wrap">
+              ${badge}${labelBadge}
+              <span style="font-size:11px;color:var(--gray-700);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(f.nama||f.peran||'')}">
+                ${esc(f.nama||f.peran||'Foto OTP')}
+              </span>
+              <button class="btn btn-outline btn-sm" style="padding:2px 7px;font-size:11px"
+                onclick="otpDownloadFoto('${esc(f.url)}','${esc(f.name||'foto_otp.jpg')}')">⬇️</button>
+            </div>`;
+          }).join('')
+        : `<span style="font-size:11px;color:var(--gray-400)">—</span>`;
+
+      return `<tr>
+        <td style="font-family:monospace;font-size:11px;white-space:nowrap">${esc(s.refKode)}</td>
+        <td><strong>${esc(s.namaSatker)}</strong><br/><span style="font-size:10px;color:var(--gray-400)">${esc(s.kodeSatker)}</span></td>
+        <td style="font-size:12px">${esc(s.namaKpa||'—')}</td>
+        <td>${_otpSumberBadge(s.sumber)}</td>
+        <td>${bstat(s.status)}</td>
+        <td style="font-size:11px;white-space:nowrap">${fmtTgl(s.updatedAt||'')}</td>
+        <td style="max-width:220px">${fotoHtml}</td>
+        <td>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <button class="btn btn-outline btn-sm" style="font-size:11px"
+              onclick="aktivasiOTP('${esc(s.refKode)}')">✏️ Edit OTP</button>
+            <button class="btn btn-outline btn-sm" style="font-size:11px;color:#7C3AED;border-color:#7C3AED"
+              onclick="otpUploadFotoModal('${esc(s.refKode)}','${esc(s.namaSatker)}')">📤 Foto</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table></div>`;
 }
 
 // Helper: ekstrak semua foto OTP dari filesJson dan/atau catatanAdmin (legacy META_OTP)
@@ -2066,7 +2210,7 @@ async function aktivasiOTP(refKode){
   _otpPejabatData = [];
   document.getElementById('otpRefKode').textContent = refKode;
   document.getElementById('otpCatatan').value = '';
-  const isPergantian = refKode.startsWith('PG-');
+  const isPergantian = refKode.startsWith('PRB-');
   try{
     let users = [];
     if(isPergantian){
