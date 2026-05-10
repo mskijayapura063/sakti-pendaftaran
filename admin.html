@@ -647,10 +647,11 @@ const STATUS_MAP={
   'Ditolak':     {label:'Ditolak',    cls:'red'},
   'draft':       {label:'Draft',      cls:'gray'},
   'OTP_Aktif':   {label:'OTP Aktif',  cls:'green'},
+  'Aktif':       {label:'OTP Aktif',  cls:'green'},  // legacy — sama dengan OTP_Aktif
 };
 function bstat(status){
   // Jika status berisi tanggal/timestamp (data lama yang rusak), tampilkan sebagai Menunggu
-  const VALID=['Menunggu','Diproses','Terdaftar','Selesai','Ditolak','submitted','draft','OTP_Aktif'];
+  const VALID=['Menunggu','Diproses','Terdaftar','Selesai','Ditolak','submitted','draft','OTP_Aktif','Aktif'];
   if(status && !VALID.includes(status)) status='Menunggu';
   const s=STATUS_MAP[status]||{label:status||'—',cls:'gray'};
   const C={blue:'background:#DBEAFE;color:#1E40AF',orange:'background:#FEF3C7;color:#92400E',
@@ -1457,8 +1458,7 @@ async function lihatDetail(refKode){
     activeDetailData=s; // simpan untuk download Excel
     const body=document.getElementById('detailBody');
     // Kumpulkan daftar dokumen yang diupload
-    const filesObj = s.files || {};
-    const fileEntries = Object.entries(filesObj);
+    const filesObj = s.files || s.filesJson || {};
     const LABEL_MAP = {
       formPendaftaran:'Form Pendaftaran User SAKTI',
       skPengguna:     'SK Pengguna SAKTI',
@@ -1471,6 +1471,9 @@ async function lihatDetail(refKode){
       ktp:'KTP KPA', suratPermohonan:'Surat Permohonan',
       pakta:'Pakta Integritas', suratKuasa:'Surat Kuasa', lainnya:'Dokumen Lainnya',
     };
+    // Pisahkan foto OTP dari dokumen biasa
+    const fotoOTPEntries = Object.entries(filesObj).filter(([k])=>k.startsWith('otpFoto_'));
+    const fileEntries    = Object.entries(filesObj).filter(([k])=>!k.startsWith('otpFoto_'));
     body.innerHTML=`
       <!-- Info utama -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px">
@@ -1508,6 +1511,23 @@ async function lihatDetail(refKode){
       <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#991b1b;display:flex;align-items:center;gap:8px">
         <span>⚠️</span> Belum ada dokumen yang diupload satker.
       </div>`}
+
+      <!-- Foto OTP Aktivasi -->
+      ${fotoOTPEntries.length?`
+      <div class="card-title" style="margin-bottom:8px">📷 Foto Aktivasi OTP</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        ${fotoOTPEntries.map(([key,f])=>{
+          const fObj = (typeof f==='object'&&f) ? f : {url:String(f||'')};
+          const namaLabel = fObj.nama || fObj.peran || key.replace('otpFoto_','');
+          const fileUrl   = fObj.url || '';
+          const fileName  = fObj.name || ('foto_otp.jpg');
+          return `<div style="display:inline-flex;align-items:center;gap:6px;background:#F0FDF4;border:1px solid #86EFAC;border-radius:6px;padding:6px 12px">
+            <span style="font-size:12px;color:#15803D;font-weight:600">📷 ${esc(namaLabel)}</span>
+            <button onclick="otpDownloadFoto('${esc(fileUrl)}','${esc(fileName)}')"
+              style="background:#15803D;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">⬇️ Unduh</button>
+          </div>`;
+        }).join('')}
+      </div>`:''}
 
       <!-- Data Pengguna -->
       ${(s.users||[]).length?`
@@ -1786,7 +1806,7 @@ async function loadOTP(){
     _otpAllData = combined;
 
     const listPending = combined.filter(s=>!s.otpAktif && (s.status==='Terdaftar'||s.status==='Diproses'));
-    const listDone    = combined.filter(s=>s.otpAktif || s.status==='Selesai' || s.status==='Aktif');
+    const listDone    = combined.filter(s=>s.otpAktif || ['Selesai','Aktif','OTP_Aktif'].includes(s.status));
 
     // -- Tabel pending --
     if(!listPending.length){
@@ -2085,8 +2105,8 @@ async function doAktivasiOTP(){
       refKode: _otpRefKode,
       catatan,
       photos: _otpPejabatData.map(p=>({
-        nama: p.nama, peran: p.peran, mode: p.mode,
-        photoBase64: p.photoBase64||'', photoName: p.photoName||'', mimeType: p.mimeType||''
+        nama: p.nama, peran: p.peran, peranRaw: p.peranRaw||p.peran||'', mode: p.mode,
+        photoBase64: p.photoBase64||'', photoName: p.photoName||'', mimeType: p.mimeType||'image/jpeg'
       }))
     };
     const res = await apiPost(payload);
