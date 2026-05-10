@@ -686,44 +686,30 @@ let userSaktiData = null;       // cache data pendaftaran user sakti milik satke
 // ════════════════════════════════════════════════════════
 async function apiPost(payload) {
   if (currentUser?.token && !payload.token) payload.token = currentUser.token;
-  const body = JSON.stringify(payload);
-  let text;
+  let res;
   try {
-    // GAS selalu redirect 302 POST -> GET, sehingga body hilang jika pakai redirect:'follow'
-    // Solusi: pakai redirect:'manual', ambil URL redirect, lalu fetch langsung ke URL echo (GET dengan body di query tidak mungkin)
-    // Cara yang benar: fetch dengan redirect:'follow' ke URL exec AKAN mengikuti redirect dan
-    // GAS akan memproses body di doPost SEBELUM redirect -- response ada di echo URL
-    // Jadi: fetch POST dulu (dapat 302), lalu fetch GET ke location header
-    const r1 = await fetch(APPS_SCRIPT_URL, {
+    res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      redirect: 'manual',
-      body: body,
+      redirect: 'follow',
+      // JANGAN set Content-Type agar tidak trigger CORS preflight di Apps Script
+      body: JSON.stringify(payload),
     });
-    let echoUrl;
-    if (r1.type === 'opaqueredirect' || r1.status === 0) {
-      // Tidak bisa baca header karena opaque -- fallback ke follow langsung
-      const r2 = await fetch(APPS_SCRIPT_URL, { method:'POST', redirect:'follow', body });
-      text = await r2.text();
-    } else {
-      echoUrl = r1.headers.get('location');
-      if (!echoUrl) { text = await r1.text(); }
-      else { const r2 = await fetch(echoUrl); text = await r2.text(); }
-    }
   } catch(netErr) {
     console.error('[apiPost] Network error:', netErr);
     return { success:false, message:'Tidak bisa terhubung ke server. Cek koneksi internet & URL Apps Script.' };
   }
+  const text = await res.text();
   try {
     return JSON.parse(text);
   } catch(parseErr) {
-    console.error('[apiPost] Non-JSON response:', text?.slice(0,500));
+    console.error('[apiPost] Non-JSON response (status='+res.status+'):', text.slice(0,500));
     let hint = '';
-    if (text?.includes('Sorry, unable to open') || text?.includes('Google Drive')) {
-      hint = ' (Deployment Apps Script belum di-set "Anyone".)';
-    } else if (text?.includes('<html') || text?.includes('<HTML')) {
-      hint = ' (Server mengembalikan HTML. URL Apps Script mungkin salah.)';
+    if (text.includes('Sorry, unable to open') || text.includes('Google Drive')) {
+      hint = ' (Deployment Apps Script belum di-set "Anyone". Buka Apps Script → Deploy → Manage Deployments → Edit → Who has access: Anyone.)';
+    } else if (text.includes('<html') || text.includes('<HTML')) {
+      hint = ' (Server mengembalikan HTML, bukan JSON. URL Apps Script mungkin salah / deployment belum aktif.)';
     }
-    return { success:false, message:'Server tidak merespons JSON valid.'+hint };
+    return { success:false, message:'Server tidak merespons JSON valid (HTTP '+res.status+').'+hint };
   }
 }
 
@@ -3017,7 +3003,6 @@ function pgBuildDokumenList(menjadiUsers) {
   const butuhOTP   = semuaPeran.some(p => PG_PERAN_OTP.includes(p));
   const butuhSK    = semuaPeran.some(p => PG_PERAN_SK.includes(p));
   const butuhSpec  = semuaPeran.some(p => PG_PERAN_SPEC.includes(p));
-  const PERAN_OTP_LABEL = {SATKER_KPA:'KPA', SATKER_PPK:'PPK', SATKER_PPK_DFDD:'PPK DFDD', SATKER_PPSPM:'PPSPM'};
   const list = [];
   if (butuhOTP) list.push({ key:'formOTP', label:'Form Permohonan Aktivasi OTP',
       desc:'Khusus untuk role KPA, PPK, dan PPSPM', required:true });
@@ -3027,22 +3012,6 @@ function pgBuildDokumenList(menjadiUsers) {
       desc:'Surat Keputusan penetapan pengguna SAKTI dari pimpinan satker', required:true });
   if (butuhSpec) list.push({ key:'spesimen', label:'Spesimen Tanda Tangan',
       desc:'Khusus untuk role KPA, PPK, PPSPM, dan Bendahara', required:true });
-  // Bukti foto aktivasi OTP per pejabat — wajib jika ada role KPA/PPK/PPSPM
-  if (butuhOTP) {
-    (menjadiUsers || []).forEach((u, idx) => {
-      const otpPeran = (u.peranList || []).filter(p => PG_PERAN_OTP.includes(p));
-      if (!otpPeran.length) return;
-      const nama     = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
-      const peranStr = otpPeran.map(p => PERAN_OTP_LABEL[p] || p).join('/');
-      list.push({
-        key:         'fotoOTP_' + idx,
-        label:       'Bukti Aktivasi OTP — ' + nama + ' (' + peranStr + ')',
-        desc:        'Foto/screenshot bukti aktivasi OTP dari aplikasi SAKTI untuk ' + nama + ' (' + peranStr + '). Format: JPG/PNG.',
-        required:    true,
-        acceptImage: true
-      });
-    });
-  }
   (menjadiUsers || []).forEach((u, idx) => {
     const nama = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
     const nip  = (u.nipnrp || '').trim();
@@ -4021,7 +3990,6 @@ function rwRenderDetailGanti(g, rowKey){
     if (key.startsWith('sertBNT_')) { const i=parseInt(key.slice(8),10); return 'BNT — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
     if (key.startsWith('sertPNT_')) { const i=parseInt(key.slice(8),10); return 'PNT — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
     if (key.startsWith('sertSNT_')) { const i=parseInt(key.slice(8),10); return 'SNT — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
-    if (key.startsWith('fotoOTP_')) { const i=parseInt(key.slice(8),10); return 'Foto OTP — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
     return key;
   };
 
@@ -4143,11 +4111,6 @@ function rwRenderKartuGanti(g, isLatest) {
       const idx = parseInt(key.slice('sertSNT_'.length), 10);
       const u = menjadi[idx];
       return 'Sertifikat SNT — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
-    }
-    if (key.startsWith('fotoOTP_')) {
-      const idx = parseInt(key.slice('fotoOTP_'.length), 10);
-      const u = menjadi[idx];
-      return 'Foto OTP — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
     }
     return key;
   };
