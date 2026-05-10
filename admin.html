@@ -2685,13 +2685,14 @@ async function adminUnduhExcelPg(id){
     const semula  = Array.isArray(p.semula)?p.semula:[];
     const menjadi = Array.isArray(p.menjadi)?p.menjadi:[];
     const res = await apiPost({
-      action:     'generatePerubahanExcel',
-      id:         p.id||'',
-      namaSatker: p.namaSatker||'',
-      namaKpa:    p.namaKpa||'',
-      nip:        p.nip||'',
-      noHp:       p.noHp||'',
-      kota:       'Jayapura',
+      action:      'generatePerubahanExcel',
+      id:          p.id||'',
+      kodeSatker:  p.kodeSatker||'',
+      namaSatker:  p.namaSatker||'',
+      namaKpa:     p.namaKpa||'',
+      nip:         p.nip||'',
+      noHp:        p.noHp||'',
+      kota:        p.kota||'Jayapura',
       tglStr,
       tglSurat,
       semula,
