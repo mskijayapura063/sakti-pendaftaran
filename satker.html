@@ -4147,7 +4147,10 @@ function rwRenderKartuGanti(g, isLatest) {
     if (key.startsWith('fotoOTP_')) {
       const idx = parseInt(key.slice('fotoOTP_'.length), 10);
       const u = menjadi[idx];
-      return 'Foto OTP — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+      return 'Foto OTP (Bukti) — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+    }
+    if (key.startsWith('otpFoto_')) {
+      return 'Konfirmasi OTP KPPN — ' + key.replace('otpFoto_', '');
     }
     return key;
   };
@@ -4242,7 +4245,7 @@ function rwRenderKartuGanti(g, isLatest) {
     <div style="background:#FAF5FF;border:1px solid #DDD6FE;border-radius:8px;padding:12px 16px;margin-bottom:12px">
       <div style="font-size:12px;font-weight:700;color:#6D28D9;margin-bottom:8px">📎 Dokumen Pergantian (${fileKeys.length})</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
-        ${fileKeys.map(key => {
+        ${fileKeys.filter(k=>!k.startsWith('otpFoto_')).map(key => {
           const f = filesJson[key] || {};
           const label = resolveLabelPg(key);
           return `<button onclick="satkerDownloadDokumen('${esc(f.url||'')}','${esc(label)}')"
@@ -4254,6 +4257,79 @@ function rwRenderKartuGanti(g, isLatest) {
         }).join('')}
       </div>
     </div>`:''}
+
+    ${(()=>{
+      // Cek apakah ada role OTP di menjadi
+      const hasOtpRoleMenjadi = menjadi.some(u=>(u.peranList||[]).some(p=>PERAN_OTP.includes(p)));
+      if(!hasOtpRoleMenjadi) return '';
+
+      // Foto yang diupload oleh admin via aktivasi OTP (otpFoto_*)
+      const adminOtpFotos = fileKeys
+        .filter(k=>k.startsWith('otpFoto_'))
+        .map(k=>{
+          const v = filesJson[k] || {};
+          const isOnline = !v.mode || v.mode==='daring' || v.mode==='online';
+          return {key:k, url:(typeof v==='object'?v.url:v)||'', name:v.name||'foto_otp.jpg',
+            nama:v.nama||'', peran:v.peran||k.replace('otpFoto_',''), mode:v.mode||'daring', isOnline};
+        });
+
+      // Foto bukti OTP yang diupload satker (fotoOTP_*)
+      const satkerOtpFotos = fileKeys
+        .filter(k=>k.startsWith('fotoOTP_'))
+        .map(k=>{
+          const v = filesJson[k] || {};
+          const idx = parseInt(k.slice('fotoOTP_'.length),10);
+          const u = menjadi[idx];
+          const label = resolveLabelPg(k);
+          return {key:k, url:(typeof v==='object'?v.url:v)||v.url||'', name:v.name||'foto_otp.jpg', label};
+        });
+
+      const otpDone = adminOtpFotos.length > 0;
+      const pendingOTP = !otpDone && (isTerdaftar || isDiproses);
+
+      return `
+      <div style="background:${otpDone?'#f0fdf4':'#fffbeb'};border:1.5px solid ${otpDone?'#A5D6A7':'#fcd34d'};border-radius:10px;padding:14px 16px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:${otpDone?'#166534':'#92400e'};margin-bottom:8px">
+          ${otpDone?'✅ Aktivasi OTP Selesai':'🔐 Aktivasi OTP'}
+          ${pendingOTP?'<span style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:10px;margin-left:6px;font-weight:600">⏳ Menunggu aktivasi oleh KPPN</span>':''}
+        </div>
+
+        ${satkerOtpFotos.length?`
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;font-weight:600;color:#78350f;margin-bottom:6px">📸 Bukti aktivasi OTP yang Anda upload:</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${satkerOtpFotos.map(f=>`
+              <button onclick="satkerDownloadDokumen('${esc(f.url)}','${esc(f.label)}')"
+                style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #fcd34d;color:#92400e;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer">
+                📥 ${esc(f.label)}
+              </button>`).join('')}
+          </div>
+        </div>`:''}
+
+        ${otpDone?`
+        <div>
+          <div style="font-size:11px;font-weight:600;color:#166534;margin-bottom:6px">📋 Konfirmasi aktivasi OTP oleh KPPN:</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${adminOtpFotos.map(f=>{
+              const modeBadge = f.isOnline
+                ? `<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#D1FAE5;color:#065F46;font-weight:700">🟢 Online</span>`
+                : `<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#DBEAFE;color:#1D4ED8;font-weight:700">🤝 Hadir</span>`;
+              if(!f.url){
+                return `<div style="display:inline-flex;align-items:center;gap:5px;background:#f0fdf4;border:1px solid #A5D6A7;border-radius:6px;padding:5px 10px;font-size:11px">
+                  ${modeBadge}<span style="color:#166534;font-weight:600">${esc(f.nama||f.peran||'Hadir Langsung')}</span></div>`;
+              }
+              return `<button onclick="satkerDownloadDokumen('${esc(f.url)}','foto_otp_${esc(f.peran)}.jpg')"
+                style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #A5D6A7;color:#166534;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer">
+                ${modeBadge} 📥 ${esc(f.nama||f.peran||'Foto OTP')}
+              </button>`;
+            }).join('')}
+          </div>
+        </div>`:''}
+
+        ${!otpDone && !pendingOTP && !satkerOtpFotos.length?`
+        <div style="font-size:12px;color:#92400e">Permohonan ini memerlukan aktivasi OTP untuk pengguna dengan peran KPA/PPK/PPSPM. Aktivasi akan dilakukan oleh KPPN setelah dokumen diverifikasi.</div>`:''}
+      </div>`;
+    })()}
 
     ${(semula.length||menjadi.length)?`
     <details style="margin-bottom:12px" ${isLatest?'open':''}>
