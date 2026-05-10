@@ -662,31 +662,37 @@ let activeRollbackRef = null; // ref untuk rollback status
 // ════════════════════════════════════════════════════════
 async function apiPost(payload) {
   if (currentUser?.token && !payload.token) payload.token = currentUser.token;
-  let res;
+  const body = JSON.stringify(payload);
+  let text;
   try {
-    res = await fetch(APPS_SCRIPT_URL, {
+    const r1 = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      redirect: 'follow',
-      // JANGAN set Content-Type agar tidak trigger CORS preflight di Apps Script
-      body: JSON.stringify(payload),
+      redirect: 'manual',
+      body: body,
     });
+    if (r1.type === 'opaqueredirect' || r1.status === 0) {
+      const r2 = await fetch(APPS_SCRIPT_URL, { method:'POST', redirect:'follow', body });
+      text = await r2.text();
+    } else {
+      const echoUrl = r1.headers.get('location');
+      if (!echoUrl) { text = await r1.text(); }
+      else { const r2 = await fetch(echoUrl); text = await r2.text(); }
+    }
   } catch(netErr) {
     console.error('[apiPost] Network error:', netErr);
     return { success:false, message:'Tidak bisa terhubung ke server Apps Script. Cek koneksi internet & URL deploy.' };
   }
-  const text = await res.text();
   try {
     return JSON.parse(text);
   } catch(parseErr) {
-    console.error('[apiPost] Non-JSON response (status='+res.status+'):', text.slice(0,500));
-    // Apps Script biasanya return HTML "Sorry, unable to open the file" jika deployment tidak public
+    console.error('[apiPost] Non-JSON response:', text?.slice(0,500));
     let hint = '';
-    if (text.includes('Sorry, unable to open') || text.includes('Google Drive')) {
-      hint = ' (Deployment Apps Script belum di-set "Anyone" / "Siapa saja". Buka Apps Script → Deploy → Manage Deployments → Edit → Who has access: Anyone.)';
-    } else if (text.includes('<html') || text.includes('<HTML')) {
-      hint = ' (Server mengembalikan HTML, bukan JSON. URL Apps Script mungkin salah atau deployment belum aktif.)';
+    if (text?.includes('Sorry, unable to open') || text?.includes('Google Drive')) {
+      hint = ' (Deployment Apps Script belum di-set "Anyone".)';
+    } else if (text?.includes('<html') || text?.includes('<HTML')) {
+      hint = ' (Server mengembalikan HTML. URL Apps Script mungkin salah.)';
     }
-    return { success:false, message:'Server tidak merespons JSON valid (HTTP '+res.status+').'+hint };
+    return { success:false, message:'Server tidak merespons JSON valid.'+hint };
   }
 }
 
