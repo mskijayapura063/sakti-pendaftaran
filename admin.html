@@ -1471,9 +1471,57 @@ async function lihatDetail(refKode){
       ktp:'KTP KPA', suratPermohonan:'Surat Permohonan',
       pakta:'Pakta Integritas', suratKuasa:'Surat Kuasa', lainnya:'Dokumen Lainnya',
     };
-    // Pisahkan foto OTP dari dokumen biasa
+    // Pisahkan foto OTP dari dokumen biasa (format baru: key otpFoto_*)
     const fotoOTPEntries = Object.entries(filesObj).filter(([k])=>k.startsWith('otpFoto_'));
     const fileEntries    = Object.entries(filesObj).filter(([k])=>!k.startsWith('otpFoto_'));
+
+    // Parse META_OTP dari catatanAdmin (format lama)
+    // Format: META_OTP:{"mode":"...","photos":[{"nama":"...","peran":"...","fileUrl":"...","fileName":"..."}],...}
+    let metaOTP = null;
+    let catatanBersih = s.catatanAdmin || '';
+    if (catatanBersih.startsWith('META_OTP:')) {
+      try {
+        metaOTP = JSON.parse(catatanBersih.slice('META_OTP:'.length));
+        catatanBersih = ''; // sembunyikan raw JSON dari tampilan catatan
+      } catch(e) { metaOTP = null; }
+    }
+    // Foto OTP dari format lama (META_OTP.photos) digabung dengan format baru
+    const fotoOTPLegacy = [];
+    if (metaOTP && Array.isArray(metaOTP.photos)) {
+      metaOTP.photos.forEach(p => {
+        const url = p.fileUrl || p.url || '';
+        if (url) fotoOTPLegacy.push({
+          key: 'legacy_' + (p.peran||'OTP'),
+          url,
+          name: p.fileName || p.name || 'foto_otp.jpg',
+          nama: p.nama || p.peran || 'Foto OTP',
+          mode: metaOTP.mode || p.mode || '',
+          tglAktivasi: metaOTP.tglAktivasi || '',
+          aktivasiOleh: metaOTP.aktivasiOleh || '',
+        });
+      });
+      // Jika tidak ada foto (hadir_langsung), tetap tampilkan info aktivasi
+      if (!metaOTP.photos.length && metaOTP.tglAktivasi) {
+        fotoOTPLegacy.push({
+          key: 'legacy_info',
+          url: '',
+          name: '',
+          nama: 'Hadir Langsung',
+          mode: metaOTP.mode || 'hadir_langsung',
+          tglAktivasi: metaOTP.tglAktivasi,
+          aktivasiOleh: metaOTP.aktivasiOleh || '',
+        });
+      }
+    }
+    const allFotoOTP = [
+      ...fotoOTPEntries.map(([k,f])=>({
+        key:k, url:(typeof f==='object'?f.url:f)||'',
+        name:(typeof f==='object'?f.name:'')||'foto_otp.jpg',
+        nama:(typeof f==='object'?f.nama:'')||k.replace('otpFoto_',''),
+        mode:(typeof f==='object'?f.mode:'')||'', tglAktivasi:'', aktivasiOleh:'',
+      })),
+      ...fotoOTPLegacy,
+    ];
     body.innerHTML=`
       <!-- Info utama -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px">
@@ -1486,7 +1534,8 @@ async function lihatDetail(refKode){
         <div><span style="color:var(--gray-500)">No HP:</span><br/><strong>${esc(s.noHp||'—')}</strong></div>
         <div><span style="color:var(--gray-500)">Email:</span><br/><strong>${esc(s.email||'—')}</strong></div>
         ${s.diprosesoleh?`<div><span style="color:var(--gray-500)">Diproses oleh:</span><br/><strong style="font-family:monospace">${esc(s.diprosesoleh)}</strong></div>`:''}
-        ${s.catatanAdmin?`<div style="grid-column:1/-1"><span style="color:var(--red)">Catatan KPPN:</span><br/><strong style="color:var(--red)">${esc(s.catatanAdmin)}</strong></div>`:''}
+        ${metaOTP?`<div style="grid-column:1/-1"><span style="color:var(--green)">Aktivasi OTP:</span><br/><span style="font-size:12px;color:var(--gray-600)">🕐 ${esc(metaOTP.tglAktivasi?new Date(metaOTP.tglAktivasi).toLocaleString('id-ID'):'')} · oleh <strong>${esc(metaOTP.aktivasiOleh||'—')}</strong> · mode <strong>${esc(metaOTP.mode==='hadir_langsung'?'Hadir Langsung':'Online')}</strong></span></div>`:''}
+        ${catatanBersih?`<div style="grid-column:1/-1"><span style="color:var(--red)">Catatan KPPN:</span><br/><strong style="color:var(--red)">${esc(catatanBersih)}</strong></div>`:''}
       </div>
 
       <!-- Dokumen yang diupload -->
@@ -1513,17 +1562,17 @@ async function lihatDetail(refKode){
       </div>`}
 
       <!-- Foto OTP Aktivasi -->
-      ${fotoOTPEntries.length?`
+      ${allFotoOTP.length?`
       <div class="card-title" style="margin-bottom:8px">📷 Foto Aktivasi OTP</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-        ${fotoOTPEntries.map(([key,f])=>{
-          const fObj = (typeof f==='object'&&f) ? f : {url:String(f||'')};
-          const namaLabel = fObj.nama || fObj.peran || key.replace('otpFoto_','');
-          const fileUrl   = fObj.url || '';
-          const fileName  = fObj.name || ('foto_otp.jpg');
+        ${allFotoOTP.map(f=>{
+          const isHadirTanpaFoto = !f.url && f.mode==='hadir_langsung';
+          if(isHadirTanpaFoto) return `<div style="display:inline-flex;align-items:center;gap:6px;background:#F0FDF4;border:1px solid #86EFAC;border-radius:6px;padding:6px 14px">
+            <span style="font-size:12px;color:#15803D;font-weight:600">✅ Hadir Langsung${f.tglAktivasi?' — '+new Date(f.tglAktivasi).toLocaleDateString('id-ID'):''}</span>
+          </div>`;
           return `<div style="display:inline-flex;align-items:center;gap:6px;background:#F0FDF4;border:1px solid #86EFAC;border-radius:6px;padding:6px 12px">
-            <span style="font-size:12px;color:#15803D;font-weight:600">📷 ${esc(namaLabel)}</span>
-            <button onclick="otpDownloadFoto('${esc(fileUrl)}','${esc(fileName)}')"
+            <span style="font-size:12px;color:#15803D;font-weight:600">📷 ${esc(f.nama)}</span>
+            <button onclick="otpDownloadFoto('${esc(f.url)}','${esc(f.name)}')"
               style="background:#15803D;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">⬇️ Unduh</button>
           </div>`;
         }).join('')}
