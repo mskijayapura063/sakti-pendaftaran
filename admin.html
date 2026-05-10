@@ -1922,7 +1922,7 @@ async function loadOTP(){
 // Helper: ekstrak semua foto OTP dari filesJson dan/atau catatanAdmin (legacy META_OTP)
 function extractOtpFotos_(filesJson, catatanAdmin){
   const fotos = [];
-  // Format baru: otpFoto_* keys di filesJson
+  // Format baru: otpFoto_* keys di filesJson (set oleh admin via modal aktivasi OTP)
   if(filesJson && typeof filesJson==='object'){
     Object.entries(filesJson).forEach(([k,v])=>{
       if(k.startsWith('otpFoto_') && v){
@@ -1934,6 +1934,23 @@ function extractOtpFotos_(filesJson, catatanAdmin){
           nama: v.nama||'',
           peran: v.peran||k.replace('otpFoto_',''),
           mode: v.mode||'daring',
+        });
+      }
+    });
+  }
+  // Juga tampilkan fotoOTP_* (bukti aktivasi OTP diupload satker di pergantian)
+  if(filesJson && typeof filesJson==='object'){
+    Object.entries(filesJson).forEach(([k,v])=>{
+      if(k.startsWith('fotoOTP_') && v){
+        const url = (typeof v==='object'?v.url:v)||'';
+        fotos.push({
+          key: k,
+          url,
+          name: (typeof v==='object'?v.name:'')||'foto_otp.jpg',
+          nama: (typeof v==='object'?v.nama:'')||k,
+          peran: k,
+          mode: 'hadir_langsung',
+          isSatkerUpload: true,
         });
       }
     });
@@ -2308,7 +2325,7 @@ function renderPgTable(list){
             <button class="btn btn-danger btn-sm" onclick="tolakPg('${esc(p.id)}')">❌ Tolak</button>
           `:''}
           ${status==='Diproses'?`<button class="btn btn-success btn-sm" onclick="prosesPg('${esc(p.id)}')">✅ Lanjut ke Terdaftar</button>`:''}
-          ${status==='Terdaftar'?`<button class="btn btn-warning btn-sm" onclick="aktivasiOTP('${esc(p.id)}')">🔐 Aktivasi OTP</button>`:''}
+          ${status==='Terdaftar'&&p.needsOTP?`<button class="btn btn-warning btn-sm" onclick="aktivasiOTP('${esc(p.id)}')">🔐 Aktivasi OTP</button>`:''}
           ${isAdmin?`<button class="btn btn-danger btn-sm" onclick="hapusPerubahan('${esc(p.id)}')" title="Hapus rekaman pergantian" style="background:#7C3AED">🗑️</button>`:''}
         </div>
       </td>
@@ -2348,7 +2365,8 @@ function lihatDetailPg(id){
     if (k.startsWith('sertBNT_'))    { const i=parseInt(k.slice(8),10);  return 'BNT — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
     if (k.startsWith('sertPNT_'))    { const i=parseInt(k.slice(8),10);  return 'PNT — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
     if (k.startsWith('sertSNT_'))    { const i=parseInt(k.slice(8),10);  return 'SNT — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
-    if (k.startsWith('fotoOTP_'))    { const i=parseInt(k.slice(8),10);  return 'Foto OTP — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
+    if (k.startsWith('fotoOTP_'))    { const i=parseInt(k.slice(8),10);  return 'Foto OTP (Bukti Satker) — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
+    if (k.startsWith('otpFoto_'))    { const p=k.replace('otpFoto_',''); return 'Foto OTP (Konfirmasi KPPN) — '+p; }
     return k;
   };
   function renderUserMini(u){
