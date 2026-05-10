@@ -553,18 +553,6 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
   </div>
 </div>
 
-<!-- ══ MODAL UPLOAD FOTO OTP (Monitoring) ══ -->
-<div class="modal-overlay" id="modalOtpUploadFoto">
-  <div class="modal-box" style="max-width:480px">
-    <div class="modal-title">📷 Upload Foto Aktivasi OTP</div>
-    <div id="otpUploadFotoBody"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modalOtpUploadFoto')">Batal</button>
-      <button class="btn btn-primary" id="btnDoOtpUploadFoto" onclick="doOtpUploadFoto()">📤 Upload Foto</button>
-    </div>
-  </div>
-</div>
-
 <!-- ══ MODAL EDIT PERGANTIAN (Admin) ══ -->
 <div class="modal-overlay" id="modalEditPg">
   <div class="modal-box" style="max-width:680px;max-height:92vh;overflow-y:auto">
@@ -662,37 +650,31 @@ let activeRollbackRef = null; // ref untuk rollback status
 // ════════════════════════════════════════════════════════
 async function apiPost(payload) {
   if (currentUser?.token && !payload.token) payload.token = currentUser.token;
-  const body = JSON.stringify(payload);
-  let text;
+  let res;
   try {
-    const r1 = await fetch(APPS_SCRIPT_URL, {
+    res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      redirect: 'manual',
-      body: body,
+      redirect: 'follow',
+      // JANGAN set Content-Type agar tidak trigger CORS preflight di Apps Script
+      body: JSON.stringify(payload),
     });
-    if (r1.type === 'opaqueredirect' || r1.status === 0) {
-      const r2 = await fetch(APPS_SCRIPT_URL, { method:'POST', redirect:'follow', body });
-      text = await r2.text();
-    } else {
-      const echoUrl = r1.headers.get('location');
-      if (!echoUrl) { text = await r1.text(); }
-      else { const r2 = await fetch(echoUrl); text = await r2.text(); }
-    }
   } catch(netErr) {
     console.error('[apiPost] Network error:', netErr);
     return { success:false, message:'Tidak bisa terhubung ke server Apps Script. Cek koneksi internet & URL deploy.' };
   }
+  const text = await res.text();
   try {
     return JSON.parse(text);
   } catch(parseErr) {
-    console.error('[apiPost] Non-JSON response:', text?.slice(0,500));
+    console.error('[apiPost] Non-JSON response (status='+res.status+'):', text.slice(0,500));
+    // Apps Script biasanya return HTML "Sorry, unable to open the file" jika deployment tidak public
     let hint = '';
-    if (text?.includes('Sorry, unable to open') || text?.includes('Google Drive')) {
-      hint = ' (Deployment Apps Script belum di-set "Anyone".)';
-    } else if (text?.includes('<html') || text?.includes('<HTML')) {
-      hint = ' (Server mengembalikan HTML. URL Apps Script mungkin salah.)';
+    if (text.includes('Sorry, unable to open') || text.includes('Google Drive')) {
+      hint = ' (Deployment Apps Script belum di-set "Anyone" / "Siapa saja". Buka Apps Script → Deploy → Manage Deployments → Edit → Who has access: Anyone.)';
+    } else if (text.includes('<html') || text.includes('<HTML')) {
+      hint = ' (Server mengembalikan HTML, bukan JSON. URL Apps Script mungkin salah atau deployment belum aktif.)';
     }
-    return { success:false, message:'Server tidak merespons JSON valid.'+hint };
+    return { success:false, message:'Server tidak merespons JSON valid (HTTP '+res.status+').'+hint };
   }
 }
 
@@ -1675,7 +1657,7 @@ async function doRollback() {
 // ════════════════════════════════════════════════════════
 function renderOTP(){
   return `<div class="page-title">Monitoring Aktivasi OTP</div>
-  <div class="page-sub">Status aktivasi OTP dari pendaftaran user baru maupun pergantian user SAKTI</div>
+  <div class="page-sub">Status aktivasi OTP seluruh satker terdaftar</div>
   <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
     <button class="btn btn-secondary btn-sm" onclick="loadOTP()">🔄 Refresh</button>
   </div>
@@ -1689,9 +1671,6 @@ function renderOTP(){
   </div>`;
 }
 
-// Cache untuk data OTP monitoring
-let _otpAllData = [];
-
 async function loadOTP(){
   const pending=document.getElementById('otpBodyPending');
   const done=document.getElementById('otpBodyDone');
@@ -1699,86 +1678,32 @@ async function loadOTP(){
   pending.innerHTML='<p style="color:var(--gray-400);font-size:13px">Memuat...</p>';
   done.innerHTML='<p style="color:var(--gray-400);font-size:13px">Memuat...</p>';
   try{
-    // Load dari kedua sumber: pendaftaran user baru + pergantian user
-    const [resPendaftaran, resPergantian] = await Promise.all([
-      apiPost({action:'getDaftarList'}),
-      apiPost({action:'getDaftarPerubahan'})
-    ]);
-
-    const OTP_ROLES = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
-
-    // Gabungkan dengan menambahkan label sumber
-    let combined = [];
-
-    // Dari pendaftaran user baru
-    if(resPendaftaran.success){
-      (resPendaftaran.list||[]).forEach(s=>{
-        const users = s.users || s.usersJson || [];
-        const hasOtpRole = users.some(u=>(u.peranList||[]).some(p=>OTP_ROLES.includes(p)));
-        if(hasOtpRole || s.hasOTP || s.otpCode){
-          // Kumpulkan foto OTP dari filesJson
-          const fotosOTP = extractOtpFotos_(s.filesJson||{});
-          combined.push({
-            id: s.refKode, refKode: s.refKode,
-            namaSatker: s.namaSatker||'—',
-            kodeSatker: s.kodeSatker||'',
-            status: s.status||'',
-            otpAktif: !!(s.otpAktif),
-            otpCode: s.otpCode||'',
-            updatedAt: s.updatedAt||s.tanggalDaftar||'',
-            sumber: 'Pendaftaran',
-            fotosOTP,
-            hasOtpRole
-          });
-        }
-      });
+    const res=await apiPost({action:'getDaftarList'});
+    if(!res.success){
+      pending.innerHTML=`<p style="color:var(--red)">❌ ${esc(res.message||'Gagal')}</p>`;
+      done.innerHTML='';
+      return;
     }
-
-    // Dari pergantian user
-    if(resPergantian.success){
-      (resPergantian.list||[]).forEach(p=>{
-        const menjadi = p.menjadi || [];
-        const hasOtpRole = menjadi.some(u=>(u.peranList||[]).some(r=>OTP_ROLES.includes(r)));
-        if(hasOtpRole){
-          const fotosOTP = extractOtpFotos_(p.filesJson||{});
-          const sudahAktif = (p.status==='Selesai');
-          combined.push({
-            id: p.id, refKode: p.id,
-            namaSatker: p.namaSatker||'—',
-            kodeSatker: p.kodeSatker||'',
-            status: p.status||'',
-            otpAktif: sudahAktif,
-            otpCode: '',
-            updatedAt: p.updatedAt||p.createdAt||'',
-            sumber: 'Pergantian',
-            fotosOTP,
-            hasOtpRole
-          });
-        }
-      });
-    }
-
-    _otpAllData = combined;
-
-    const listPending = combined.filter(s=>!s.otpAktif && (s.status==='Terdaftar'||s.status==='Diproses'));
-    const listDone    = combined.filter(s=>s.otpAktif || s.status==='Selesai' || s.status==='Aktif');
+    const all = res.list||[];
+    // Satker yang butuh OTP = sudah Terdaftar/Selesai, punya field hasOTP atau otpCode, belum aktif
+    const listPending = all.filter(s=>(s.status==='Terdaftar'||s.status==='Diproses'||s.sudahTerdaftar)&&!s.otpAktif&&(s.hasOTP||s.otpCode));
+    const listDone    = all.filter(s=>s.otpAktif||(s.status==='Selesai'&&(s.hasOTP||s.otpCode)));
 
     // -- Tabel pending --
     if(!listPending.length){
       pending.innerHTML='<p style="color:var(--green);font-weight:600;padding:8px 0">✅ Tidak ada satker yang menunggu aktivasi OTP.</p>';
     } else {
       pending.innerHTML=`<div style="overflow-x:auto"><table class="tbl">
-        <thead><tr><th>ID / Ref</th><th>Satker</th><th>Sumber</th><th>Status</th><th>Kode OTP</th><th>Aksi</th></tr></thead>
+        <thead><tr><th>Ref</th><th>Satker</th><th>Status</th><th>Kode OTP</th><th>Aksi</th></tr></thead>
         <tbody>${listPending.map(s=>`<tr>
           <td style="font-family:monospace;font-size:11px">${esc(s.refKode)}</td>
-          <td><strong>${esc(s.namaSatker)}</strong></td>
-          <td><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${s.sumber==='Pergantian'?'#EDE9FE':'#DBEAFE'};color:${s.sumber==='Pergantian'?'#7C3AED':'var(--blue)'}">${esc(s.sumber)}</span></td>
+          <td><strong>${esc(s.namaSatker||'—')}</strong></td>
           <td>${bstat(s.status)}</td>
           <td style="font-family:monospace;font-weight:700;color:var(--purple)">${esc(s.otpCode||'—')}</td>
           <td><button class="btn btn-primary btn-sm" onclick="aktivasiOTP('${esc(s.refKode)}')">🔐 Aktivasi OTP</button></td>
         </tr>`).join('')}</tbody>
       </table></div>
-      <p style="font-size:12px;color:var(--gray-500);margin-top:8px">${listPending.length} rekaman menunggu aktivasi OTP</p>`;
+      <p style="font-size:12px;color:var(--gray-500);margin-top:8px">${listPending.length} satker menunggu aktivasi OTP</p>`;
     }
 
     // -- Tabel riwayat sudah aktif --
@@ -1786,118 +1711,22 @@ async function loadOTP(){
       done.innerHTML='<p style="color:var(--gray-400);font-size:13px;padding:8px 0">Belum ada riwayat aktivasi OTP yang selesai.</p>';
     } else {
       done.innerHTML=`<div style="overflow-x:auto"><table class="tbl">
-        <thead><tr><th>ID / Ref</th><th>Satker</th><th>Sumber</th><th>Status</th><th>Tgl Update</th><th>Foto OTP</th><th>Aksi</th></tr></thead>
+        <thead><tr><th>Ref</th><th>Satker</th><th>Status</th><th>Kode OTP</th><th>Tgl Aktivasi</th><th>Metode</th></tr></thead>
         <tbody>${listDone.map(s=>`<tr>
           <td style="font-family:monospace;font-size:11px">${esc(s.refKode)}</td>
-          <td><strong>${esc(s.namaSatker)}</strong></td>
-          <td><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${s.sumber==='Pergantian'?'#EDE9FE':'#DBEAFE'};color:${s.sumber==='Pergantian'?'#7C3AED':'var(--blue)'}">${esc(s.sumber)}</span></td>
+          <td><strong>${esc(s.namaSatker||'—')}</strong></td>
           <td>${bstat(s.status)}</td>
-          <td style="font-size:12px">${fmtTgl(s.updatedAt||'')}</td>
-          <td>
-            ${s.fotosOTP.length
-              ? s.fotosOTP.map(f=>`<div style="display:inline-flex;align-items:center;gap:4px;margin:2px 0">
-                  <span style="font-size:11px;color:var(--green)">📷 ${esc(f.nama||f.peran||'Foto')}</span>
-                  <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:11px" onclick="otpDownloadFoto('${esc(f.url)}','${esc(f.name||'foto_otp.jpg')}')">⬇️</button>
-                </div>`).join('')
-              : `<span style="font-size:11px;color:var(--gray-400)">—</span>`
-            }
-          </td>
-          <td>
-            <button class="btn btn-outline btn-sm" onclick="otpUploadFotoModal('${esc(s.refKode)}','${esc(s.namaSatker)}')">📤 Upload Foto</button>
-          </td>
+          <td style="font-family:monospace;font-weight:700;color:var(--purple)">${esc(s.otpCode||'—')}</td>
+          <td style="font-size:12px">${fmtTgl(s.otpTanggal||s.tanggalOTP||s.updatedAt||'')}</td>
+          <td style="font-size:12px">${esc(s.otpMetode||s.metodePejabat||'—')}</td>
         </tr>`).join('')}</tbody>
       </table></div>
-      <p style="font-size:12px;color:var(--gray-500);margin-top:8px">${listDone.length} rekaman OTP sudah aktif</p>`;
+      <p style="font-size:12px;color:var(--gray-500);margin-top:8px">${listDone.length} satker OTP sudah aktif</p>`;
     }
   }catch(e){
     pending.innerHTML=`<p style="color:var(--red)">❌ Error: ${esc(e.message)}</p>`;
     done.innerHTML='';
   }
-}
-
-// Helper: ekstrak semua foto OTP dari filesJson
-function extractOtpFotos_(filesJson){
-  const fotos = [];
-  if(!filesJson||typeof filesJson!=='object') return fotos;
-  Object.entries(filesJson).forEach(([k,v])=>{
-    if(k.startsWith('otpFoto_') && v && v.url){
-      fotos.push({key:k, url:v.url, name:v.name||'foto_otp.jpg', nama:v.nama||'', peran:v.peran||k.replace('otpFoto_','')});
-    }
-  });
-  return fotos;
-}
-
-// Download foto OTP
-async function otpDownloadFoto(url, fileName){
-  showToast('⏳ Mengunduh foto...');
-  try{
-    const res = await apiPost({action:'getFotoOTP', url});
-    if(!res.success){showToast(res.message||'Gagal',true);return;}
-    const bytes = Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
-    const blob  = new Blob([bytes],{type:res.mimeType||'image/jpeg'});
-    const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=res.fileName||fileName; a.click();
-    URL.revokeObjectURL(a.href);
-    showToast('✅ Foto OTP berhasil didownload',false,true);
-  }catch(e){showToast('❌ Gagal download: '+e.message,true);}
-}
-
-// State upload foto OTP
-let _otpUploadRefKode = '';
-let _otpUploadNamaSatker = '';
-
-function otpUploadFotoModal(refKode, namaSatker){
-  _otpUploadRefKode   = refKode;
-  _otpUploadNamaSatker = namaSatker;
-  const body = document.getElementById('otpUploadFotoBody');
-  if(body){
-    body.innerHTML = `
-      <div style="margin-bottom:12px;font-size:13px">
-        <strong>Ref/ID:</strong> <span style="font-family:monospace">${esc(refKode)}</span><br/>
-        <strong>Satker:</strong> ${esc(namaSatker)}
-      </div>
-      <div class="form-group" style="margin-bottom:10px">
-        <label style="font-size:13px;font-weight:600">Nama Pejabat</label>
-        <input type="text" id="otpUploadNama" placeholder="Contoh: Budi Santoso" style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:13px"/>
-      </div>
-      <div class="form-group" style="margin-bottom:10px">
-        <label style="font-size:13px;font-weight:600">Peran OTP</label>
-        <select id="otpUploadPeran" style="width:100%;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:13px;background:#fff">
-          <option value="SATKER_KPA">KPA</option>
-          <option value="SATKER_PPK">PPK</option>
-          <option value="SATKER_PPK_DFDD">PPK DFDD</option>
-          <option value="SATKER_PPSPM">PPSPM</option>
-        </select>
-      </div>
-      <div class="form-group" style="margin-bottom:10px">
-        <label style="font-size:13px;font-weight:600">Foto Aktivasi OTP <span style="color:var(--red)">*</span></label>
-        <input type="file" id="otpUploadFile" accept="image/jpeg,image/png,image/jpg"
-          style="width:100%;padding:8px;border:2px dashed var(--blue);border-radius:8px;cursor:pointer;font-size:13px"/>
-        <div id="otpUploadErr" style="display:none;color:var(--red);font-size:12px;margin-top:4px"></div>
-      </div>`;
-  }
-  openModal('modalOtpUploadFoto');
-}
-
-async function doOtpUploadFoto(){
-  const nama    = (document.getElementById('otpUploadNama')?.value||'').trim();
-  const peran   = document.getElementById('otpUploadPeran')?.value||'SATKER_KPA';
-  const fileInp = document.getElementById('otpUploadFile');
-  const errEl   = document.getElementById('otpUploadErr');
-  errEl.style.display='none';
-  const file = fileInp?.files?.[0];
-  if(!file){ errEl.textContent='Pilih file foto terlebih dahulu'; errEl.style.display='block'; return; }
-  if(file.size > 2*1024*1024){ errEl.textContent='Foto terlalu besar! Maks 2 MB.'; errEl.style.display='block'; return; }
-  const btn = document.getElementById('btnDoOtpUploadFoto');
-  btn.disabled=true; btn.textContent='⏳ Mengupload...';
-  try{
-    const b64 = await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result.split(',')[1]); fr.onerror=rej; fr.readAsDataURL(file); });
-    const res = await apiPost({action:'uploadFotoOTP', refKode:_otpUploadRefKode, photoBase64:b64, photoName:file.name, mimeType:file.type, peranRaw:peran, namaKpa:nama});
-    if(!res.success){ showToast(res.message||'Gagal upload', true); btn.disabled=false; btn.textContent='📤 Upload Foto'; return; }
-    showToast('✅ Foto OTP berhasil diupload!', false, true);
-    closeModal('modalOtpUploadFoto');
-    loadOTP();
-  }catch(e){ showToast('❌ Error: '+e.message, true); }
-  btn.disabled=false; btn.textContent='📤 Upload Foto';
 }
 
 // ── State untuk modal OTP ──────────────────────────────────────────
@@ -1912,18 +1741,9 @@ async function aktivasiOTP(refKode){
   _otpPejabatData = [];
   document.getElementById('otpRefKode').textContent = refKode;
   document.getElementById('otpCatatan').value = '';
-  const isPergantian = refKode.startsWith('PG-');
   try{
-    let users = [];
-    if(isPergantian){
-      // Untuk pergantian: ambil dari daftar perubahan dan cari berdasar ID
-      const res = await apiPost({action:'getDaftarPerubahan'});
-      const entry = (res.list||[]).find(x=>x.id===refKode);
-      if(entry) users = entry.menjadi || [];
-    } else {
-      const res = await apiPost({action:'getDetail', refKode});
-      users = res.users || res.usersJson || [];
-    }
+    const res = await apiPost({action:'getDetail', refKode});
+    const users = res.users || res.usersJson || [];
     const pejabat = [];
     users.forEach(u=>{
       const matchPeran = (u.peranList||[]).filter(p=>PERAN_OTP_LIST.includes(p));
@@ -2205,15 +2025,6 @@ function lihatDetailPg(id){
     skPengguna:'SK Pengguna SAKTI', spesimen:'Spesimen TTD',
     formPergantian:'Form Pergantian', pdfDokumen:'Dokumen (lama)',
   };
-  const resolveLabelPg = (k) => {
-    if (LABEL_PG[k]) return LABEL_PG[k];
-    if (k.startsWith('ktp_menjadi_')) { const i=parseInt(k.slice(12),10); return 'KTP — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
-    if (k.startsWith('sertBNT_'))    { const i=parseInt(k.slice(8),10);  return 'BNT — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
-    if (k.startsWith('sertPNT_'))    { const i=parseInt(k.slice(8),10);  return 'PNT — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
-    if (k.startsWith('sertSNT_'))    { const i=parseInt(k.slice(8),10);  return 'SNT — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
-    if (k.startsWith('fotoOTP_'))    { const i=parseInt(k.slice(8),10);  return 'Foto OTP — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
-    return k;
-  };
   function renderUserMini(u){
     return '<tr>'
       +'<td>'+esc(u.nama||'—')+'</td>'
@@ -2249,7 +2060,7 @@ function lihatDetailPg(id){
       ?'<div style="font-weight:700;margin-bottom:8px">📎 Dokumen</div>'
        +'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">'
        +fileEntries.map(([k,v])=>'<a href="'+(v.url||'#')+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#F3F4F6;border-radius:8px;font-size:12px;text-decoration:none;color:var(--gray-700);border:1px solid #E5E7EB">'
-         +'📄 '+esc(resolveLabelPg(k))+'<span style="font-size:10px;color:var(--gray-400)">'+(v.name?'('+esc(v.name)+')':'')+'</span></a>').join('')
+         +'📄 '+esc(LABEL_PG[k]||k)+'<span style="font-size:10px;color:var(--gray-400)">'+(v.name?'('+esc(v.name)+')':'')+'</span></a>').join('')
        +'</div>'
       :'')
     +((p.status||'').toLowerCase()==='menunggu' && fileEntries.length
