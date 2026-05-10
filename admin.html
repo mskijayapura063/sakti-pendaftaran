@@ -607,11 +607,22 @@ function showToast(msg, isErr=false, isSuccess=false){
   _toastTimer=setTimeout(()=>{ el.className=''; },3800);
 }
 
+function parseTgl(val){
+  if(!val) return null;
+  // Handle format dd/MM/yyyy HH:mm dari backend GAS
+  const m = String(val).match(/^(\d{2})\/(\d{2})\/(\d{4})(?: (\d{2}):(\d{2}))?/);
+  if(m) return new Date(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0));
+  const d = new Date(val);
+  return isNaN(d) ? null : d;
+}
+
 function fmtTgl(val){
   if(!val) return '—';
   try{
-    const d=new Date(val);
-    if(isNaN(d)) return String(val);
+    const d = parseTgl(val);
+    if(!d) return String(val);
+    // Jangan tampilkan tahun 1970 (epoch 0)
+    if(d.getFullYear() < 2000) return '—';
     return d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
   }catch(e){ return String(val); }
 }
@@ -619,8 +630,9 @@ function fmtTgl(val){
 function fmtTglWaktu(val){
   if(!val) return '—';
   try{
-    const d=new Date(val);
-    if(isNaN(d)) return String(val);
+    const d = parseTgl(val);
+    if(!d) return String(val);
+    if(d.getFullYear() < 2000) return '—';
     return d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})
       +' '+d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
   }catch(e){ return String(val); }
@@ -637,6 +649,9 @@ const STATUS_MAP={
   'OTP_Aktif':   {label:'OTP Aktif',  cls:'green'},
 };
 function bstat(status){
+  // Jika status berisi tanggal/timestamp (data lama yang rusak), tampilkan sebagai Menunggu
+  const VALID=['Menunggu','Diproses','Terdaftar','Selesai','Ditolak','submitted','draft','OTP_Aktif'];
+  if(status && !VALID.includes(status)) status='Menunggu';
   const s=STATUS_MAP[status]||{label:status||'—',cls:'gray'};
   const C={blue:'background:#DBEAFE;color:#1E40AF',orange:'background:#FEF3C7;color:#92400E',
     green:'background:#D1FAE5;color:#065F46',red:'background:#FEE2E2;color:#991B1B',
@@ -1116,11 +1131,10 @@ function lihatDetailEmail(id){
       <div><span style="color:var(--gray-500)">Tgl Submit:</span><br/><strong>${fmtTglWaktu(e.tanggalSubmit)}</strong></div>
       ${e.namaKpa?`<div><span style="color:var(--gray-500)">Nama KPA:</span><br/><strong>${esc(e.namaKpa)}</strong></div>`:''}
       ${e.nipKpa?`<div><span style="color:var(--gray-500)">NIP KPA:</span><br/><strong style="font-family:monospace">${esc(e.nipKpa)}</strong></div>`:''}
-      ${e.noHp?`<div><span style="color:var(--gray-500)">No. HP:</span><br/><strong>${esc(e.noHp)}</strong></div>`:''}
+      ${(e.noHpKpa||e.hpKpa)?`<div><span style="color:var(--gray-500)">No. HP KPA:</span><br/><strong>${esc(e.noHpKpa||e.hpKpa)}</strong></div>`:''}
       ${e.diprosesTgl?`<div><span style="color:var(--gray-500)">Diproses:</span><br/><strong>${fmtTglWaktu(e.diprosesTgl)}</strong></div>`:''}
       ${e.diprosesoleh?`<div><span style="color:var(--gray-500)">Oleh:</span><br/><strong>${esc(e.diprosesoleh)}</strong></div>`:''}
     </div>
-    ${e.keterangan?`<div class="info-box blue" style="margin-bottom:10px"><strong>Keterangan:</strong> ${esc(e.keterangan)}</div>`:''}
     ${e.alasanTolak?`<div class="info-box red" style="margin-bottom:12px"><strong>Alasan Penolakan:</strong> ${esc(e.alasanTolak)}</div>`:''}
 
     <!-- Status Dokumen PDF -->
@@ -1130,7 +1144,7 @@ function lihatDetailEmail(id){
         <div style="font-size:12px;font-weight:700;color:${e.sudahUploadPdf?'var(--green)':'var(--orange)'}">
           ${e.sudahUploadPdf?'Dokumen PDF tersedia':'Dokumen PDF belum diupload satker'}
         </div>
-        ${e.pdfFileName?`<div style="font-size:11px;color:var(--gray-600)">${esc(e.pdfFileName)}</div>`:'<div style="font-size:11px;color:var(--gray-500)">Satker harus upload PDF sebelum dapat diproses</div>'}
+        ${e.fileName?`<div style="font-size:11px;color:var(--gray-600)">${esc(e.fileName)}</div>`:'<div style="font-size:11px;color:var(--gray-500)">Satker harus upload PDF sebelum dapat diproses</div>'}
       </div>
       ${e.sudahUploadPdf?`<button class="btn btn-outline btn-sm" onclick="adminDownloadEmailPdf('${esc(e.id)}')">📥 Download PDF</button>`:''}
     </div>
@@ -1240,6 +1254,17 @@ async function hapusEmailSakti(id){
     const res=await apiPost({action:'hapusEmailSakti',id});
     if(!res.success){showToast(res.message||'Gagal',true);return;}
     showToast('✅ Data berhasil dihapus',false,true);
+    loadEmailDaftar();
+  }catch(e){showToast('Gagal terhubung ke server',true);}
+}
+
+async function repairEmailData(){
+  if(!confirm('Perbaiki data lama yang formatnya tidak valid? Ini akan memperbaiki kolom tanggal dan status di spreadsheet.')) return;
+  try{
+    showToast('🔧 Memperbaiki data...', false);
+    const res=await apiPost({action:'repairEmailSaktiData'});
+    if(!res.success){showToast(res.message||'Gagal',true);return;}
+    showToast('✅ '+res.message, false, true);
     loadEmailDaftar();
   }catch(e){showToast('Gagal terhubung ke server',true);}
 }
