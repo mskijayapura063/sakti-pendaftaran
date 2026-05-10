@@ -1807,11 +1807,11 @@ async function loadOTP(){
     // Dari pendaftaran user baru
     if(resPendaftaran.success){
       (resPendaftaran.list||[]).forEach(s=>{
-        const users = s.users || s.usersJson || [];
-        const hasOtpRole = users.some(u=>(u.peranList||[]).some(p=>OTP_ROLES.includes(p)));
-        if(hasOtpRole || s.hasOTP || s.otpCode){
-          // Kumpulkan foto OTP dari filesJson
-          const fotosOTP = extractOtpFotos_(s.filesJson||{});
+        // hasOTP dihitung di backend berdasarkan peranList; gunakan itu sebagai source of truth
+        const hasOtpRole = s.hasOTP || (s.users||s.usersJson||[]).some(u=>(u.peranList||[]).some(p=>OTP_ROLES.includes(p)));
+        if(hasOtpRole){
+          // Kumpulkan foto OTP dari filesJson (otpFotosJson) dan catatanAdmin (legacy META_OTP)
+          const fotosOTP = extractOtpFotos_(s.otpFotosJson||s.filesJson||{}, s.catatanAdmin||'');
           combined.push({
             id: s.refKode, refKode: s.refKode,
             namaSatker: s.namaSatker||'—',
@@ -1834,7 +1834,7 @@ async function loadOTP(){
         const menjadi = p.menjadi || [];
         const hasOtpRole = menjadi.some(u=>(u.peranList||[]).some(r=>OTP_ROLES.includes(r)));
         if(hasOtpRole){
-          const fotosOTP = extractOtpFotos_(p.filesJson||{});
+          const fotosOTP = extractOtpFotos_(p.filesJson||{}, p.catatanAdmin||'');
           const sudahAktif = (p.status==='Selesai');
           combined.push({
             id: p.id, refKode: p.id,
@@ -1889,10 +1889,20 @@ async function loadOTP(){
           <td style="font-size:12px">${fmtTgl(s.updatedAt||'')}</td>
           <td>
             ${s.fotosOTP.length
-              ? s.fotosOTP.map(f=>`<div style="display:inline-flex;align-items:center;gap:4px;margin:2px 0">
-                  <span style="font-size:11px;color:var(--green)">📷 ${esc(f.nama||f.peran||'Foto')}</span>
-                  <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:11px" onclick="otpDownloadFoto('${esc(f.url)}','${esc(f.name||'foto_otp.jpg')}')">⬇️</button>
-                </div>`).join('')
+              ? s.fotosOTP.map(f=>{
+                  const isOnline = !f.mode || f.mode==='daring' || f.mode==='online';
+                  const modeBadge = isOnline
+                    ? `<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#D1FAE5;color:#065F46;font-weight:700">🟢 Online</span>`
+                    : `<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#DBEAFE;color:#1D4ED8;font-weight:700">🤝 Hadir</span>`;
+                  if(!f.url){
+                    return `<div style="display:flex;align-items:center;gap:4px;margin:2px 0">${modeBadge}<span style="font-size:11px;color:var(--gray-600)">${esc(f.nama||'Hadir Langsung')}</span></div>`;
+                  }
+                  return `<div style="display:flex;align-items:center;gap:4px;margin:2px 0">
+                    ${modeBadge}
+                    <span style="font-size:11px;color:var(--gray-700)">${esc(f.nama||f.peran||'Foto')}</span>
+                    <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:11px" onclick="otpDownloadFoto('${esc(f.url)}','${esc(f.name||'foto_otp.jpg')}')">⬇️</button>
+                  </div>`;
+                }).join('')
               : `<span style="font-size:11px;color:var(--gray-400)">—</span>`
             }
           </td>
@@ -1909,15 +1919,48 @@ async function loadOTP(){
   }
 }
 
-// Helper: ekstrak semua foto OTP dari filesJson
-function extractOtpFotos_(filesJson){
+// Helper: ekstrak semua foto OTP dari filesJson dan/atau catatanAdmin (legacy META_OTP)
+function extractOtpFotos_(filesJson, catatanAdmin){
   const fotos = [];
-  if(!filesJson||typeof filesJson!=='object') return fotos;
-  Object.entries(filesJson).forEach(([k,v])=>{
-    if(k.startsWith('otpFoto_') && v && v.url){
-      fotos.push({key:k, url:v.url, name:v.name||'foto_otp.jpg', nama:v.nama||'', peran:v.peran||k.replace('otpFoto_','')});
-    }
-  });
+  // Format baru: otpFoto_* keys di filesJson
+  if(filesJson && typeof filesJson==='object'){
+    Object.entries(filesJson).forEach(([k,v])=>{
+      if(k.startsWith('otpFoto_') && v){
+        const url = (typeof v==='object'?v.url:v)||'';
+        fotos.push({
+          key: k,
+          url,
+          name: v.name||'foto_otp.jpg',
+          nama: v.nama||'',
+          peran: v.peran||k.replace('otpFoto_',''),
+          mode: v.mode||'daring',
+        });
+      }
+    });
+  }
+  // Format lama: META_OTP:... di catatanAdmin
+  if(fotos.length===0 && catatanAdmin && catatanAdmin.startsWith('META_OTP:')){
+    try{
+      const meta = JSON.parse(catatanAdmin.slice('META_OTP:'.length));
+      if(Array.isArray(meta.photos)){
+        meta.photos.forEach((p,i)=>{
+          const url = p.fileUrl||p.url||'';
+          fotos.push({
+            key: 'legacy_'+i,
+            url,
+            name: p.fileName||p.name||'foto_otp.jpg',
+            nama: p.nama||p.peran||'Foto OTP',
+            peran: p.peran||'',
+            mode: meta.mode||p.mode||'hadir_langsung',
+          });
+        });
+        // Jika tidak ada foto tapi ada tglAktivasi (hadir langsung tanpa foto)
+        if(!meta.photos.length && meta.tglAktivasi){
+          fotos.push({key:'legacy_hadir', url:'', name:'', nama:'Hadir Langsung', peran:'', mode:meta.mode||'hadir_langsung'});
+        }
+      }
+    }catch(e){}
+  }
   return fotos;
 }
 
