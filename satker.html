@@ -2245,7 +2245,11 @@ async function ubDoGenerateExcel(){
   const kota=(document.getElementById('ub_kotaTTD')?.value||'').trim()||'Jayapura';
   const tglSurat=document.getElementById('ub_tanggalSurat')?.value||'';
   const tglStr=tglSurat?ubFormatTglIndo(tglSurat):'______';
-  const refKode=ubGenRefKode(kodeSatker);
+  // Reuse refKode yang sudah berhasil di-submit sebelumnya (dalam sesi ini),
+  // atau ambil dari data existing di sheet (jika satker sudah pernah daftar sebelumnya).
+  // Ini mencegah error "Kode referensi sudah digunakan" saat klik unduh berulang kali.
+  const existingRefFromSheet = document.getElementById('ub_existingRefKode')?.value || '';
+  const refKode = ubLastRefKode || existingRefFromSheet || ubGenRefKode(kodeSatker);
   ubLastRefKode=refKode;
   showToast('⏳ Membuat Excel, mohon tunggu...');
   let fname;
@@ -2388,7 +2392,7 @@ function renderUserBaru() {
 async function initUserBaru() {
   const body = document.getElementById('userBaruBody');
   if (!body) return;
-  ubUsers.length=0; ubUserIdSeq=0; ubLocked=false;
+  ubUsers.length=0; ubUserIdSeq=0; ubLocked=false; ubLastRefKode='';
   const kode = currentUser?.username||'';
 
   try {
@@ -2457,6 +2461,7 @@ function ubBuildFormHTML(d, kode) {
         <input type="text" id="ub_namaSatker" value="${esc(d?d.namaSatker:currentUser?.namaLengkap||'')}" ${ro} placeholder="Nama lengkap satker"/>
       </div>
       <input type="hidden" id="ub_levelSatker" value="Satker"/>
+      <input type="hidden" id="ub_existingRefKode" value="${esc(d?.refKode||'')}"/>
     </div>
   </div>
 
