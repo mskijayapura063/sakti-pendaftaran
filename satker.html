@@ -2397,13 +2397,16 @@ async function initUserBaru() {
 
   try {
     const res = await apiPost({ action:'getSatkerDashboard' });
-    if (res.success && res.data && res.data.refKode) {
-      const d = res.data;
+    // res.latest / res.list[0] = record terbaru milik satker ini (punya refKode, status, usersJson, dll)
+    // res.data = object statistik (total, submitted, dll) — TIDAK punya refKode
+    const d = (res.success && (res.latest || (res.list && res.list[0]))) || null;
+    if (d && d.refKode) {
       ubLocked = ['submitted','diproses','terdaftar'].includes((d.status||'').toLowerCase());
       body.innerHTML = ubBuildFormHTML(d, kode);
       // Load users dari existing data
       try {
-        const existUsers = JSON.parse(d.usersJson || '[]');
+        const existUsers = Array.isArray(d.usersJson) ? d.usersJson
+          : JSON.parse(typeof d.usersJson === 'string' ? d.usersJson : '[]');
         existUsers.forEach(u => {
           const id = ubAddUser({nama:u.nama||'',nipnrp:u.nipnrp||u.nip||'',nik:u.nik||'',
             email:u.email||'',hp:u.hp||'',sk:u.sk||'',tglsk:u.tglsk||'',peranList:u.peranList||[]});
@@ -2413,7 +2416,6 @@ async function initUserBaru() {
     } else {
       ubLocked = false;
       body.innerHTML = ubBuildFormHTML(null, kode);
-      // Tidak auto-tambah user — biarkan user klik "+ Tambah Pengguna"
     }
     ubReindexUsers();
     setTimeout(()=>ubInitFlatpickrSurat(), 80);
