@@ -659,7 +659,7 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
     <div class="modal-title">📤 Upload Dokumen Pergantian User SAKTI</div>
     <div id="pgUploadBody"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-      <button class="btn btn-secondary" onclick="closeModal('modalUploadPerubahan')">Tutup</button>
+      <button class="btn btn-secondary" onclick="pgUploadTutup()">Tutup</button>
       <button class="btn btn-primary" onclick="pgUploadSelesai()">✅ Selesai</button>
     </div>
   </div>
@@ -2727,12 +2727,13 @@ function pgReindexAll(){
   pgMenjadiUsers.forEach((u,i)=>{const el=document.getElementById(`pgucnum-menjadi-${u.id}`);if(el)el.textContent=`Pengguna ${i+1}`;});
 }
 function pgIsFilled(u){ return !!(u&&(u.nama||'').trim()&&(u.nipnrp||'').trim()&&u.peranList&&u.peranList.length>0); }
+function pgIsFilledMenjadi(u){ return !!(u&&(u.nama||'').trim()&&(u.nipnrp||'').trim()&&u.peranList&&u.peranList.length>0&&(u.email||'').trim()&&(u.sk||'').trim()&&(u.tglsk||'').trim()); }
 
 function pgRenderUserCard(id, tipe){
   const u=pgGetUser(id,tipe);
   const wrap=document.getElementById(tipe==='semula'?'pgSemulaList':'pgMenjadiList');
   document.getElementById(`pguc-${tipe}-${id}`)?.remove();
-  const filled=pgIsFilled(u);
+  const filled=tipe==='menjadi'?pgIsFilledMenjadi(u):pgIsFilled(u);
   const editLabel=filled?'✏️ Edit':'📝 Isi Data';
   const editClass=filled?'btn btn-outline btn-sm':'btn btn-primary btn-sm';
   const arr = tipe==='semula'?pgSemulaUsers:pgMenjadiUsers;
@@ -2755,7 +2756,7 @@ function pgRefreshAllCardActions(){
   [...pgSemulaUsers,...pgMenjadiUsers].forEach(u=>{
     const actEl=document.getElementById(`pgucActions-${u.tipe}-${u.id}`);
     if(!actEl)return;
-    const filled=pgIsFilled(u);
+    const filled=u.tipe==='menjadi'?pgIsFilledMenjadi(u):pgIsFilled(u);
     const editLabel=filled?'✏️ Edit':'📝 Isi Data';
     const editClass=filled?'btn btn-outline btn-sm':'btn btn-primary btn-sm';
     const arr=u.tipe==='semula'?pgSemulaUsers:pgMenjadiUsers;
@@ -2770,17 +2771,30 @@ function pgRenderUserSummary(id, tipe){
   if(!el)return;
   const kelompoks=[...new Set((u.peranList||[]).map(k=>ubGetKelompok(k)).filter(Boolean))];
   const kbCls=kelompoks.length>1?'kb-M':kelompoks[0]?`kb-${kelompoks[0][0]}`:'';
+  // Untuk MENJADI: tampilkan indikator field wajib yang belum diisi
+  let missingBadge = '';
+  if (tipe === 'menjadi') {
+    const missing = [];
+    if (!(u.email||'').trim())  missing.push('Email');
+    if (!(u.sk||'').trim())     missing.push('No. SK');
+    if (!(u.tglsk||'').trim())  missing.push('Tgl SK');
+    if (missing.length) {
+      missingBadge = `<div style="margin-top:5px;font-size:11px;color:var(--red);font-weight:600">⚠️ Belum lengkap: ${missing.join(', ')} — klik <em>Isi Data</em></div>`;
+    }
+  }
   el.innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--gray-700)">
     <span><strong>Nama:</strong> ${u.nama||'<em style="color:var(--gray-400)">belum diisi</em>'}</span>
     <span style="color:var(--gray-300)">|</span>
     <span><strong>NIP/NRP:</strong> ${u.nipnrp||'—'}</span>
     <span style="color:var(--gray-300)">|</span>
-    <span><strong>Email:</strong> ${u.email||'—'}</span>
+    <span><strong>Email:</strong> ${u.email?esc(u.email):'<em style="color:var(--red)">wajib diisi</em>'}</span>
     <span style="color:var(--gray-300)">|</span>
     <span><strong>Peran:</strong> ${(u.peranList||[]).length?(u.peranList||[]).map(k=>`<span class="kb ${kbCls}">${ubGetLabel(k)}</span>`).join(''):'<em style="color:var(--red)">belum dipilih</em>'}</span>
     <span style="color:var(--gray-300)">|</span>
+    <span><strong>SK:</strong> ${u.sk?esc(u.sk):(tipe==='menjadi'?'<em style="color:var(--red)">wajib diisi</em>':'—')}</span>
+    <span style="color:var(--gray-300)">|</span>
     <span><strong>Ket:</strong> <em>${esc(u.keterangan||'Permanen')}</em></span>
-  </div>`;
+  </div>${missingBadge}`;
   pgRefreshAllCardActions();
 }
 
@@ -2855,6 +2869,11 @@ function pgSaveFromEditModal(){
     showToast('Email harus berakhiran .go.id atau .mil.id', true); return false;
   }
   if (!peranList.length) { showToast('Pilih minimal 1 peran', true); return false; }
+  // Validasi tambahan hanya untuk pengguna MENJADI
+  if (pgEditingTipe === 'menjadi') {
+    if (!sk) { showToast('Nomor SK wajib diisi untuk pengguna MENJADI', true); return false; }
+    if (!tglsk) { showToast('Tanggal SK wajib diisi untuk pengguna MENJADI', true); return false; }
+  }
 
   const ketEl = document.getElementById('ube-keterangan');
   const keterangan = ketEl ? ketEl.value : 'Permanen';
@@ -2952,10 +2971,16 @@ function pgValidate(){
   if(!pgSemulaUsers.length) errors.push('Data SEMULA wajib diisi minimal 1 pengguna');
   if(!pgMenjadiUsers.length) errors.push('Data MENJADI wajib diisi minimal 1 pengguna');
   pgSemulaUsers.forEach((u,i)=>{
-    if(!pgIsFilled(u)) errors.push(`Pengguna Semula ${i+1}: Data belum lengkap — klik Isi Data`);
+    if(!pgIsFilled(u)) errors.push(`Pengguna Semula ${i+1}: Data belum lengkap — klik Isi Data (wajib: Nama, NIP/NRP, Peran)`);
   });
   pgMenjadiUsers.forEach((u,i)=>{
-    if(!pgIsFilled(u)) errors.push(`Pengguna Menjadi ${i+1}: Data belum lengkap — klik Isi Data`);
+    const label = `Pengguna Menjadi ${i+1} (${(u.nama||'').trim()||'belum diisi'})`;
+    if (!(u.nama||'').trim())         errors.push(`${label}: Nama wajib diisi`);
+    else if (!(u.nipnrp||'').trim())  errors.push(`${label}: NIP/NRP wajib diisi`);
+    else if (!u.peranList||!u.peranList.length) errors.push(`${label}: Pilih minimal 1 peran`);
+    else if (!(u.email||'').trim())   errors.push(`${label}: Email kedinasan wajib diisi`);
+    else if (!(u.sk||'').trim())      errors.push(`${label}: Nomor SK wajib diisi`);
+    else if (!(u.tglsk||'').trim())   errors.push(`${label}: Tanggal SK wajib diisi`);
   });
   const errPanel=document.getElementById('pgErrPanel');
   const errList=document.getElementById('pgErrList');
@@ -3292,6 +3317,20 @@ function pgUploadSelesai() {
   }
 }
 
+function pgUploadTutup() {
+  // Cek apakah masih ada dokumen wajib yang belum diupload
+  const wajibBelum = pgUploadDokList.filter(d => d.required && !pgUploadDoneMap[d.key]);
+  if (wajibBelum.length) {
+    const confirmTutup = confirm(
+      '⚠️ Masih ada ' + wajibBelum.length + ' dokumen wajib yang belum diupload:\n\n' +
+      wajibBelum.map((d,i) => (i+1)+'. '+d.label).join('\n') +
+      '\n\nJika Anda tutup sekarang, pengajuan BELUM dapat diproses. Lanjutkan menutup?'
+    );
+    if (!confirmTutup) return; // Batal tutup
+  }
+  closeModal('modalUploadPerubahan');
+}
+
 // ════════════════════════════════════════════════════════
 // USER SAKTI — RIWAYAT
 // ════════════════════════════════════════════════════════
@@ -3356,22 +3395,49 @@ async function initUserRiwayat() {
 
     // Tambahkan riwayat pergantian — tag 'ganti', simpan tanggal di tanggalDaftar agar sortable
     let gantiAll = [];
-    if (resGanti && Array.isArray(resGanti.list)) {
+    if (resGanti && Array.isArray(resGanti.list) && resGanti.list.length > 0) {
       gantiAll = resGanti.list.map(g => ({
         ...g,
         _kind: 'ganti',
         tanggalDaftar: g.createdAt || g.tanggalDaftar || g.tglSurat || '',
       }));
+    } else if (resGanti && resGanti.list !== undefined && resGanti.list.length === 0) {
+      // list kosong — normal, tidak ada pergantian terdaftar
+      gantiAll = [];
+    } else if (resGanti && !resGanti.success) {
+      // server error saat fetch pergantian — jangan blokir seluruh riwayat
+      console.warn('[riwayat] getRiwayatPerubahan gagal:', resGanti.message);
     }
 
+    // Riwayat pergantian berhasil dimuat — gabungkan dengan pendaftaran
+    // Gabung DULU sebelum cek res.success, agar pergantian tetap muncul
+    // meski data pendaftaran bermasalah
+    _rwLastError = null;
+
     if (!res.success) {
+      // Pendaftaran gagal, tapi mungkin ada pergantian — tampilkan pergantian saja
+      if (gantiAll.length > 0) {
+        _rwLastError = null; // jangan blokir seluruh tampilan
+        _rwAllItems = gantiAll.slice().sort((a,b) => {
+          const parseDt = x => { const t = new Date(x.tanggalDaftar||x.createdAt||0); return isNaN(t)?0:t.getTime(); };
+          return parseDt(b) - parseDt(a);
+        });
+        window._pgRiwayatCache = window._pgRiwayatCache || {};
+        _rwAllItems.forEach(d => {
+          if (d._kind === 'ganti') {
+            const semula  = Array.isArray(d.semula)  ? d.semula  : (typeof d.semula==='string'?(()=>{try{return JSON.parse(d.semula);}catch(e){return [];}})():[]);
+            const menjadi = Array.isArray(d.menjadi) ? d.menjadi : (typeof d.menjadi==='string'?(()=>{try{return JSON.parse(d.menjadi);}catch(e){return [];}})():[]);
+            window._pgRiwayatCache[d.id] = { id:d.id, namaSatker:d.namaSatker, namaKpa:d.namaKpa, nip:d.nip, noHp:d.noHp, status:d.status, semula, menjadi, filesJson:d.filesJson||{}, catatanAdmin:d.catatanAdmin||'' };
+          }
+        });
+        rwApplyFilter();
+        return;
+      }
       _rwLastError = res.message || 'Gagal memuat data dari server.';
       _rwAllItems = [];
       rwApplyFilter();
       return;
     }
-
-    _rwLastError = null;
 
     // Gabung semua, urutkan dari terbaru
     const combined = [...daftarAll, ...gantiAll];
