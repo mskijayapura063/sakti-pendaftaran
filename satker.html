@@ -2977,9 +2977,15 @@ function pgValidate(){
   if(!noHp)       errors.push('No. HP wajib diisi');
   if(!pgSemulaUsers.length) errors.push('Data SEMULA wajib diisi minimal 1 pengguna');
   if(!pgMenjadiUsers.length) errors.push('Data MENJADI wajib diisi minimal 1 pengguna');
+  const pgSeenNIP = new Map();
   pgSemulaUsers.forEach((u,i)=>{
     if(!pgIsFilled(u)) errors.push(`Pengguna Semula ${i+1}: Data belum lengkap — klik Isi Data (wajib: Nama, NIP/NRP, Peran)`);
+    if((u.nipnrp||'').trim()){
+      if(pgSeenNIP.has(u.nipnrp.trim())) errors.push(`Pengguna Semula ${i+1}: NIP/NRP duplikat dengan pengguna lain di form ini`);
+      else pgSeenNIP.set(u.nipnrp.trim(), 'semula-'+(i+1));
+    }
   });
+  const pgSeenNIPMenjadi = new Map();
   pgMenjadiUsers.forEach((u,i)=>{
     const label = `Pengguna Menjadi ${i+1} (${(u.nama||'').trim()||'belum diisi'})`;
     if (!(u.nama||'').trim())         errors.push(`${label}: Nama wajib diisi`);
@@ -2988,6 +2994,10 @@ function pgValidate(){
     else if (!(u.email||'').trim())   errors.push(`${label}: Email kedinasan wajib diisi`);
     else if (!(u.sk||'').trim())      errors.push(`${label}: Nomor SK wajib diisi`);
     else if (!(u.tglsk||'').trim())   errors.push(`${label}: Tanggal SK wajib diisi`);
+    if((u.nipnrp||'').trim()){
+      if(pgSeenNIPMenjadi.has(u.nipnrp.trim())) errors.push(`${label}: NIP/NRP duplikat dengan pengguna MENJADI lain di form ini`);
+      else pgSeenNIPMenjadi.set(u.nipnrp.trim(), i+1);
+    }
   });
   const errPanel=document.getElementById('pgErrPanel');
   const errList=document.getElementById('pgErrList');
