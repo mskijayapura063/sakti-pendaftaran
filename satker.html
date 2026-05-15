@@ -761,11 +761,85 @@ async function doLogin() {
     }
     currentUser = data;
     sessionStorage.setItem('sakti_satker', JSON.stringify(data));
+
+    // Jika akun baru pertama kali login, wajib ganti password dulu
+    if (data.mustChangePassword) {
+      btn.disabled=false; btn.innerHTML='🔐 Masuk';
+      showModalGantiPasswordWajib();
+      return;
+    }
+
     showApp();
   } catch(e) {
     console.error('[doLogin] error:', e);
     showLoginErr('Gagal terhubung ke server: '+e.message);
     btn.disabled=false; btn.innerHTML='🔐 Masuk';
+  }
+}
+
+function showModalGantiPasswordWajib() {
+  // Tampilkan modal inline di halaman login — user tidak bisa dismiss
+  const existing = document.getElementById('modalGantiPwWajib');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'modalGantiPwWajib';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:32px 28px;max-width:420px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,.25)">
+      <div style="font-size:28px;text-align:center;margin-bottom:8px">🔒</div>
+      <div style="font-size:17px;font-weight:700;color:var(--gray-800);text-align:center;margin-bottom:6px">Wajib Ganti Password</div>
+      <p style="font-size:13px;color:var(--gray-600);text-align:center;margin-bottom:20px;line-height:1.5">
+        Ini pertama kalinya Anda login. Demi keamanan, Anda <strong>wajib mengganti password</strong> sebelum bisa menggunakan aplikasi.
+      </p>
+      <div id="gpwErr" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;font-size:12px;color:#b91c1c;margin-bottom:12px"></div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:600;color:var(--gray-700)">Password Lama (kode satker)</label>
+        <input type="password" id="gpwLama" placeholder="Masukkan kode satker Anda" style="width:100%;margin-top:4px"/>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:600;color:var(--gray-700)">Password Baru</label>
+        <input type="password" id="gpwBaru" placeholder="Minimal 8 karakter" style="width:100%;margin-top:4px"/>
+      </div>
+      <div class="form-group" style="margin-bottom:20px">
+        <label style="font-size:12px;font-weight:600;color:var(--gray-700)">Konfirmasi Password Baru</label>
+        <input type="password" id="gpwKonfirm" placeholder="Ulangi password baru" style="width:100%;margin-top:4px"/>
+      </div>
+      <button class="btn btn-primary" id="gpwBtn" onclick="doGantiPasswordWajib()" style="width:100%;justify-content:center;padding:11px">
+        ✅ Simpan Password Baru
+      </button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function doGantiPasswordWajib() {
+  const lama   = document.getElementById('gpwLama')?.value || '';
+  const baru   = document.getElementById('gpwBaru')?.value || '';
+  const konfirm= document.getElementById('gpwKonfirm')?.value || '';
+  const errEl  = document.getElementById('gpwErr');
+  const btn    = document.getElementById('gpwBtn');
+
+  errEl.style.display='none';
+  if (!lama || !baru || !konfirm) { errEl.textContent='Semua field wajib diisi'; errEl.style.display='block'; return; }
+  if (baru.length < 8) { errEl.textContent='Password baru minimal 8 karakter'; errEl.style.display='block'; return; }
+  if (baru !== konfirm) { errEl.textContent='Konfirmasi password tidak cocok'; errEl.style.display='block'; return; }
+  if (baru === lama)    { errEl.textContent='Password baru tidak boleh sama dengan password lama'; errEl.style.display='block'; return; }
+
+  btn.disabled=true; btn.textContent='⏳ Menyimpan...';
+  try {
+    const res = await apiPost({ action:'changePassword', passwordLama: lama, passwordBaru: baru });
+    if (!res.success) {
+      errEl.textContent = res.message || 'Gagal mengganti password';
+      errEl.style.display='block';
+      btn.disabled=false; btn.textContent='✅ Simpan Password Baru';
+      return;
+    }
+    document.getElementById('modalGantiPwWajib')?.remove();
+    showToast('✅ Password berhasil diubah. Selamat datang!', false, true);
+    showApp();
+  } catch(e) {
+    errEl.textContent='Gagal terhubung ke server: '+e.message;
+    errEl.style.display='block';
+    btn.disabled=false; btn.textContent='✅ Simpan Password Baru';
   }
 }
 
@@ -3040,10 +3114,11 @@ function pgResetForm(){
 }
 
 // ── Upload Dokumen Modal (Multi-dokumen, role-based) ──────────────────────
-let pgUploadId      = null;
-let pgUploadFiles   = {};    // { fileKey: File }
-let pgUploadDoneMap = {};    // { fileKey: true }
-let pgUploadDokList = [];    // daftar dokumen yang dihasilkan saat modal dibuka
+let pgUploadId           = null;
+let pgUploadFiles        = {};  // { fileKey: File }
+let pgUploadDoneMap      = {};  // { fileKey: true } — semua file done (existing + baru sesi ini)
+let pgUploadNewInSession = {};  // { fileKey: true } — hanya file yang baru diupload sesi ini
+let pgUploadDokList      = [];  // daftar dokumen yang dihasilkan saat modal dibuka
 
 // Aturan role → dokumen
 const PG_PERAN_OTP   = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
@@ -3115,9 +3190,10 @@ function pgBuildDokumenList(menjadiUsers) {
 }
 
 function pgBukaUploadModal(id){
-  pgUploadId      = id;
-  pgUploadFiles   = {};
-  pgUploadDoneMap = {};
+  pgUploadId           = id;
+  pgUploadFiles        = {};
+  pgUploadDoneMap      = {};
+  pgUploadNewInSession = {};
   // Pakai pgMenjadiUsers dari form aktif kalau ada; kalau kosong (dipanggil dari Riwayat),
   // ambil dari cache hasil getRiwayatPerubahan.
   let menjadiList = pgMenjadiUsers;
@@ -3132,6 +3208,11 @@ function pgBukaUploadModal(id){
   // Ambil daftar file yang sudah pernah diupload (jika ada — flow Ditolak / re-edit)
   const existingFiles = (cached && cached.filesJson) ? cached.filesJson : {};
   const isDitolak = cached && (cached.status||'').toLowerCase() === 'ditolak';
+
+  // File yang sudah ada di server langsung dianggap "done" — agar tombol Selesai tidak terblokir
+  pgUploadDokList.forEach(d => {
+    if (existingFiles[d.key] && existingFiles[d.key].url) pgUploadDoneMap[d.key] = true;
+  });
 
   const body = document.getElementById('pgUploadBody');
   body.innerHTML = `
@@ -3305,7 +3386,8 @@ async function pgudUploadFile(key) {
     document.getElementById('pgud_done_'+key).style.display='block';
     document.getElementById('pgud_row_'+key).style.borderColor='#A5D6A7';
     document.getElementById('pgud_row_'+key).style.background='#f0fdf4';
-    pgUploadDoneMap[key] = true;
+    pgUploadDoneMap[key]      = true;
+    pgUploadNewInSession[key] = true;
     showToast('✅ '+file.name+' berhasil diupload', false, true);
   } catch(e) {
     errEl.textContent='Gagal terhubung ke server.';
@@ -3329,9 +3411,8 @@ function pgUploadSelesai() {
     return; // HARD BLOCK — tidak bisa lanjut
   }
   closeModal('modalUploadPerubahan');
-  if (Object.keys(pgUploadDoneMap).length > 0) {
-    initUserGanti();
-  }
+  // Refresh riwayat: selalu refresh agar status "Upload Dokumen" tampil done
+  initUserGanti();
 }
 
 function pgUploadTutup() {
@@ -4751,13 +4832,11 @@ function udSelesai() {
     }
   }
   closeModal('modalUploadDokumen');
-  // Refresh riwayat jika ada yang terupload sesi ini
-  if (Object.keys(udUploading).length > 0) {
-    udUploading = {};
-    udDokList   = [];
-    udDonemap   = {};
-    initUserRiwayat();
-  }
+  // Selalu refresh riwayat agar step "Upload Dokumen" langsung tampil done
+  udUploading = {};
+  udDokList   = [];
+  udDonemap   = {};
+  initUserRiwayat();
 }
 
 // ════════════════════════════════════════════════════════
