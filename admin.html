@@ -2778,19 +2778,57 @@ async function doDeleteUser(username){
     loadUsers();
   }catch(err){showToast('Error: '+err.message,true);}
 }
-async function doResetPassword(username){
-  const newPw=prompt('Password baru untuk "'+username+'" (min 6 karakter):');
-  if(newPw===null) return;
-  if(newPw.trim().length<6){showToast('Password minimal 6 karakter',true);return;}
-  const konfirm=prompt('Konfirmasi — ketik ulang password baru:');
-  if(konfirm===null) return;
-  if(newPw!==konfirm){showToast('Konfirmasi password tidak cocok',true);return;}
-  try{
-    const res=await apiPost({action:'resetPasswordUser',username,newPassword:newPw});
-    if(!res.success){showToast(res.message||'Gagal',true);return;}
-    alert('✅ Password user "'+username+'" berhasil di-reset.\nUser harus login ulang dengan password baru.');
-    showToast('✅ Password berhasil di-reset',false,true);
-  }catch(err){showToast('Error: '+err.message,true);}
+function doResetPassword(username) {
+  // Hapus modal lama jika ada
+  document.getElementById('modalResetPw')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'modalResetPw';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:14px;padding:28px 24px;max-width:400px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+      <div style="font-size:20px;font-weight:700;margin-bottom:4px">🔑 Reset Password</div>
+      <div style="font-size:13px;color:#6b7280;margin-bottom:18px">Satker: <strong>${username}</strong></div>
+      <div id="rpwErr" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;font-size:12px;color:#b91c1c;margin-bottom:12px"></div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Password Baru</label>
+        <input type="password" id="rpwBaru" placeholder="Minimal 8 karakter" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;box-sizing:border-box"/>
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Konfirmasi Password Baru</label>
+        <input type="password" id="rpwKonfirm" placeholder="Ulangi password baru" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;box-sizing:border-box"/>
+      </div>
+      <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:9px 12px;font-size:11px;color:#92400e;margin-bottom:18px;line-height:1.5">
+        ⚠️ Setelah reset, satker <strong>wajib ganti password</strong> saat login berikutnya.
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('modalResetPw').remove()"
+          style="padding:8px 18px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">Batal</button>
+        <button id="rpwBtn" onclick="doResetPasswordSubmit('${username}')"
+          style="padding:8px 18px;border:none;border-radius:8px;background:#7C3AED;color:#fff;cursor:pointer;font-size:13px;font-weight:600">✅ Reset Password</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(() => document.getElementById('rpwBaru')?.focus(), 80);
+}
+
+async function doResetPasswordSubmit(username) {
+  const baru    = document.getElementById('rpwBaru')?.value || '';
+  const konfirm = document.getElementById('rpwKonfirm')?.value || '';
+  const errEl   = document.getElementById('rpwErr');
+  const btn     = document.getElementById('rpwBtn');
+  errEl.style.display = 'none';
+  if (baru.length < 8) { errEl.textContent='Password minimal 8 karakter'; errEl.style.display='block'; return; }
+  if (baru !== konfirm) { errEl.textContent='Konfirmasi password tidak cocok'; errEl.style.display='block'; return; }
+  btn.disabled=true; btn.textContent='⏳ Mereset...';
+  try {
+    const res = await apiPost({ action:'resetPasswordUser', username, newPassword:baru });
+    if (!res.success) { errEl.textContent=res.message||'Gagal'; errEl.style.display='block'; btn.disabled=false; btn.textContent='✅ Reset Password'; return; }
+    document.getElementById('modalResetPw')?.remove();
+    showToast('✅ Password "'+username+'" berhasil di-reset. User wajib ganti password saat login.', false, true);
+  } catch(err) {
+    errEl.textContent='Error: '+err.message; errEl.style.display='block';
+    btn.disabled=false; btn.textContent='✅ Reset Password';
+  }
 }
 
 
