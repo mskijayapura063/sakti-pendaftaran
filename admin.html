@@ -1854,7 +1854,6 @@ async function loadOTP(){
           namaKpa: s.namaKpa||'',
           status: s.status||'',
           otpAktif: !!(s.otpAktif),
-          otpCode: s.otpCode||'',
           updatedAt: s.updatedAt||s.tanggalDaftar||'',
           sumber: 'Pendaftaran',
           fotosOTP,
@@ -1884,7 +1883,6 @@ async function loadOTP(){
           namaKpa: p.namaKpa||'',
           status: p.status||'',
           otpAktif,
-          otpCode: '',
           updatedAt: p.updatedAt||p.createdAt||'',
           sumber: 'Pergantian',
           fotosOTP,
@@ -1976,7 +1974,7 @@ function renderOTPPending_(list){
   <table class="tbl">
     <thead><tr>
       <th>ID / Ref</th><th>Satker</th><th>KPA</th><th>Sumber</th>
-      <th>Status</th><th>Kode OTP</th><th>Pejabat OTP</th><th style="min-width:130px">Aksi</th>
+      <th>Status</th><th>Pejabat OTP</th><th style="min-width:130px">Aksi</th>
     </tr></thead>
     <tbody>
     ${list.map(s=>{
@@ -1989,7 +1987,6 @@ function renderOTPPending_(list){
         <td style="font-size:12px">${esc(s.namaKpa||'—')}</td>
         <td>${_otpSumberBadge(s.sumber)}</td>
         <td>${bstat(s.status)}</td>
-        <td style="font-family:monospace;font-size:12px;font-weight:700;color:#7C3AED;white-space:nowrap">${s.otpCode?esc(s.otpCode):'<span style="color:var(--gray-400)">—</span>'}</td>
         <td style="max-width:180px">${pejabat}</td>
         <td>
           <div style="display:flex;gap:4px;flex-wrap:wrap">
@@ -3109,6 +3106,50 @@ function escHtml(str){
     .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
     .replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+
+// ── Escape key: tutup modal yang sedang terbuka ──────────────────────────────
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+
+  // 1. Modal dinamis via createElement+appendChild — harus di-remove(), bukan display:none
+  //    modalDetailPg: detail pergantian user (createElement, append ke body)
+  //    modalResetPw:  reset password user (createElement, append ke body)
+  const dynModalPg = document.getElementById('modalDetailPg');
+  if (dynModalPg) { closeModalPg(); return; }
+  const dynResetPw = document.getElementById('modalResetPw');
+  if (dynResetPw) { dynResetPw.remove(); return; }
+
+  // 2. Modal via innerHTML injection (masuk DOM saat panel aktif) — tutup via closeModal
+  //    modalSatker & modalAddUser: di-render dalam main.innerHTML panel Satker/Users
+  const MODAL_IDS = [
+    'modalDetail','modalTolak','modalProses','modalHapus','modalRollback',
+    'modalAktivasiOTP','modalProsesEmail','modalTolakEmail','modalDetailEmail',
+    'modalEditDaftar','modalOtpUploadFoto','modalEditPg',
+    'modalSatker','modalAddUser',
+  ];
+  for (const id of MODAL_IDS) {
+    const el = document.getElementById(id);
+    if (el && (el.classList.contains('on') || el.style.display === 'flex' || el.style.display === 'block')) {
+      closeModal(id);
+      return;
+    }
+  }
+});
+
+// Auto-restore session saat reload (pakai key yang sama dengan login: sakti_user)
+window.addEventListener('DOMContentLoaded', async () => {
+  const saved = sessionStorage.getItem('sakti_user');
+  if (!saved) return;
+  try {
+    const parsed = JSON.parse(saved);
+    if (!parsed?.token) { sessionStorage.removeItem('sakti_user'); return; }
+    if (!['Admin','SuperAdmin','Petugas'].includes(parsed.role)) { sessionStorage.removeItem('sakti_user'); return; }
+    currentUser = parsed;
+    const v = await apiPost({ action: 'validateToken' });
+    if (!v || !v.success) { sessionStorage.removeItem('sakti_user'); currentUser = null; return; }
+    initApp();
+  } catch(e) { sessionStorage.removeItem('sakti_user'); currentUser = null; }
+});
 </script>
 </body>
 </html>
