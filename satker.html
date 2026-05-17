@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Portal Pendaftaran User SAKTI — KPPN Jayapura</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230D47A1'/><rect x='0' y='27' width='32' height='5' fill='%23F9A825'/><text x='16' y='22.5' font-family='Arial Black,Arial,sans-serif' font-weight='900' font-size='18' fill='white' text-anchor='middle'>S</text></svg>"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
@@ -3754,7 +3755,8 @@ function rwRenderRow(x) {
   const isDitolak = sLow === 'ditolak';
   const sudahUpload = isGanti
     ? Object.keys((x.filesJson||{})).length > 0
-    : !!(x.sudahUpload || x.hasFiles);
+    : !!(x.sudahUpload || x.hasFiles ||
+        (x.filesJson && typeof x.filesJson === 'object' && Object.keys(x.filesJson).filter(k => !k.startsWith('otpFoto_')).length > 0));
   const isMenunggu = sLow === 'menunggu';
   const belumUpload = !sudahUpload && !isDitolak && !['terdaftar','selesai','diproses'].includes(sLow);
 
@@ -3830,7 +3832,9 @@ function rwRenderDetailDaftar(d, rowKey){
   const isDitolak = sLow==='ditolak';
   const isTerdaftar = ['terdaftar','selesai'].includes(sLow);
   const isDiproses = sLow==='diproses';
-  const sudahUpload = !!(d.sudahUpload || d.hasFiles);
+  // sudahUpload: cek field eksplisit, fallback ke filesJson (untuk kompatibilitas data lama)
+  const sudahUpload = !!(d.sudahUpload || d.hasFiles ||
+    (d.filesJson && typeof d.filesJson === 'object' && Object.keys(d.filesJson).filter(k => !k.startsWith('otpFoto_')).length > 0));
   const belumUpload = !sudahUpload && !isDitolak && !isTerdaftar;
 
   let usersArr = [];
