@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Portal Pendaftaran User SAKTI — KPPN Jayapura</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230D47A1'/><rect x='0' y='27' width='32' height='5' fill='%23F9A825'/><text x='16' y='22.5' font-family='Arial Black,Arial,sans-serif' font-weight='900' font-size='18' fill='white' text-anchor='middle'>S</text></svg>"/>
+<script>(function(){var s="<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%231565C0'/><stop offset='1' stop-color='%230D47A1'/></linearGradient></defs><rect width='32' height='32' rx='6' fill='url(%23g)'/><rect x='14' y='4' width='4' height='4' rx='1' fill='%23F9A825'/><rect x='3' y='8' width='26' height='2.5' rx='1' fill='%23F9A825'/><rect x='5' y='11' width='4' height='8' rx='1' fill='white' opacity='.9'/><rect x='14' y='11' width='4' height='8' rx='1' fill='white' opacity='.9'/><rect x='23' y='11' width='4' height='8' rx='1' fill='white' opacity='.9'/><rect x='3' y='27' width='26' height='2' rx='1' fill='%23F9A825'/><rect x='12' y='19' width='8' height='10' rx='1' fill='white' opacity='.95'/></svg>";var l=document.createElement('link');l.rel='icon';l.type='image/svg+xml';l.href='data:image/svg+xml,'+s;document.head.appendChild(l);}());</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
@@ -1163,12 +1163,13 @@ async function initDashboard() {
   const dateEl = document.getElementById('dashDate');
   if (dateEl) dateEl.textContent = '📅 ' + now.toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + ' · ' + now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
 
-  // Load pendaftaran user sakti (satu kali saja — disimpan ke window._dashboardRes untuk re-use)
+  // Load pendaftaran user sakti — pakai cache jika tersedia
   let userStats = {total:0, menunggu:0, proses:0, selesai:0, ditolak:0};
   window._dashboardRes = null;
   try {
-    const res = await apiPost({ action:'getSatkerDashboard' });
-    window._dashboardRes = res; // simpan untuk digunakan di Recent Activity (hindari double fetch)
+    const res = _cacheGet('dashboard') || await apiPost({ action:'getSatkerDashboard' });
+    _cacheSet('dashboard', res);
+    window._dashboardRes = res;
     if (res.success && res.data) {
       const d = res.data;
       userStats = {
@@ -1182,10 +1183,11 @@ async function initDashboard() {
     }
   } catch(e) {}
 
-  // Load riwayat email SAKTI
+  // Load riwayat email SAKTI — pakai cache jika tersedia
   let emailCount = 0;
   try {
-    const res2 = await apiPost({ action:'getRiwayatEmailSakti' });
+    const res2 = _cacheGet('emailRiwayat') || await apiPost({ action:'getRiwayatEmailSakti' });
+    _cacheSet('emailRiwayat', res2);
     if (res2.success) { emailRiwayat = res2.list||[]; emailCount = emailRiwayat.length; }
   } catch(e) {}
 
@@ -1222,9 +1224,10 @@ async function initDashboard() {
       }
     } catch(e) {}
 
-    // 3. Riwayat Pergantian User
+    // 3. Riwayat Pergantian User — pakai cache jika tersedia
     try {
-      const resGanti = await apiPost({ action:'getRiwayatPerubahan' });
+      const resGanti = _cacheGet('riwayatPerubahan') || await apiPost({ action:'getRiwayatPerubahan' });
+      _cacheSet('riwayatPerubahan', resGanti);
       const gantiList = resGanti.list || [];
       gantiList.slice(0,2).forEach(g => {
         items.push({ tgl: g.createdAt||g.tglSurat||'', label: `🔄 Pergantian User SAKTI — ${g.namaSatker||''}`, status: g.status });
@@ -1868,7 +1871,8 @@ async function initEmailRiwayat() {
   if (!body) return;
   body.innerHTML = '<p style="color:var(--gray-400);font-size:13px">Memuat data...</p>';
   try {
-    const res = await apiPost({ action:'getRiwayatEmailSakti' });
+    const res = _cacheGet('emailRiwayat') || await apiPost({ action:'getRiwayatEmailSakti' });
+    _cacheSet('emailRiwayat', res);
     if (!res.success) { body.innerHTML = `<p style="color:var(--red)">❌ ${res.message}</p>`; return; }
     emailRiwayat = res.list || [];
     renderEmailRiwayatTable();
@@ -2507,7 +2511,8 @@ async function initUserBaru() {
   const kode = currentUser?.username||'';
 
   try {
-    const res = await apiPost({ action:'getSatkerDashboard' });
+    const res = _cacheGet('dashboard') || await apiPost({ action:'getSatkerDashboard' });
+    _cacheSet('dashboard', res);
     // res.latest / res.list[0] = record terbaru milik satker ini (punya refKode, status, usersJson, dll)
     // res.data = object statistik (total, submitted, dll) — TIDAK punya refKode
     const d = (res.success && (res.latest || (res.list && res.list[0]))) || null;
@@ -2642,6 +2647,7 @@ function ubBuildFormHTML(d, kode) {
 
 function ubResetForm(){
   if(!confirm('Reset semua data form? Data yang belum diunduh akan hilang.'))return;
+  _cacheInvalidate('dashboard');
   initUserBaru();
 }
 
@@ -2667,7 +2673,8 @@ async function initUserGanti() {
   pgSemulaUsers=[]; pgMenjadiUsers=[]; pgUserIdSeq=0; pgCurrentId=null; pgLocked=false;
   const kode = currentUser?.username||'';
   try {
-    const res = await apiPost({ action:'getRiwayatPerubahan' });
+    const res = _cacheGet('riwayatPerubahan') || await apiPost({ action:'getRiwayatPerubahan' });
+    _cacheSet('riwayatPerubahan', res);
     const list = res.list || [];
     // Kalau ada targetId (mis. dari klik "Perbaiki Data" di Riwayat), pakai itu;
     // selain itu pakai record terbaru.
@@ -3147,6 +3154,7 @@ async function pgTrySubmit(){
 function pgResetForm(){
   if(!confirm('Reset semua data form perubahan? Data yang belum diunduh akan hilang.'))return;
   pgCurrentId=null;
+  _cacheInvalidate('riwayatPerubahan');
   initUserGanti();
 }
 
@@ -3433,7 +3441,7 @@ async function pgudUploadFile(key) {
   }
 }
 
-function pgUploadSelesai() {
+async function pgUploadSelesai() {
   // Cek semua dokumen wajib — BLOKIR jika belum lengkap, tidak bisa ditembus
   const wajibBelum = pgUploadDokList.filter(d => d.required && !pgUploadDoneMap[d.key]);
   if (wajibBelum.length) {
@@ -3447,7 +3455,29 @@ function pgUploadSelesai() {
     if (firstMissing) firstMissing.scrollIntoView({ behavior:'smooth', block:'center' });
     return; // HARD BLOCK — tidak bisa lanjut
   }
+
+  // Jika ini mode perbaikan (upload ulang setelah ditolak), reset status ke Menunggu
+  const cached = (window._pgRiwayatCache || {})[pgUploadId] || {};
+  const wasDitolak = (cached.status || '').toLowerCase() === 'ditolak';
+  if (wasDitolak && pgUploadId) {
+    try {
+      showToast('⏳ Memperbarui status...');
+      const res = await apiPost({
+        action: 'editPerubahan',
+        id: pgUploadId,
+        resetStatus: true,
+      });
+      if (!res.success) {
+        showToast('⚠️ Dokumen terupload, tapi gagal reset status. Hubungi admin.', true);
+      }
+    } catch(e) {
+      showToast('⚠️ Dokumen terupload, tapi gagal reset status. Hubungi admin.', true);
+    }
+  }
+
   closeModal('modalUploadPerubahan');
+  _cacheInvalidate('riwayatPerubahan');
+  showToast('✅ Dokumen berhasil disimpan! Status diperbarui ke Menunggu.', false, true);
   // Refresh riwayat: selalu refresh agar status "Upload Dokumen" tampil done
   initUserGanti();
 }
@@ -3499,10 +3529,10 @@ async function initUserRiwayat() {
   body.innerHTML = '<p style="color:var(--gray-400);font-size:13px;text-align:center;padding:24px">⏳ Memuat data...</p>';
   _rwExpanded.clear();
   try {
-    // Fetch pendaftaran baru + riwayat pergantian secara paralel
+    // Fetch pendaftaran baru + riwayat pergantian — pakai cache jika tersedia
     const [res, resGanti] = await Promise.all([
-      apiPost({ action:'getSatkerDashboard' }),
-      apiPost({ action:'getRiwayatPerubahan' }).catch(() => ({ success:false, list:[] })),
+      (_cacheGet('dashboard') ? Promise.resolve(_cacheGet('dashboard')) : apiPost({ action:'getSatkerDashboard' }).then(r => { _cacheSet('dashboard', r); return r; })),
+      (_cacheGet('riwayatPerubahan') ? Promise.resolve(_cacheGet('riwayatPerubahan')) : apiPost({ action:'getRiwayatPerubahan' }).then(r => { _cacheSet('riwayatPerubahan', r); return r; }).catch(() => ({ success:false, list:[] }))),
     ]);
 
     // --- Kumpulkan semua record dari SEMUA kemungkinan field response ---
@@ -4354,7 +4384,8 @@ let udRefKode   = '';
 let udNamaSatker= '';
 let udFiles     = {}; // { fileKey: File }
 let udUploading = {};
-let udDokList   = []; // daftar dokumen aktif — untuk validasi wajib di udSelesai()
+let udDokList        = []; // daftar dokumen aktif — untuk validasi wajib di udSelesai()
+let udNeedsReupload  = false; // true saat mode perbaikan (ditolak) → harus reset status ke Menunggu
 let udDonemap   = {}; // { key: true } — file yang sudah berhasil diupload sesi ini atau sudah ada
 
 const PERAN_BUTUH_SK   = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM',
@@ -4447,6 +4478,7 @@ function bukaModalUploadDokumen(info) {
 
   // Simpan ke state untuk validasi di udSelesai()
   udDokList = dokumen;
+  udNeedsReupload = needsReupload; // simpan flag — dipakai di udSelesai() untuk reset status
   // File yang sudah ada di server dianggap sudah "done"
   dokumen.forEach(d => { if (filesExist[d.key] && filesExist[d.key].url) udDonemap[d.key] = true; });
 
@@ -4649,7 +4681,7 @@ async function udUploadFile(key) {
   }
 }
 
-function udSelesai() {
+async function udSelesai() {
   // HARD BLOCK — tidak bisa tutup modal kalau dokumen wajib belum lengkap
   if (udDokList.length) {
     const wajibBelum = udDokList.filter(d => d.required && !udDonemap[d.key]);
@@ -4664,11 +4696,32 @@ function udSelesai() {
       return; // BLOKIR
     }
   }
+
+  // Jika ini mode perbaikan (upload ulang setelah ditolak), reset status ke Menunggu
+  if (udNeedsReupload && udRefKode) {
+    try {
+      showToast('⏳ Memperbarui status...');
+      const res = await apiPost({
+        action: 'updatePendaftaran',
+        refKode: udRefKode,
+        resetStatus: true,
+      });
+      if (!res.success) {
+        showToast('⚠️ Dokumen terupload, tapi gagal reset status. Hubungi admin.', true);
+      }
+    } catch(e) {
+      showToast('⚠️ Dokumen terupload, tapi gagal reset status. Hubungi admin.', true);
+    }
+  }
+
   closeModal('modalUploadDokumen');
   // Selalu refresh riwayat agar step "Upload Dokumen" langsung tampil done
-  udUploading = {};
-  udDokList   = [];
-  udDonemap   = {};
+  udUploading      = {};
+  udDokList        = [];
+  udDonemap        = {};
+  udNeedsReupload  = false;
+  _cacheInvalidate('dashboard'); // data upload berubah, cache dashboard harus fresh
+  showToast('✅ Dokumen berhasil disimpan! Status diperbarui ke Menunggu.', false, true);
   initUserRiwayat();
 }
 
@@ -5291,11 +5344,15 @@ window.addEventListener('DOMContentLoaded', async () => {
   try {
     currentUser = JSON.parse(saved);
     if (!currentUser?.token) { sessionStorage.removeItem('sakti_satker'); currentUser=null; return; }
-    // Validasi token: kalau gagal, anggap session expired & balik ke login
-    const v = await apiPost({ action:'validateToken' });
+    // Validasi token + prefetch semua data PARALLEL — hemat 2-3x waktu tunggu
+    const [v] = await Promise.all([
+      apiPost({ action:'validateToken' }),
+      _prefetchAll(),  // mulai prefetch semua data di background
+    ]);
     if (!v || !v.success) {
       sessionStorage.removeItem('sakti_satker');
       currentUser = null;
+      _cache = {};     // buang cache kalau token invalid
       return;
     }
     showApp();
@@ -5304,6 +5361,36 @@ window.addEventListener('DOMContentLoaded', async () => {
     currentUser = null;
   }
 });
+
+// ════════════════════════════════════════════════════════
+// DATA CACHE — hindari double fetch antar tab
+// ════════════════════════════════════════════════════════
+const _cache = {};
+const _CACHE_TTL = 60000; // 60 detik — stale setelah 1 menit
+
+function _cacheSet(key, data) {
+  _cache[key] = { data, ts: Date.now() };
+}
+function _cacheGet(key) {
+  const c = _cache[key];
+  if (!c) return null;
+  if (Date.now() - c.ts > _CACHE_TTL) { delete _cache[key]; return null; }
+  return c.data;
+}
+function _cacheInvalidate(...keys) {
+  keys.forEach(k => delete _cache[k]);
+}
+
+// Prefetch semua endpoint sekaligus di background
+async function _prefetchAll() {
+  try {
+    await Promise.all([
+      apiPost({ action:'getSatkerDashboard' }).then(r => { if(r?.success!==false) _cacheSet('dashboard', r); }),
+      apiPost({ action:'getRiwayatEmailSakti' }).then(r => { if(r?.success!==false) _cacheSet('emailRiwayat', r); }),
+      apiPost({ action:'getRiwayatPerubahan' }).then(r => { if(r?.success!==false) _cacheSet('riwayatPerubahan', r); }),
+    ]);
+  } catch(e) { /* prefetch gagal — init functions akan fetch sendiri */ }
+}
 
 // ── Escape key: tutup modal yang sedang terbuka ──────────────────────────────
 document.addEventListener('keydown', function(e) {
