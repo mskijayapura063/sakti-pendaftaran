@@ -3181,14 +3181,44 @@ function pgBuildDokumenList(menjadiUsers) {
   const butuhSpec  = semuaPeran.some(p => PG_PERAN_SPEC.includes(p));
   const PERAN_OTP_LABEL = {SATKER_KPA:'KPA', SATKER_PPK:'PPK', SATKER_PPK_DFDD:'PPK DFDD', SATKER_PPSPM:'PPSPM'};
   const list = [];
-  if (butuhOTP) list.push({ key:'formOTP', label:'Form Permohonan Aktivasi OTP',
-      desc:'Khusus untuk role KPA, PPK, dan PPSPM', required:true });
+  // Form Aktivasi OTP dan Spesimen TTD per-orang per-jabatan
+  if (butuhOTP) {
+    (menjadiUsers || []).forEach((u, idx) => {
+      const otpPeran = (u.peranList || []).filter(p => PG_PERAN_OTP.includes(p));
+      if (!otpPeran.length) return;
+      const nama     = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
+      const nip      = (u.nipnrp || '').trim();
+      const peranStr = otpPeran.map(p => PERAN_OTP_LABEL[p] || p).join('/');
+      const nipInfo  = nip ? ' (NIP/NRP: ' + nip + ')' : '';
+      list.push({
+        key:      'formOTP_' + idx,
+        label:    'Form Aktivasi OTP — ' + nama + ' (' + peranStr + ')',
+        desc:     'Form permohonan aktivasi OTP untuk ' + nama + nipInfo + ', jabatan ' + peranStr + '. Format PDF.',
+        required: true,
+      });
+    });
+  }
   if (butuhSK)  list.push({ key:'skPejabat', label:'SK Pejabat Perbendaharaan',
       desc:'Khusus untuk role KPA, PPK, PPSPM, dan Bendahara', required:true });
   list.push({ key:'skPengguna', label:'SK Pengguna SAKTI',
       desc:'Surat Keputusan penetapan pengguna SAKTI dari pimpinan satker', required:true });
-  if (butuhSpec) list.push({ key:'spesimen', label:'Spesimen Tanda Tangan',
-      desc:'Khusus untuk role KPA, PPK, PPSPM, dan Bendahara', required:true });
+  // Spesimen TTD per-orang per-jabatan
+  if (butuhSpec) {
+    (menjadiUsers || []).forEach((u, idx) => {
+      const otpPeran = (u.peranList || []).filter(p => PG_PERAN_OTP.includes(p));
+      if (!otpPeran.length) return;
+      const nama     = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
+      const nip      = (u.nipnrp || '').trim();
+      const peranStr = otpPeran.map(p => PERAN_OTP_LABEL[p] || p).join('/');
+      const nipInfo  = nip ? ' (NIP/NRP: ' + nip + ')' : '';
+      list.push({
+        key:      'spesimen_' + idx,
+        label:    'Spesimen Tanda Tangan — ' + nama + ' (' + peranStr + ')',
+        desc:     'Lembar spesimen tanda tangan ' + nama + nipInfo + ', jabatan ' + peranStr + '.',
+        required: true,
+      });
+    });
+  }
   // Bukti foto aktivasi OTP per pejabat — wajib jika ada role KPA/PPK/PPSPM
   if (butuhOTP) {
     (menjadiUsers || []).forEach((u, idx) => {
@@ -3934,11 +3964,24 @@ function rwRenderDetailDaftar(d, rowKey){
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         ${filesEntries.map(([key,f])=>{
           const LABEL={formPendaftaran:'Form Pendaftaran',skPengguna:'SK Pengguna SAKTI',ktpKpa:'KTP KPA',skPejabat:'SK Pejabat',formOTP:'Form OTP',spesimen:'Spesimen TTD',dokumenLain:'Dok. Lainnya'};
+          const OTP_LBL_RW={SATKER_KPA:'KPA',SATKER_PPK:'PPK',SATKER_PPK_DFDD:'PPK DFDD',SATKER_PPSPM:'PPSPM'};
           let label = LABEL[key] || key;
           if (key.startsWith('ktp_user_')) {
             const idx = parseInt(key.slice(9), 10);
             const u = usersArr[idx];
             label = 'KTP — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+          } else if (key.startsWith('formOTP_')) {
+            const idx = parseInt(key.slice(8), 10);
+            const u = usersArr[idx];
+            const nama = (u && u.nama) ? u.nama : ('Pengguna #' + (idx+1));
+            const ps = u ? (u.peranList||[]).filter(p=>OTP_LBL_RW[p]).map(p=>OTP_LBL_RW[p]).join('/') : '';
+            label = 'Form OTP — ' + nama + (ps ? ' (' + ps + ')' : '');
+          } else if (key.startsWith('spesimen_')) {
+            const idx = parseInt(key.slice(9), 10);
+            const u = usersArr[idx];
+            const nama = (u && u.nama) ? u.nama : ('Pengguna #' + (idx+1));
+            const ps = u ? (u.peranList||[]).filter(p=>OTP_LBL_RW[p]).map(p=>OTP_LBL_RW[p]).join('/') : '';
+            label = 'Spesimen TTD — ' + nama + (ps ? ' (' + ps + ')' : '');
           }
           return `<button onclick="satkerDownloadDokumen('${esc(f.url||'')}','${esc(label)}')"
             style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid var(--gray-300);color:var(--gray-700);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:.15s"
@@ -4149,12 +4192,27 @@ function rwRenderKartuGanti(g, isLatest) {
     formPergantian:'Form Pergantian',
     pdfDokumen:'Dokumen (lama)',
   };
+  const OTP_LBL_PG = {SATKER_KPA:'KPA',SATKER_PPK:'PPK',SATKER_PPK_DFDD:'PPK DFDD',SATKER_PPSPM:'PPSPM'};
   const resolveLabelPg = (key) => {
     if (LABEL_PG[key]) return LABEL_PG[key];
     if (key.startsWith('ktp_menjadi_')) {
       const idx = parseInt(key.slice('ktp_menjadi_'.length), 10);
       const u = menjadi[idx];
       return 'KTP — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+    }
+    if (key.startsWith('formOTP_')) {
+      const idx = parseInt(key.slice('formOTP_'.length), 10);
+      const u = menjadi[idx];
+      const nama = (u && u.nama) ? u.nama : ('Pengguna #' + (idx+1));
+      const peranStr = u ? (u.peranList||[]).filter(p=>OTP_LBL_PG[p]).map(p=>OTP_LBL_PG[p]).join('/') : '';
+      return 'Form OTP — ' + nama + (peranStr ? ' (' + peranStr + ')' : '');
+    }
+    if (key.startsWith('spesimen_')) {
+      const idx = parseInt(key.slice('spesimen_'.length), 10);
+      const u = menjadi[idx];
+      const nama = (u && u.nama) ? u.nama : ('Pengguna #' + (idx+1));
+      const peranStr = u ? (u.peranList||[]).filter(p=>OTP_LBL_PG[p]).map(p=>OTP_LBL_PG[p]).join('/') : '';
+      return 'Spesimen TTD — ' + nama + (peranStr ? ' (' + peranStr + ')' : '');
     }
     if (key.startsWith('sertBNT_')) {
       const idx = parseInt(key.slice('sertBNT_'.length), 10);
@@ -4461,6 +4519,33 @@ function bukaModalUploadDokumen(info) {
     });
   });
 
+  // Form Aktivasi OTP per-orang per-jabatan (KPA/PPK/PPK DFDD/PPSPM)
+  const OTP_LABEL_UD = { SATKER_KPA:'KPA', SATKER_PPK:'PPK', SATKER_PPK_DFDD:'PPK DFDD', SATKER_PPSPM:'PPSPM' };
+  const formOTPDocs = [];
+  const spesimenDocs = [];
+  if (butuhOTP) {
+    users.forEach((u, idx) => {
+      const otpPeran = (u.peranList || []).filter(p => PERAN_BUTUH_OTP.includes(p));
+      if (!otpPeran.length) return;
+      const nama     = (u.nama || '').trim() || ('Pengguna #' + (idx + 1));
+      const nip      = (u.nipnrp || '').trim();
+      const peranStr = otpPeran.map(p => OTP_LABEL_UD[p] || p).join('/');
+      const nipInfo  = nip ? ' (NIP/NRP: ' + nip + ')' : '';
+      formOTPDocs.push({
+        key:      'formOTP_' + idx,
+        label:    'Form Aktivasi OTP — ' + nama + ' (' + peranStr + ')',
+        desc:     'Form permohonan aktivasi OTP untuk ' + nama + nipInfo + ', jabatan ' + peranStr + '. Format PDF.',
+        required: true,
+      });
+      spesimenDocs.push({
+        key:      'spesimen_' + idx,
+        label:    'Spesimen Tanda Tangan — ' + nama + ' (' + peranStr + ')',
+        desc:     'Lembar spesimen tanda tangan ' + nama + nipInfo + ', jabatan ' + peranStr + '.',
+        required: true,
+      });
+    });
+  }
+
   const dokumen = [
     { key:'formPendaftaran', label:'Form Pendaftaran User SAKTI',    desc:'Form pendaftaran yang sudah ditandatangani KPA', required:true },
     { key:'skPengguna',      label:'SK Pengguna SAKTI',              desc:'Surat Keputusan penetapan pengguna SAKTI dari pimpinan satker', required:true },
@@ -4469,10 +4554,8 @@ function bukaModalUploadDokumen(info) {
       { key:'skPejabat',     label:'SK Pejabat Perbendaharaan',      desc:'SK pengangkatan KPA, PPK, PPSPM, atau Bendahara yang masih berlaku', required:true },
     ] : []),
     ...sertDocs,
-    ...(butuhOTP ? [
-      { key:'formOTP',       label:'Form Aktivasi OTP',              desc:'Form permohonan aktivasi OTP untuk KPA/PPK/PPSPM', required:true },
-      { key:'spesimen',      label:'Spesimen Tanda Tangan',          desc:'Lembar spesimen tanda tangan untuk KPA/PPK/PPSPM', required:true },
-    ] : []),
+    ...formOTPDocs,
+    ...spesimenDocs,
     { key:'dokumenLain',     label:'Dokumen Lainnya (opsional)',     desc:'Dokumen pendukung tambahan jika ada', required:false },
   ];
 

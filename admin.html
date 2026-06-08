@@ -1553,11 +1553,25 @@ async function lihatDetail(refKode){
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
         ${fileEntries.map(([key,f])=>{
           let label = LABEL_MAP[key] || key;
-          // Resolve label dinamis untuk KTP per pengguna (key = ktp_user_<idx>)
+          // Resolve label dinamis berdasarkan key prefix
           if (key.startsWith('ktp_user_')) {
             const idx = parseInt(key.slice(9), 10);
             const u   = (s.users||[])[idx];
             label = 'KTP — ' + ((u && (u.nama||u.namaLengkap)) ? (u.nama||u.namaLengkap) : ('Pengguna #' + (idx+1)));
+          } else if (key.startsWith('formOTP_')) {
+            const idx = parseInt(key.slice(8), 10);
+            const u   = (s.users||[])[idx];
+            const nama = (u && (u.nama||u.namaLengkap)) ? (u.nama||u.namaLengkap) : ('Pengguna #' + (idx+1));
+            const OTP_LBL = {SATKER_KPA:'KPA',SATKER_PPK:'PPK',SATKER_PPK_DFDD:'PPK DFDD',SATKER_PPSPM:'PPSPM'};
+            const peranStr = u ? (u.peranList||[]).filter(p=>OTP_LBL[p]).map(p=>OTP_LBL[p]).join('/') : '';
+            label = 'Form OTP — ' + nama + (peranStr ? ' (' + peranStr + ')' : '');
+          } else if (key.startsWith('spesimen_')) {
+            const idx = parseInt(key.slice(9), 10);
+            const u   = (s.users||[])[idx];
+            const nama = (u && (u.nama||u.namaLengkap)) ? (u.nama||u.namaLengkap) : ('Pengguna #' + (idx+1));
+            const OTP_LBL = {SATKER_KPA:'KPA',SATKER_PPK:'PPK',SATKER_PPK_DFDD:'PPK DFDD',SATKER_PPSPM:'PPSPM'};
+            const peranStr = u ? (u.peranList||[]).filter(p=>OTP_LBL[p]).map(p=>OTP_LBL[p]).join('/') : '';
+            label = 'Spesimen TTD — ' + nama + (peranStr ? ' (' + peranStr + ')' : '');
           }
           return `<button onclick="adminDownloadDriveFile('${esc(f.url||'')}','${esc(label)}')"
             style="display:inline-flex;align-items:center;gap:6px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;font-family:'Inter',sans-serif"
@@ -2534,9 +2548,24 @@ function lihatDetailPg(id){
     skPengguna:'SK Pengguna SAKTI', spesimen:'Spesimen TTD',
     formPergantian:'Form Pergantian', pdfDokumen:'Dokumen (lama)',
   };
+  const OTP_LABEL_PG = {SATKER_KPA:'KPA',SATKER_PPK:'PPK',SATKER_PPK_DFDD:'PPK DFDD',SATKER_PPSPM:'PPSPM'};
   const resolveLabelPg = (k) => {
     if (LABEL_PG[k]) return LABEL_PG[k];
     if (k.startsWith('ktp_menjadi_')) { const i=parseInt(k.slice(12),10); return 'KTP — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
+    if (k.startsWith('formOTP_'))     {
+      const i=parseInt(k.slice(8),10);
+      const u=menjadi[i];
+      const nama=(u&&u.nama)||('Pengguna #'+(i+1));
+      const peranStr=u?(u.peranList||[]).filter(p=>OTP_LABEL_PG[p]).map(p=>OTP_LABEL_PG[p]).join('/'):'';
+      return 'Form OTP — '+nama+(peranStr?' ('+peranStr+')':'');
+    }
+    if (k.startsWith('spesimen_'))    {
+      const i=parseInt(k.slice(9),10);
+      const u=menjadi[i];
+      const nama=(u&&u.nama)||('Pengguna #'+(i+1));
+      const peranStr=u?(u.peranList||[]).filter(p=>OTP_LABEL_PG[p]).map(p=>OTP_LABEL_PG[p]).join('/'):'';
+      return 'Spesimen TTD — '+nama+(peranStr?' ('+peranStr+')':'');
+    }
     if (k.startsWith('sertBNT_'))    { const i=parseInt(k.slice(8),10);  return 'BNT — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
     if (k.startsWith('sertPNT_'))    { const i=parseInt(k.slice(8),10);  return 'PNT — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
     if (k.startsWith('sertSNT_'))    { const i=parseInt(k.slice(8),10);  return 'SNT — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
