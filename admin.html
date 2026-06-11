@@ -5,10 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Admin KPPN Jayapura — Portal SAKTI</title>
 <script>(function(){var s="<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%231A237E'/><stop offset='1' stop-color='%230D47A1'/></linearGradient></defs><rect width='32' height='32' rx='6' fill='url(%23g)'/><path d='M16 4 L27 8 L27 17 C27 23 22 27.5 16 29 C10 27.5 5 23 5 17 L5 8 Z' fill='%23F9A825'/><path d='M16 6.5 L25 10 L25 17 C25 22 21 26 16 27.2 C11 26 7 22 7 17 L7 10 Z' fill='url(%23g)'/><polygon points='16,11 17.2,14.2 20.5,14.2 17.9,16.1 18.9,19.3 16,17.5 13.1,19.3 14.1,16.1 11.5,14.2 14.8,14.2' fill='%23F9A825'/></svg>";var l=document.createElement('link');l.rel='icon';l.type='image/svg+xml';l.href='data:image/svg+xml,'+s;document.head.appendChild(l);}());</script>
+<!-- Fonts: non-blocking -->
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'"/>
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/></noscript>
+<!-- xlsx: defer — hanya dipakai saat user klik export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <style>
 :root{
   --blue:#0D47A1;--blue-mid:#1565C0;--blue-light:#1976D2;--blue-pale:#E3F2FD;--blue-pale2:#BBDEFB;
@@ -590,6 +593,15 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-LEjXzM-3XaNNn_bR343B4b-Z4H33eU0CVHz18oQPO-dT8xCtJmPsGXs_q7oBMCjsoA/exec';
 
 // ════════════════════════════════════════════════════════
+// IN-MEMORY CACHE (TTL 2 menit — data admin lebih sering berubah)
+// ════════════════════════════════════════════════════════
+let _cache = {};
+const _CACHE_TTL = 2 * 60 * 1000;
+function _cacheGet(key){ const e=_cache[key]; if(!e) return null; if(Date.now()-e.ts>_CACHE_TTL){delete _cache[key];return null;} return e.val; }
+function _cacheSet(key,val){ _cache[key]={val,ts:Date.now()}; }
+function _cacheInvalidate(key){ if(key) delete _cache[key]; else _cache={}; }
+
+// ════════════════════════════════════════════════════════
 // UTILITY / HELPER FUNCTIONS
 // ════════════════════════════════════════════════════════
 function esc(str){
@@ -972,7 +984,8 @@ async function loadDashboard(){
   const dateEl=document.getElementById('dashDate');
   if(dateEl) dateEl.textContent='📅 '+now.toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' · '+now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
   try{
-    const res=await apiPost({action:'getDashboard'});
+    const res=_cacheGet('adminDashboard') || await apiPost({action:'getDashboard'});
+    _cacheSet('adminDashboard', res);
     if(!res.success) return;
     const d=res;
     // User SAKTI stats
@@ -1384,7 +1397,7 @@ function renderSubmissions(){
         <option value="Ditolak">Ditolak</option>
         <option value="draft">Draft</option>
       </select>
-      <button class="btn btn-outline btn-sm" onclick="loadSubmissions()">🔄 Refresh</button>
+      <button class="btn btn-outline btn-sm" onclick="_cacheInvalidate('adminDaftarList');loadSubmissions()">🔄 Refresh</button>
     </div>
     <div style="overflow-x:auto">
       <table class="tbl">
@@ -1398,23 +1411,66 @@ function renderSubmissions(){
 async function loadSubmissions(){
   const body=document.getElementById('subBody');
   if(!body) return;
+  const cached=_cacheGet('adminDaftarList');
+  if(cached){ cachedSubmissions=cached; filterSubmissions(); return; }
   body.innerHTML='<tr class="tbl-empty"><td colspan="7">Memuat...</td></tr>';
   try{
     const res=await apiPost({action:'getDaftarList'});
     if(!res.success){body.innerHTML=`<tr class="tbl-empty"><td colspan="7">❌ ${esc(res.message)}</td></tr>`;return;}
     cachedSubmissions=res.list||[];
+    _cacheSet('adminDaftarList', cachedSubmissions);
     filterSubmissions();
   }catch(e){body.innerHTML='<tr class="tbl-empty"><td colspan="6">❌ Gagal memuat</td></tr>';}
+}
+
+/**
+ * Prioritas tampilan tabel (angka lebih kecil = lebih atas):
+ * 0 — Perbaikan  : Ditolak + sudahUpload  → satker sudah perbaiki, perlu admin cek ulang
+ * 1 — Siap Proses: Menunggu/submitted + sudahUploadLengkap → dokumen lengkap, siap diproses
+ * 2 — Belum Lengkap: Menunggu/submitted + sudahUpload tapi belum lengkap
+ * 3 — Diproses   : sedang diproses KPPN
+ * 4 — Terdaftar  : OTP perlu diaktivasi
+ * 5 — Selesai/OTP_Aktif/Aktif → sudah selesai
+ * 6 — Lainnya (draft, Ditolak tanpa perbaikan, dll.)
+ */
+function getPriority(status, sudahUpload, sudahUploadLengkap){
+  const s = (status||'').toLowerCase();
+  if (s==='ditolak' && sudahUpload) return 0;                              // Perbaikan
+  if ((s==='menunggu'||s==='submitted') && sudahUploadLengkap) return 1;  // Siap Proses
+  if ((s==='menunggu'||s==='submitted') && sudahUpload) return 2;         // Upload ada tapi belum lengkap
+  if (s==='diproses'||s==='proses') return 3;                             // Sedang diproses
+  if (s==='terdaftar') return 4;                                          // OTP pending
+  if (s==='selesai'||s==='otp_aktif'||s==='aktif') return 5;             // Selesai
+  return 6;                                                               // Lainnya
+}
+
+function sortByPriority(list, getStatus, getSudahUpload, getSudahUploadLengkap, getDate){
+  return list.slice().sort((a,b)=>{
+    const pa = getPriority(getStatus(a), getSudahUpload(a), getSudahUploadLengkap(a));
+    const pb = getPriority(getStatus(b), getSudahUpload(b), getSudahUploadLengkap(b));
+    if(pa!==pb) return pa-pb;
+    // Dalam kelompok prioritas sama: tanggal ascending (paling lama = paling atas = paling urgent)
+    const da=String(getDate(a)||''), db=String(getDate(b)||'');
+    return da<db?-1:da>db?1:0;
+  });
 }
 
 function filterSubmissions(){
   const q=(document.getElementById('subSearch')?.value||'').toLowerCase();
   const f=(document.getElementById('subFilter')?.value||'');
-  const filtered=cachedSubmissions.filter(s=>{
+  let filtered=cachedSubmissions.filter(s=>{
     const matchQ=!q||(s.refKode||'').toLowerCase().includes(q)||(s.namaSatker||'').toLowerCase().includes(q)||(s.kodeSatker||'').toLowerCase().includes(q)||(s.namaKpa||'').toLowerCase().includes(q);
     const matchF=!f||s.status===f;
     return matchQ&&matchF;
   });
+  // Auto-sort berdasarkan prioritas, lalu tanggal ascending
+  filtered = sortByPriority(
+    filtered,
+    s=>s.status,
+    s=>s.sudahUpload,
+    s=>s.sudahUploadLengkap,
+    s=>s.tanggalDaftar||s.createdAt||''
+  );
   renderSubTable(filtered);
 }
 
@@ -1424,7 +1480,12 @@ function renderSubTable(list){
   if(!list.length){body.innerHTML='<tr class="tbl-empty"><td colspan="7">Tidak ada data.</td></tr>';return;}
   const isAdmin=['Admin','SuperAdmin'].includes(currentUser?.role);
   body.innerHTML=list.map(s=>{
-    const belumUpload = !s.sudahUpload && ['submitted','Menunggu'].includes(s.status);
+    // belumUpload: belum ada file sama sekali
+    const belumUpload     = !s.sudahUpload && ['submitted','Menunggu'].includes(s.status);
+    // dokBelumLengkap: ada file tapi belum semua dokumen wajib terpenuhi
+    const dokBelumLengkap = s.sudahUpload && !s.sudahUploadLengkap && ['submitted','Menunggu'].includes(s.status);
+    // Proses dikunci jika belum upload sama sekali ATAU dokumen belum lengkap
+    const prosesLocked    = ['submitted','Menunggu'].includes(s.status) && !s.sudahUploadLengkap;
     return `
     <tr>
       <td style="font-family:monospace;font-size:11px">${esc(s.refKode)}</td>
@@ -1435,6 +1496,7 @@ function renderSubTable(list){
         ${bstat(s.status, s.sudahUpload)}
         ${s.revisiKe>0?`<br/><span style="font-size:10px;color:var(--orange)">Revisi ke-${s.revisiKe}</span>`:''}
         ${belumUpload?`<br/><span style="font-size:10px;color:var(--red);font-weight:600">⚠️ Belum upload</span>`:''}
+        ${dokBelumLengkap?`<br/><span style="font-size:10px;color:#D97706;font-weight:600">⚠️ Dok. belum lengkap</span>`:''}
       </td>
       <td style="font-size:11px;color:var(--gray-600);font-family:monospace;white-space:nowrap">${s.diprosesoleh?esc(s.diprosesoleh):'<span style="color:var(--gray-400)">—</span>'}</td>
       <td>
@@ -1443,8 +1505,8 @@ function renderSubTable(list){
           <button class="btn btn-outline btn-sm" style="color:var(--green);border-color:var(--green)" onclick="adminUnduhExcelDaftar('${esc(s.refKode)}')">📥 Excel</button>
           ${['submitted','Menunggu'].includes(s.status)?`
             <button class="btn btn-outline btn-sm" style="color:var(--blue);border-color:var(--blue)" onclick="adminEditDaftar('${esc(s.refKode)}')">✏️ Edit</button>
-            ${belumUpload
-              ? `<button class="btn btn-secondary btn-sm" title="Dokumen belum diupload satker" disabled style="opacity:.5;cursor:not-allowed">🔒 Proses</button>`
+            ${prosesLocked
+              ? `<button class="btn btn-secondary btn-sm" title="${belumUpload?'Dokumen belum diupload satker':'Dokumen belum lengkap — satker perlu upload semua dokumen wajib'}" disabled style="opacity:.5;cursor:not-allowed">🔒 Proses</button>`
               : `<button class="btn btn-success btn-sm" onclick="bukaProses('${esc(s.refKode)}')">✅ Proses</button>`
             }
             <button class="btn btn-danger btn-sm" onclick="bukaTolak('${esc(s.refKode)}')">❌ Tolak</button>
@@ -1626,13 +1688,13 @@ async function lihatDetail(refKode){
       <!-- Aksi proses/tolak -->
       ${['submitted','Menunggu'].includes(s.status)?`
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${!s.sudahUpload
-          ? `<button class="btn btn-secondary btn-sm" disabled style="opacity:.5;cursor:not-allowed" title="Dokumen belum diupload">🔒 Proses</button>`
+        ${!s.sudahUploadLengkap
+          ? `<button class="btn btn-secondary btn-sm" disabled style="opacity:.5;cursor:not-allowed" title="${!s.sudahUpload?'Dokumen belum diupload':'Dokumen belum lengkap — satker perlu upload semua dokumen wajib'}">🔒 Proses</button>`
           : `<button class="btn btn-success btn-sm" onclick="closeModal('modalDetail');bukaProses('${esc(s.refKode)}')">✅ Proses</button>`
         }
         <button class="btn btn-danger btn-sm" onclick="closeModal('modalDetail');bukaTolak('${esc(s.refKode)}')">❌ Tolak</button>
       </div>
-      ${!s.sudahUpload?`<div style="margin-top:8px;font-size:11px;color:#991b1b">🔒 Dokumen belum diupload — tombol Proses dikunci sampai dokumen tersedia.</div>`:''}`:''}
+      ${!s.sudahUpload?`<div style="margin-top:8px;font-size:11px;color:#991b1b">🔒 Dokumen belum diupload — tombol Proses dikunci sampai dokumen tersedia.</div>`:(!s.sudahUploadLengkap?`<div style="margin-top:8px;font-size:11px;color:#D97706">⚠️ Dokumen belum lengkap — satker perlu upload semua dokumen wajib sebelum bisa diproses.</div>`:'')}`:''}
       ${s.status==='Ditolak'?`
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gray-200)">
         ${s.sudahUpload ? `
@@ -1677,6 +1739,7 @@ async function doProses(){
     if(!res.success){showToast(res.message||'Gagal',true);btn.disabled=false;btn.innerHTML='✅ Proses';return;}
     showToast('✅ Pendaftaran berhasil diproses',false,true);
     closeModal('modalProses');
+    _cacheInvalidate('adminDaftarList'); _cacheInvalidate('adminDashboard');
     loadSubmissions();
   }catch(e){showToast('Gagal',true);}
   btn.disabled=false; btn.innerHTML='✅ Proses';
@@ -1690,6 +1753,7 @@ async function doResetKeMenunggu(refKode) {
     if (!res.success) { showToast(res.message || 'Gagal reset status', true); return; }
     showToast('✅ Status berhasil direset ke Menunggu', false, true);
     closeModal('modalDetail');
+    _cacheInvalidate('adminDaftarList'); _cacheInvalidate('adminDashboard');
     loadSubmissions();
   } catch(e) { showToast('❌ Gagal reset status', true); }
 }
@@ -1733,6 +1797,7 @@ async function selesaiProses(refKode){
       const res = await apiPost({action:'tandaiTerdaftar', refKode});
       if(!res.success){showToast(res.message||'Gagal',true);return;}
       showToast('✅ Pendaftaran berhasil diselesaikan.',false,true);
+      _cacheInvalidate('adminDaftarList'); _cacheInvalidate('adminDashboard');
       loadSubmissions();
     }catch(e){showToast('Gagal: '+e.message,true);}
   }
@@ -1759,6 +1824,7 @@ async function doTolak(){
     if(!res.success){showToast(res.message||'Gagal',true);btn.disabled=false;btn.innerHTML='❌ Tolak';return;}
     showToast('✅ Pendaftaran ditolak',false,true);
     closeModal('modalTolak');
+    _cacheInvalidate('adminDaftarList'); _cacheInvalidate('adminDashboard');
     loadSubmissions();
   }catch(e){showToast('Gagal',true);}
   btn.disabled=false; btn.innerHTML='❌ Tolak';
@@ -1778,6 +1844,7 @@ async function doHapus(){
     if(!res.success){showToast(res.message||'Gagal',true);btn.disabled=false;btn.innerHTML='🗑️ Hapus';return;}
     showToast('✅ Data berhasil dihapus',false,true);
     closeModal('modalHapus');
+    _cacheInvalidate('adminDaftarList'); _cacheInvalidate('adminDashboard');
     loadSubmissions();
   }catch(e){showToast('Gagal: '+e.message,true);}
   btn.disabled=false; btn.innerHTML='🗑️ Hapus';
@@ -1807,6 +1874,7 @@ async function doRollback() {
     if (!res.success) { showToast(res.message||'Gagal rollback', true); btn.disabled=false; btn.textContent='↩️ Konfirmasi Rollback'; return; }
     showToast(`✅ Status berhasil di-rollback ke "${statusTujuan}"`, false, true);
     closeModal('modalRollback');
+    _cacheInvalidate('adminDaftarList'); _cacheInvalidate('adminDashboard');
     loadSubmissions();
   } catch(e) { showToast('Gagal: '+e.message, true); }
   btn.disabled=false; btn.textContent='↩️ Konfirmasi Rollback';
@@ -2413,6 +2481,7 @@ async function doAktivasiOTP(){
     showToast('✅ OTP berhasil diaktivasi! ' + modeRingkas, false, true);
     closeModal('modalAktivasiOTP');
     if(typeof loadOTP==='function') loadOTP();
+    _cacheInvalidate('adminDaftarList'); _cacheInvalidate('adminDaftarPerubahan'); _cacheInvalidate('adminDashboard');
     if(typeof loadSubmissions==='function') loadSubmissions();
     if(typeof loadPergantian==='function') loadPergantian();
   }catch(e){ showToast('Gagal: '+e.message, true); }
@@ -2438,7 +2507,7 @@ function renderPergantian(){
         <option value="Terdaftar">Terdaftar</option>
         <option value="Ditolak">Ditolak</option>
       </select>
-      <button class="btn btn-outline btn-sm" onclick="loadPergantian()">🔄 Refresh</button>
+      <button class="btn btn-outline btn-sm" onclick="_cacheInvalidate('adminDaftarPerubahan');loadPergantian()">🔄 Refresh</button>
       <span id="pgCountAdmin" style="margin-left:auto;font-size:12px;color:var(--gray-500)"></span>
     </div>
     <div style="overflow-x:auto">
@@ -2455,11 +2524,14 @@ function renderPergantian(){
 async function loadPergantian(){
   const body=document.getElementById('pgBodyAdmin');
   if(!body) return;
+  const cached=_cacheGet('adminDaftarPerubahan');
+  if(cached){ cachedPergantian=cached; filterPergantian(); return; }
   body.innerHTML='<tr class="tbl-empty"><td colspan="9">Memuat...</td></tr>';
   try{
     const res=await apiPost({action:'getDaftarPerubahan'});
     if(!res.success){body.innerHTML=`<tr class="tbl-empty"><td colspan="9">❌ ${esc(res.message||'Gagal')}</td></tr>`;return;}
     cachedPergantian=res.list||[];
+    _cacheSet('adminDaftarPerubahan', cachedPergantian);
     filterPergantian();
   }catch(e){body.innerHTML='<tr class="tbl-empty"><td colspan="9">❌ Gagal memuat</td></tr>';}
 }
@@ -2467,11 +2539,19 @@ async function loadPergantian(){
 function filterPergantian(){
   const q=(document.getElementById('pgSearchAdmin')?.value||'').toLowerCase();
   const f=(document.getElementById('pgFilterAdmin')?.value||'');
-  const filtered=cachedPergantian.filter(p=>{
+  let filtered=cachedPergantian.filter(p=>{
     const matchQ=!q||(p.id||'').toLowerCase().includes(q)||(p.namaSatker||'').toLowerCase().includes(q)||(p.kodeSatker||'').toLowerCase().includes(q)||(p.namaKpa||'').toLowerCase().includes(q);
     const matchF=!f||(p.status||'')===f;
     return matchQ&&matchF;
   });
+  // Auto-sort berdasarkan prioritas, lalu tanggal ascending
+  filtered = sortByPriority(
+    filtered,
+    p=>p.status,
+    p=>Object.keys((typeof p.filesJson==='object'&&p.filesJson)?p.filesJson:{}).filter(k=>!k.startsWith('otpFoto_')).length>0,
+    p=>p.sudahUploadLengkap,
+    p=>p.createdAt||p.tglSurat||''
+  );
   const countEl=document.getElementById('pgCountAdmin');
   if(countEl) countEl.textContent = filtered.length+' / '+cachedPergantian.length+' pengajuan';
   renderPgTable(filtered);
@@ -2486,12 +2566,17 @@ function renderPgTable(list){
     const semula = Array.isArray(p.semula)?p.semula:[];
     const menjadi = Array.isArray(p.menjadi)?p.menjadi:[];
     const filesJson = (typeof p.filesJson==='object'&&p.filesJson)?p.filesJson:{};
-    const fileCount = Object.keys(filesJson).length;
-    const sudahUpload = fileCount>0;
+    // Hitung fileCount hanya dari dokumen non-OTP
+    const fileCount = Object.keys(filesJson).filter(k=>!k.startsWith('otpFoto_')).length;
+    const sudahUpload = fileCount > 0;
+    // sudahUploadLengkap dari backend, fallback ke sudahUpload untuk data lama
+    const sudahUploadLengkap = p.sudahUploadLengkap != null ? p.sudahUploadLengkap : sudahUpload;
     const status = p.status||'Menunggu';
     const sLow = status.toLowerCase();
     const isMenunggu = sLow==='menunggu';
-    const belumUpload = !sudahUpload && isMenunggu;
+    const belumUpload     = !sudahUpload && isMenunggu;
+    const dokBelumLengkap = sudahUpload && !sudahUploadLengkap && isMenunggu;
+    const prosesLocked    = isMenunggu && !sudahUploadLengkap;
     return `
     <tr>
       <td style="font-family:monospace;font-size:11px">${esc(p.id||'—')}</td>
@@ -2500,7 +2585,11 @@ function renderPgTable(list){
       <td style="white-space:nowrap;font-size:12px">${semula.length} → <strong style="color:#7C3AED">${menjadi.length}</strong> pengguna</td>
       <td style="white-space:nowrap">${fmtTgl(p.createdAt||p.tglSurat||'')}</td>
       <td style="text-align:center">${sudahUpload?`<span style="background:#F3E8FF;color:#7C3AED;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">${fileCount}</span>`:`<span style="color:var(--red);font-size:11px;font-weight:600">⚠️ —</span>`}</td>
-      <td>${bstat(status, sudahUpload)}${belumUpload?'<br/><span style="font-size:10px;color:var(--red);font-weight:600">⚠️ Belum upload</span>':''}</td>
+      <td>
+        ${bstat(status, sudahUpload)}
+        ${belumUpload?'<br/><span style="font-size:10px;color:var(--red);font-weight:600">⚠️ Belum upload</span>':''}
+        ${dokBelumLengkap?'<br/><span style="font-size:10px;color:#D97706;font-weight:600">⚠️ Dok. belum lengkap</span>':''}
+      </td>
       <td style="font-size:11px;color:var(--gray-600);font-family:monospace;white-space:nowrap">${p.diprosesoleh?esc(p.diprosesoleh):'<span style="color:var(--gray-400)">—</span>'}</td>
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
@@ -2508,8 +2597,8 @@ function renderPgTable(list){
           <button class="btn btn-outline btn-sm" style="color:#7C3AED;border-color:#7C3AED" onclick="adminUnduhExcelPg('${esc(p.id)}')">📥 Excel</button>
           ${isMenunggu?`
             <button class="btn btn-outline btn-sm" style="color:var(--blue);border-color:var(--blue)" onclick="adminEditPg('${esc(p.id)}')">✏️ Edit</button>
-            ${belumUpload
-              ? `<button class="btn btn-secondary btn-sm" title="Dokumen belum diupload satker" disabled style="opacity:.5;cursor:not-allowed">🔒 Proses</button>`
+            ${prosesLocked
+              ? `<button class="btn btn-secondary btn-sm" title="${belumUpload?'Dokumen belum diupload satker':'Dokumen belum lengkap — satker perlu upload semua dokumen wajib'}" disabled style="opacity:.5;cursor:not-allowed">🔒 Proses</button>`
               : `<button class="btn btn-success btn-sm" onclick="prosesPg('${esc(p.id)}')">✅ Proses</button>`}
             <button class="btn btn-danger btn-sm" onclick="tolakPg('${esc(p.id)}')">❌ Tolak</button>
           `:''}
@@ -2531,6 +2620,7 @@ async function hapusPerubahan(id){
     const res = await apiPost({action:'hapusPerubahan', ids:[id]});
     if(!res.success){showToast(res.message||'Gagal hapus',true);if(btn){btn.disabled=false;btn.textContent='🗑️';}return;}
     showToast('✅ Rekaman pergantian berhasil dihapus',false,true);
+    _cacheInvalidate('adminDaftarPerubahan'); _cacheInvalidate('adminDashboard');
     loadPergantian();
   }catch(err){showToast('Error: '+err.message,true);if(btn){btn.disabled=false;btn.textContent='🗑️';}}
 }
@@ -2584,6 +2674,8 @@ function lihatDetailPg(id){
       +'</tr>';
   }
   const pgSudahUpload = fileEntries.length > 0;
+  // sudahUploadLengkap dari backend; fallback ke pgSudahUpload untuk data lama tanpa field ini
+  const pgSudahUploadLengkap = p.sudahUploadLengkap != null ? p.sudahUploadLengkap : pgSudahUpload;
   const pgStatus = p.status || 'Menunggu';
   const pgIsDitolak = pgStatus.toLowerCase() === 'ditolak';
   const pgCatatan = p.catatanAdmin || '';
@@ -2616,10 +2708,14 @@ function lihatDetailPg(id){
        +'</div>'
       :'')
     // Aksi: Menunggu
-    +((pgStatus.toLowerCase()==='menunggu' && fileEntries.length)
-      ?'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">'
+    +(pgStatus.toLowerCase()==='menunggu'
+      ?'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;align-items:center">'
+       +(pgSudahUpload&&!pgSudahUploadLengkap?'<span style="font-size:11px;color:#D97706;margin-right:auto">⚠️ Dokumen belum lengkap</span>':'')
+       +(!pgSudahUpload?'<span style="font-size:11px;color:#991b1b;margin-right:auto">🔒 Satker belum upload dokumen</span>':'')
        +'<button class="btn btn-danger" onclick="closeModalPg();tolakPg(\''+esc(p.id)+'\')">❌ Tolak</button>'
-       +'<button class="btn btn-success" onclick="closeModalPg();prosesPg(\''+esc(p.id)+'\')">✅ Proses</button>'
+       +(pgSudahUploadLengkap
+         ?'<button class="btn btn-success" onclick="closeModalPg();prosesPg(\''+esc(p.id)+'\')">✅ Proses</button>'
+         :'<button class="btn btn-secondary" disabled style="opacity:.5;cursor:not-allowed" title="'+(pgSudahUpload?'Dokumen belum lengkap':'Dokumen belum diupload')+'">🔒 Proses</button>')
        +'</div>'
       :'')
     // Aksi: Ditolak
@@ -2650,6 +2746,7 @@ async function prosesPg(id){
     if(!res.success){showToast(res.message||'Gagal',true);return;}
     if(res.needsOTP){
       showToast('✅ Status → Terdaftar. Ada pengguna yang butuh Aktivasi OTP.',false,true);
+      _cacheInvalidate('adminDaftarPerubahan'); _cacheInvalidate('adminDashboard');
       loadPergantian();
       setTimeout(()=>{
         if(confirm('Ada pengguna KPA/PPK/PPSPM yang memerlukan Aktivasi OTP.\nLanjutkan Aktivasi OTP sekarang?')){
@@ -2658,6 +2755,7 @@ async function prosesPg(id){
       },300);
     } else {
       showToast('✅ Status diupdate ke '+(res.statusBaru||'Selesai'),false,true);
+      _cacheInvalidate('adminDaftarPerubahan'); _cacheInvalidate('adminDashboard');
       loadPergantian();
     }
   }catch(err){showToast('Error: '+err.message,true);}
@@ -2670,6 +2768,7 @@ async function tolakPg(id){
     const res = await apiPost({action:'tolakPerubahan', id, catatan});
     if(!res.success){showToast(res.message||'Gagal',true);return;}
     showToast('✅ Pengajuan ditolak',false,true);
+    _cacheInvalidate('adminDaftarPerubahan'); _cacheInvalidate('adminDashboard');
     loadPergantian();
   }catch(err){showToast('Error: '+err.message,true);}
 }
@@ -2681,6 +2780,7 @@ async function doResetPgKeMenunggu(id){
     if(!res.success){showToast(res.message||'Gagal reset status',true);return;}
     showToast('✅ Status berhasil direset ke Menunggu',false,true);
     closeModalPg();
+    _cacheInvalidate('adminDaftarPerubahan'); _cacheInvalidate('adminDashboard');
     loadPergantian();
   }catch(err){showToast('Error: '+err.message,true);}
 }
@@ -3097,6 +3197,7 @@ async function doSaveEditPg(){
     p.namaKpa=namaKpa; p.nip=nip; p.noHp=noHp; p.tglSurat=tglSurat; p.menjadi=menjadi;
     showToast('✅ Data pergantian berhasil diperbarui',false,true);
     closeModal('modalEditPg');
+    _cacheInvalidate('adminDaftarPerubahan');
     loadPergantian();
   }catch(e){showToast('❌ '+e.message,true);}
   finally{btn.disabled=false; btn.textContent='💾 Simpan';}
@@ -3140,108 +3241,4 @@ async function adminEditDaftar(refKode){
         html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">';
         html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">Nama<input class="form-control" id="ed_nama_'+i+'" value="'+escHtml(u.nama||u.namaLengkap||'')+'" placeholder="Nama Lengkap"/></label>';
         html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">NIP/NRP<input class="form-control" id="ed_nipnrp_'+i+'" value="'+escHtml(u.nipnrp||'')+'" placeholder="NIP/NRP"/></label>';
-        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">NIK<input class="form-control" id="ed_nik_'+i+'" value="'+escHtml(u.nik||'')+'" placeholder="16 digit NIK"/></label>';
-        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">Email<input class="form-control" id="ed_email_'+i+'" value="'+escHtml(u.email||'')+'" type="email" placeholder="email@domain.com"/></label>';
-        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">No HP<input class="form-control" id="ed_hp_'+i+'" value="'+escHtml(u.hp||'')+'" placeholder="08xx..."/></label>';
-        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">No SK<input class="form-control" id="ed_sk_'+i+'" value="'+escHtml(u.sk||'')+'" placeholder="Nomor SK"/></label>';
-        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">Tgl SK<input class="form-control" id="ed_tglsk_'+i+'" value="'+escHtml(u.tglsk||'')+'" placeholder="DD-MM-YYYY"/></label>';
-        html += '</div>';
-        html += '<div style="font-size:12px;margin-bottom:4px;font-weight:600;color:var(--gray-600)">Peran:</div>';
-        html += '<div style="display:flex;flex-wrap:wrap;gap:8px;">'+peranChecks+'</div>';
-        html += '</div>';
-      });
-    }
-
-    document.getElementById('editDaftarBody').innerHTML = html;
-    document.getElementById('editDaftarBody').dataset.userCount = users.length;
-  }catch(e){document.getElementById('editDaftarBody').innerHTML='<p style="color:red;text-align:center">Error: '+escHtml(e.message)+'</p>';}
-}
-
-async function doSaveEditDaftar(){
-  const btn = document.getElementById('btnSaveEditDaftar');
-  btn.disabled=true; btn.textContent='⏳ Menyimpan...';
-  try{
-    const refKode  = _editDaftarRef;
-    const namaKpa  = (document.getElementById('ed_namaKpa')?document.getElementById('ed_namaKpa').value:'').trim();
-    const nip      = (document.getElementById('ed_nip')?document.getElementById('ed_nip').value:'').trim();
-    const noHp     = (document.getElementById('ed_noHp')?document.getElementById('ed_noHp').value:'').trim();
-
-    const userCount = parseInt((document.getElementById('editDaftarBody')?document.getElementById('editDaftarBody').dataset.userCount:'0')||'0',10);
-    const usersJson = [];
-    for(var i=0;i<userCount;i++){
-      const peranList = Array.from(document.querySelectorAll('.ed_peran_'+i+':checked')).map(function(el){return el.value;});
-      usersJson.push({
-        nama:    (document.getElementById('ed_nama_'+i)?document.getElementById('ed_nama_'+i).value:'').trim(),
-        nipnrp:  (document.getElementById('ed_nipnrp_'+i)?document.getElementById('ed_nipnrp_'+i).value:'').trim(),
-        nik:     (document.getElementById('ed_nik_'+i)?document.getElementById('ed_nik_'+i).value:'').trim(),
-        email:   (document.getElementById('ed_email_'+i)?document.getElementById('ed_email_'+i).value:'').trim(),
-        hp:      (document.getElementById('ed_hp_'+i)?document.getElementById('ed_hp_'+i).value:'').trim(),
-        sk:      (document.getElementById('ed_sk_'+i)?document.getElementById('ed_sk_'+i).value:'').trim(),
-        tglsk:   (document.getElementById('ed_tglsk_'+i)?document.getElementById('ed_tglsk_'+i).value:'').trim(),
-        peranList: peranList,
-      });
-    }
-
-    const res = await apiPost({action:'editPendaftaran', refKode:refKode, namaKpa:namaKpa, nip:nip, noHp:noHp, usersJson:usersJson});
-    if(!res.success){showToast(res.message||'Gagal menyimpan',true);return;}
-
-    showToast('✅ Data pendaftaran berhasil diperbarui',false,true);
-    closeModal('modalEditDaftar');
-    loadSubmissions();
-  }catch(e){showToast('❌ '+e.message,true);}
-  finally{btn.disabled=false; btn.textContent='💾 Simpan';}
-}
-
-// Helper HTML-escape untuk string didalam innerHTML builder
-function escHtml(str){
-  return String(str==null?'':str)
-    .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
-    .replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-// ── Escape key: tutup modal yang sedang terbuka ──────────────────────────────
-document.addEventListener('keydown', function(e) {
-  if (e.key !== 'Escape') return;
-
-  // 1. Modal dinamis via createElement+appendChild — harus di-remove(), bukan display:none
-  //    modalDetailPg: detail pergantian user (createElement, append ke body)
-  //    modalResetPw:  reset password user (createElement, append ke body)
-  const dynModalPg = document.getElementById('modalDetailPg');
-  if (dynModalPg) { closeModalPg(); return; }
-  const dynResetPw = document.getElementById('modalResetPw');
-  if (dynResetPw) { dynResetPw.remove(); return; }
-
-  // 2. Modal via innerHTML injection (masuk DOM saat panel aktif) — tutup via closeModal
-  //    modalSatker & modalAddUser: di-render dalam main.innerHTML panel Satker/Users
-  const MODAL_IDS = [
-    'modalDetail','modalTolak','modalProses','modalHapus','modalRollback',
-    'modalAktivasiOTP','modalProsesEmail','modalTolakEmail','modalDetailEmail',
-    'modalEditDaftar','modalOtpUploadFoto','modalEditPg',
-    'modalSatker','modalAddUser',
-  ];
-  for (const id of MODAL_IDS) {
-    const el = document.getElementById(id);
-    if (el && (el.classList.contains('on') || el.style.display === 'flex' || el.style.display === 'block')) {
-      closeModal(id);
-      return;
-    }
-  }
-});
-
-// Auto-restore session saat reload (pakai key yang sama dengan login: sakti_user)
-window.addEventListener('DOMContentLoaded', async () => {
-  const saved = sessionStorage.getItem('sakti_user');
-  if (!saved) return;
-  try {
-    const parsed = JSON.parse(saved);
-    if (!parsed?.token) { sessionStorage.removeItem('sakti_user'); return; }
-    if (!['Admin','SuperAdmin','Petugas'].includes(parsed.role)) { sessionStorage.removeItem('sakti_user'); return; }
-    currentUser = parsed;
-    const v = await apiPost({ action: 'validateToken' });
-    if (!v || !v.success) { sessionStorage.removeItem('sakti_user'); currentUser = null; return; }
-    initApp();
-  } catch(e) { sessionStorage.removeItem('sakti_user'); currentUser = null; }
-});
-</script>
-</body>
-</html>
+        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">NIK<input class="form-control" id="ed_nik_'+i

@@ -5,13 +5,18 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Portal Pendaftaran User SAKTI — KPPN Jayapura</title>
 <script>(function(){var s="<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%231565C0'/><stop offset='1' stop-color='%230D47A1'/></linearGradient></defs><rect width='32' height='32' rx='6' fill='url(%23g)'/><rect x='14' y='4' width='4' height='4' rx='1' fill='%23F9A825'/><rect x='3' y='8' width='26' height='2.5' rx='1' fill='%23F9A825'/><rect x='5' y='11' width='4' height='8' rx='1' fill='white' opacity='.9'/><rect x='14' y='11' width='4' height='8' rx='1' fill='white' opacity='.9'/><rect x='23' y='11' width='4' height='8' rx='1' fill='white' opacity='.9'/><rect x='3' y='27' width='26' height='2' rx='1' fill='%23F9A825'/><rect x='12' y='19' width='8' height='10' rx='1' fill='white' opacity='.95'/></svg>";var l=document.createElement('link');l.rel='icon';l.type='image/svg+xml';l.href='data:image/svg+xml,'+s;document.head.appendChild(l);}());</script>
+<!-- Fonts: preconnect agar DNS & TLS siap duluan, font dimuat non-blocking -->
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"/>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'"/>
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/></noscript>
+<!-- xlsx: defer — hanya dipakai saat user klik export, tidak perlu blocking -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+<!-- flatpickr CSS: dimuat non-blocking -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" media="print" onload="this.media='all'"/>
+<!-- flatpickr JS: defer — hanya dipakai saat form tanggal muncul -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js" defer></script>
 <style>
 :root{
   --blue:#0D47A1;--blue-mid:#1565C0;--blue-light:#1976D2;--blue-pale:#E3F2FD;--blue-pale2:#BBDEFB;
@@ -684,6 +689,40 @@ let activeTab   = 'dashboard';
 let emailRows   = [];           // rows di form email baru
 let emailRiwayat = [];          // cache riwayat email dari server
 let userSaktiData = null;       // cache data pendaftaran user sakti milik satker ini
+
+// ════════════════════════════════════════════════════════
+// IN-MEMORY CACHE  (session-scoped, TTL 3 menit)
+// ════════════════════════════════════════════════════════
+let _cache = {};
+const _CACHE_TTL = 3 * 60 * 1000; // 3 menit
+
+function _cacheGet(key) {
+  const entry = _cache[key];
+  if (!entry) return null;
+  if (Date.now() - entry.ts > _CACHE_TTL) { delete _cache[key]; return null; }
+  return entry.val;
+}
+function _cacheSet(key, val) {
+  _cache[key] = { val, ts: Date.now() };
+}
+function _cacheInvalidate(key) {
+  if (key) delete _cache[key];
+  else _cache = {};
+}
+
+// Prefetch semua data utama secara paralel di background saat login
+async function _prefetchAll() {
+  try {
+    const [r1, r2, r3] = await Promise.all([
+      apiPost({ action: 'getSatkerDashboard' }),
+      apiPost({ action: 'getRiwayatPerubahan' }),
+      apiPost({ action: 'getRiwayatEmailSakti' }),
+    ]);
+    if (r1 && r1.success !== false) _cacheSet('dashboard', r1);
+    if (r2 && r2.success !== false) _cacheSet('riwayatPerubahan', r2);
+    if (r3 && r3.success !== false) _cacheSet('emailRiwayat', r3);
+  } catch(e) { /* prefetch gagal — tidak masalah, akan fetch satu per satu */ }
+}
 
 // ════════════════════════════════════════════════════════
 // API HELPER
@@ -2440,6 +2479,7 @@ async function ubDoGenerateExcel(){
   }
 
   // Sukses — langsung ke riwayat
+  _cacheInvalidate('dashboard'); // data baru masuk, cache dashboard harus fresh
   showToast('✅ Data berhasil disimpan! Silakan upload dokumen pendukung.', false, true);
   closeModal('modalSuksesUB');
   switchTab('user-riwayat');
@@ -3219,22 +3259,6 @@ function pgBuildDokumenList(menjadiUsers) {
       });
     });
   }
-  // Bukti foto aktivasi OTP per pejabat — wajib jika ada role KPA/PPK/PPSPM
-  if (butuhOTP) {
-    (menjadiUsers || []).forEach((u, idx) => {
-      const otpPeran = (u.peranList || []).filter(p => PG_PERAN_OTP.includes(p));
-      if (!otpPeran.length) return;
-      const nama     = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
-      const peranStr = otpPeran.map(p => PERAN_OTP_LABEL[p] || p).join('/');
-      list.push({
-        key:         'fotoOTP_' + idx,
-        label:       'Bukti Aktivasi OTP — ' + nama + ' (' + peranStr + ')',
-        desc:        'Foto/screenshot bukti aktivasi OTP dari aplikasi SAKTI untuk ' + nama + ' (' + peranStr + '). Format: JPG/PNG.',
-        required:    true,
-        acceptImage: true
-      });
-    });
-  }
   (menjadiUsers || []).forEach((u, idx) => {
     const nama = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
     const nip  = (u.nipnrp || '').trim();
@@ -3895,6 +3919,8 @@ function rwRenderDetailDaftar(d, rowKey){
   // sudahUpload: cek field eksplisit, fallback ke filesJson (untuk kompatibilitas data lama)
   const sudahUpload = !!(d.sudahUpload || d.hasFiles ||
     (d.filesJson && typeof d.filesJson === 'object' && Object.keys(d.filesJson).filter(k => !k.startsWith('otpFoto_')).length > 0));
+  // sudahUploadLengkap: dari backend; fallback ke sudahUpload untuk data lama
+  const sudahUploadLengkap = d.sudahUploadLengkap != null ? d.sudahUploadLengkap : sudahUpload;
   const belumUpload = !sudahUpload && !isDitolak && !isTerdaftar;
 
   let usersArr = [];
@@ -3932,10 +3958,18 @@ function rwRenderDetailDaftar(d, rowKey){
       <button class="btn btn-primary btn-sm" onclick="bukaUploadDokumenByRef('${esc(d.refKode)}')">📤 Upload Dokumen</button>
     </div>`;
   } else if (sudahUpload && !isDiproses && !isTerdaftar && !isDitolak) {
-    banner = `<div style="background:var(--green-pale);border:1px solid #A5D6A7;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:var(--green);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-      <div>✅ <strong>Dokumen terupload.</strong> Menunggu verifikasi KPPN.</div>
-      <button class="btn btn-outline btn-sm" style="font-size:11px;color:var(--green);border-color:var(--green)" onclick="bukaUploadDokumenByRef('${esc(d.refKode)}')">📎 Tambah/Ganti</button>
-    </div>`;
+    if (!sudahUploadLengkap) {
+      // Ada file tapi belum semua dokumen wajib
+      banner = `<div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#92400e;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>⚠️ <strong>Dokumen belum lengkap.</strong> Masih ada dokumen wajib yang belum diupload. Pengajuan tidak dapat diproses KPPN sampai semua dokumen terpenuhi.</div>
+        <button class="btn btn-primary btn-sm" onclick="bukaUploadDokumenByRef('${esc(d.refKode)}')">📤 Lengkapi Dokumen</button>
+      </div>`;
+    } else {
+      banner = `<div style="background:var(--green-pale);border:1px solid #A5D6A7;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:var(--green);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>✅ <strong>Dokumen lengkap.</strong> Menunggu verifikasi KPPN.</div>
+        <button class="btn btn-outline btn-sm" style="font-size:11px;color:var(--green);border-color:var(--green)" onclick="bukaUploadDokumenByRef('${esc(d.refKode)}')">📎 Tambah/Ganti</button>
+      </div>`;
+    }
   } else if (isDitolak) {
     banner = `<div style="background:#fff1f2;border:1.5px solid #fca5a5;border-radius:8px;padding:12px 14px;margin-bottom:12px">
       <div style="font-size:12px;font-weight:700;color:#b91c1c;margin-bottom:4px">❌ Ditolak</div>
@@ -4028,8 +4062,10 @@ function rwRenderDetailGanti(g, rowKey){
   const semula  = Array.isArray(g.semula)  ? g.semula  : (typeof g.semula==='string'?(()=>{try{return JSON.parse(g.semula);}catch(e){return [];}})():[]);
   const menjadi = Array.isArray(g.menjadi) ? g.menjadi : (typeof g.menjadi==='string'?(()=>{try{return JSON.parse(g.menjadi);}catch(e){return [];}})():[]);
   const filesJson = (typeof g.filesJson==='object'&&g.filesJson)?g.filesJson:{};
-  const fileKeys = Object.keys(filesJson);
+  const fileKeys = Object.keys(filesJson).filter(k=>!k.startsWith('otpFoto_'));
   const sudahUpload = fileKeys.length>0;
+  // sudahUploadLengkap dari backend; fallback ke sudahUpload untuk data lama
+  const sudahUploadLengkapGanti = g.sudahUploadLengkap != null ? g.sudahUploadLengkap : sudahUpload;
   const belumUpload = !sudahUpload && !isDitolak && !isTerdaftar;
 
   const PERAN_OTP = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
@@ -4060,10 +4096,17 @@ function rwRenderDetailGanti(g, rowKey){
       <button class="btn btn-sm" onclick="pgBukaUploadModal('${esc(g.id)}')" style="background:#7C3AED;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer">📤 Upload Dokumen</button>
     </div>`;
   } else if (sudahUpload && !isDiproses && !isTerdaftar && !isDitolak) {
-    banner = `<div style="background:#F3E8FF;border:1px solid #C4B5FD;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:#6D28D9;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-      <div>✅ <strong>${fileKeys.length} dokumen terupload.</strong> Menunggu verifikasi KPPN.</div>
-      <button class="btn btn-outline btn-sm" style="font-size:11px;color:#7C3AED;border-color:#7C3AED" onclick="pgBukaUploadModal('${esc(g.id)}')">📎 Tambah/Ganti</button>
-    </div>`;
+    if (!sudahUploadLengkapGanti) {
+      banner = `<div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#92400e;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>⚠️ <strong>Dokumen belum lengkap.</strong> Masih ada dokumen wajib yang belum diupload. Pergantian tidak dapat diproses KPPN.</div>
+        <button class="btn btn-sm" onclick="pgBukaUploadModal('${esc(g.id)}')" style="background:#D97706;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer">📤 Lengkapi Dokumen</button>
+      </div>`;
+    } else {
+      banner = `<div style="background:#F3E8FF;border:1px solid #C4B5FD;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:#6D28D9;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>✅ <strong>${fileKeys.length} dokumen lengkap.</strong> Menunggu verifikasi KPPN.</div>
+        <button class="btn btn-outline btn-sm" style="font-size:11px;color:#7C3AED;border-color:#7C3AED" onclick="pgBukaUploadModal('${esc(g.id)}')">📎 Tambah/Ganti</button>
+      </div>`;
+    }
   } else if (isDitolak) {
     banner = `<div style="background:#fff1f2;border:1.5px solid #fca5a5;border-radius:8px;padding:12px 14px;margin-bottom:12px">
       <div style="font-size:12px;font-weight:700;color:#b91c1c;margin-bottom:4px">❌ Ditolak</div>
@@ -4287,11 +4330,17 @@ function rwRenderKartuGanti(g, isLatest) {
       <button class="btn btn-sm" style="flex-shrink:0;font-size:12px;background:#7C3AED;color:#fff;border:none;padding:7px 14px;border-radius:6px;font-weight:700;cursor:pointer" onclick="pgBukaUploadModal('${esc(g.id)}')">📤 Upload Dokumen</button>
     </div>`:''}
 
-    ${sudahUpload && !isDiproses && !isTerdaftar && !isDitolak?`
-    <div style="background:#F3E8FF;border:1px solid #C4B5FD;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:12px;color:#6D28D9;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-      <div><strong>✅ ${fileKeys.length} dokumen terupload.</strong> Menunggu verifikasi KPPN Jayapura.</div>
-      <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:12px;color:#7C3AED;border-color:#7C3AED" onclick="pgBukaUploadModal('${esc(g.id)}')">📎 Tambah/Ganti Dokumen</button>
-    </div>`:''}
+    ${sudahUpload && !isDiproses && !isTerdaftar && !isDitolak?(
+      !g.sudahUploadLengkap
+        ?`<div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:12px;color:#92400e;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div><strong>⚠️ Dokumen belum lengkap.</strong> Masih ada dokumen wajib yang belum diupload. Pergantian tidak dapat diproses KPPN.</div>
+          <button class="btn btn-sm" style="flex-shrink:0;font-size:12px;background:#D97706;color:#fff;border:none;padding:7px 14px;border-radius:6px;font-weight:700;cursor:pointer" onclick="pgBukaUploadModal('${esc(g.id)}')">📤 Lengkapi Dokumen</button>
+        </div>`
+        :`<div style="background:#F3E8FF;border:1px solid #C4B5FD;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:12px;color:#6D28D9;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div><strong>✅ ${fileKeys.length} dokumen lengkap.</strong> Menunggu verifikasi KPPN Jayapura.</div>
+          <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:12px;color:#7C3AED;border-color:#7C3AED" onclick="pgBukaUploadModal('${esc(g.id)}')">📎 Tambah/Ganti Dokumen</button>
+        </div>`)
+    :''}
 
     ${isDitolak?`
     <div style="background:#fff1f2;border:1.5px solid #fca5a5;border-radius:10px;padding:14px 16px;margin-bottom:12px">
@@ -5219,6 +5268,7 @@ async function doSimpanEditRiwayat() {
       });
       if (!res.success) { showToast(res.message || 'Gagal menyimpan', true); return; }
       Object.assign(_pdCache[_editRiwayatRef], { namaSatker, levelSatker, namaKpa, nip, noHp, kota, tglSurat, usersJson });
+      _cacheInvalidate('dashboard');
       showToast('✅ Data pendaftaran berhasil diperbarui', false, true);
       erRestoreSaveEdit();
       closeModal('modalEditRiwayat');
