@@ -5499,35 +5499,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-// ════════════════════════════════════════════════════════
-// DATA CACHE — hindari double fetch antar tab
-// ════════════════════════════════════════════════════════
-const _cache = {};
-const _CACHE_TTL = 60000; // 60 detik — stale setelah 1 menit
-
-function _cacheSet(key, data) {
-  _cache[key] = { data, ts: Date.now() };
-}
-function _cacheGet(key) {
-  const c = _cache[key];
-  if (!c) return null;
-  if (Date.now() - c.ts > _CACHE_TTL) { delete _cache[key]; return null; }
-  return c.data;
-}
-function _cacheInvalidate(...keys) {
-  keys.forEach(k => delete _cache[k]);
-}
-
-// Prefetch semua endpoint sekaligus di background
-async function _prefetchAll() {
-  try {
-    await Promise.all([
-      apiPost({ action:'getSatkerDashboard' }).then(r => { if(r?.success!==false) _cacheSet('dashboard', r); }),
-      apiPost({ action:'getRiwayatEmailSakti' }).then(r => { if(r?.success!==false) _cacheSet('emailRiwayat', r); }),
-      apiPost({ action:'getRiwayatPerubahan' }).then(r => { if(r?.success!==false) _cacheSet('riwayatPerubahan', r); }),
-    ]);
-  } catch(e) { /* prefetch gagal — init functions akan fetch sendiri */ }
-}
 
 // ── Escape key: tutup modal yang sedang terbuka ──────────────────────────────
 document.addEventListener('keydown', function(e) {

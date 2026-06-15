@@ -583,6 +583,22 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
   </div>
 </div>
 
+<!-- ══ MODAL UPLOAD DOKUMEN ADMIN ══ -->
+<div class="modal-overlay" id="modalAdminUpload">
+  <div class="modal-box" style="max-width:680px;max-height:92vh;overflow-y:auto">
+    <div class="modal-title">📤 Upload / Ganti Dokumen</div>
+    <div id="adminUploadInfo" style="background:var(--blue-pale);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">
+      — memuat —
+    </div>
+    <div id="adminUploadBody">
+      <div style="text-align:center;padding:24px;color:var(--gray-400)">Memuat daftar dokumen...</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalAdminUpload')">Tutup</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ TOAST ══ -->
 <div id="toast"></div>
 
@@ -1683,6 +1699,7 @@ async function lihatDetail(refKode){
       <!-- Download Excel -->
       <div style="margin-bottom:14px">
         <button class="btn btn-outline btn-sm" onclick="adminDownloadPendaftaranExcel(activeDetailData)">📥 Download Form Excel</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--blue);border-color:var(--blue)" onclick="adminBukaUploadDaftar(activeDetailData.refKode,activeDetailData.namaSatker,activeDetailData.files||activeDetailData.filesJson||{})">📤 Upload / Ganti Dokumen</button>
       </div>
 
       <!-- Aksi proses/tolak -->
@@ -2736,6 +2753,13 @@ function lihatDetailPg(id){
   const wrap = document.createElement('div');
   wrap.innerHTML = html;
   document.body.appendChild(wrap.firstElementChild);
+  // Inject tombol upload — tidak bisa masuk template literal karena butuh referensi objek
+  const _pgUploadBtn = document.createElement('div');
+  _pgUploadBtn.style.cssText = 'margin:10px 0 4px';
+  _pgUploadBtn.innerHTML = '<button style="display:inline-flex;align-items:center;gap:6px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer" onclick="adminBukaUploadPerubahan(_pgUploadRef.id, _pgUploadRef.nama, _pgUploadRef.files)">📤 Upload / Ganti Dokumen</button>';
+  window._pgUploadRef = { id: p.id, nama: p.namaSatker||'', files: filesJson };
+  const _pgActionArea = document.querySelector('#modalDetailPg .modal-box > div:last-child') || document.querySelector('#modalDetailPg .modal-box');
+  if (_pgActionArea) _pgActionArea.prepend(_pgUploadBtn);
 }
 function closeModalPg(){ const m=document.getElementById('modalDetailPg'); if(m)m.remove(); }
 
@@ -3241,4 +3265,299 @@ async function adminEditDaftar(refKode){
         html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">';
         html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">Nama<input class="form-control" id="ed_nama_'+i+'" value="'+escHtml(u.nama||u.namaLengkap||'')+'" placeholder="Nama Lengkap"/></label>';
         html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">NIP/NRP<input class="form-control" id="ed_nipnrp_'+i+'" value="'+escHtml(u.nipnrp||'')+'" placeholder="NIP/NRP"/></label>';
-        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">NIK<input class="form-control" id="ed_nik_'+i
+        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">NIK<input class="form-control" id="ed_nik_'+i        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">NIK<input class="form-control" id="ed_nik_'+i+'" value="'+escHtml(u.nik||'')+'" placeholder="16 digit NIK"/></label>';
+        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">Email<input class="form-control" id="ed_email_'+i+'" value="'+escHtml(u.email||'')+'" type="email" placeholder="email@domain.com"/></label>';
+        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">No HP<input class="form-control" id="ed_hp_'+i+'" value="'+escHtml(u.hp||u.noHp||'')+'" placeholder="08xx..."/></label>';
+        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">No SK<input class="form-control" id="ed_sk_'+i+'" value="'+escHtml(u.sk||'')+'" placeholder="Nomor SK"/></label>';
+        html += '<label style="font-size:12px;display:flex;flex-direction:column;gap:3px">Tgl SK<input class="form-control" id="ed_tglsk_'+i+'" value="'+escHtml(u.tglsk||'')+'" placeholder="DD-MM-YYYY"/></label>';
+        html += '</div>';
+        html += '<div style="font-size:12px;margin-bottom:4px;font-weight:600;color:var(--gray-600)">Peran:</div>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:8px;">'+peranChecks+'</div>';
+        html += '</div>';
+      });
+    } else {
+      html += '<p style="font-size:13px;color:var(--gray-400);text-align:center;margin:12px 0">Tidak ada pengguna terdaftar.</p>';
+    }
+
+    document.getElementById('editDaftarBody').innerHTML = html;
+  }catch(e){
+    document.getElementById('editDaftarBody').innerHTML='<p style="color:red;text-align:center">Gagal memuat: '+e.message+'</p>';
+  }
+}
+
+async function doSaveEditDaftar(){
+  const btn = document.getElementById('btnSaveEditDaftar');
+  btn.disabled=true; btn.textContent='Menyimpan...';
+  try{
+    const refKode = _editDaftarRef;
+    if(!refKode){showToast('Ref tidak ditemukan',true);return;}
+
+    const namaKpa = (document.getElementById('ed_namaKpa')?document.getElementById('ed_namaKpa').value:'').trim();
+    const nip     = (document.getElementById('ed_nip')?document.getElementById('ed_nip').value:'').trim();
+    const noHp    = (document.getElementById('ed_noHp')?document.getElementById('ed_noHp').value:'').trim();
+
+    const users = [];
+    let i = 0;
+    while(document.getElementById('ed_nama_'+i)){
+      const peranList = Array.from(document.querySelectorAll('.ed_peran_'+i+':checked')).map(function(el){return el.value;});
+      users.push({
+        nama:    (document.getElementById('ed_nama_'+i)?document.getElementById('ed_nama_'+i).value:'').trim(),
+        nipnrp:  (document.getElementById('ed_nipnrp_'+i)?document.getElementById('ed_nipnrp_'+i).value:'').trim(),
+        nik:     (document.getElementById('ed_nik_'+i)?document.getElementById('ed_nik_'+i).value:'').trim(),
+        email:   (document.getElementById('ed_email_'+i)?document.getElementById('ed_email_'+i).value:'').trim(),
+        hp:      (document.getElementById('ed_hp_'+i)?document.getElementById('ed_hp_'+i).value:'').trim(),
+        sk:      (document.getElementById('ed_sk_'+i)?document.getElementById('ed_sk_'+i).value:'').trim(),
+        tglsk:   (document.getElementById('ed_tglsk_'+i)?document.getElementById('ed_tglsk_'+i).value:'').trim(),
+        peranList: peranList,
+      });
+      i++;
+    }
+
+    const res = await apiPost({action:'editDaftar', refKode:refKode, namaKpa:namaKpa, nip:nip, noHp:noHp, users:users});
+    if(!res.success){showToast(res.message||'Gagal menyimpan',true);return;}
+
+    showToast('Data pendaftaran berhasil diperbarui',false,true);
+    closeModal('modalEditDaftar');
+    _cacheInvalidate('adminDaftarList');
+    _cacheInvalidate('adminDashboard');
+    loadSubmissions();
+  }catch(e){showToast(e.message,true);}
+  finally{btn.disabled=false; btn.textContent='Simpan';}
+}
+
+// ════════════════════════════════════════════════════════
+// ADMIN UPLOAD DOKUMEN — Upload/ganti dokumen milik satker
+// ════════════════════════════════════════════════════════
+let _adminUploadMode   = '';   // 'daftar' | 'perubahan'
+let _adminUploadId     = '';   // refKode (daftar) atau id (perubahan)
+let _adminUploadNama   = '';   // nama satker (untuk info)
+let _adminUploadFiles  = {};   // {key: File}
+
+// Label mapping untuk pendaftaran
+const ADMIN_DOK_LABEL = {
+  formPendaftaran: 'Form Pendaftaran User SAKTI',
+  skPengguna:      'SK Pengguna SAKTI',
+  ktpKpa:          'KTP KPA/Pimpinan',
+  skPejabat:       'SK Pejabat Perbendaharaan',
+  formOTP:         'Form Aktivasi OTP',
+  spesimen:        'Spesimen Tanda Tangan',
+  dokumenLain:     'Dokumen Lainnya',
+};
+
+// Label mapping untuk pergantian
+const ADMIN_PG_DOK_LABEL = {
+  suratPermohonan:  'Surat Permohonan',
+  suratPernyataan:  'Surat Pernyataan',
+  skPejabat:        'SK Pejabat Perbendaharaan',
+  skPengguna:       'SK Pengguna SAKTI',
+  formOTP:          'Form Aktivasi OTP',
+  spesimen:         'Spesimen Tanda Tangan',
+  ktpKpa:           'KTP KPA/Pimpinan',
+  dokumenLain:      'Dokumen Lainnya',
+};
+
+function adminResolveLabelDaftar(key) {
+  if (ADMIN_DOK_LABEL[key]) return ADMIN_DOK_LABEL[key];
+  if (key.startsWith('ktp_user_'))   return 'KTP — Pengguna #' + (parseInt(key.slice(9),10)+1);
+  if (key.startsWith('formOTP_'))    return 'Form OTP — Pengguna #' + (parseInt(key.slice(8),10)+1);
+  if (key.startsWith('spesimen_'))   return 'Spesimen TTD — Pengguna #' + (parseInt(key.slice(9),10)+1);
+  return key;
+}
+
+function adminResolveLabelPg(key) {
+  if (ADMIN_PG_DOK_LABEL[key]) return ADMIN_PG_DOK_LABEL[key];
+  if (key.startsWith('formOTP_'))  return 'Form OTP — Pengguna #' + (parseInt(key.slice(8),10)+1);
+  if (key.startsWith('spesimen_')) return 'Spesimen TTD — Pengguna #' + (parseInt(key.slice(9),10)+1);
+  if (key.startsWith('ktp_'))     return 'KTP — Pengguna #' + (parseInt(key.slice(4),10)+1);
+  return key;
+}
+
+// Buka modal upload untuk pendaftaran
+function adminBukaUploadDaftar(refKode, namaSatker, filesJson) {
+  _adminUploadMode  = 'daftar';
+  _adminUploadId    = refKode;
+  _adminUploadNama  = namaSatker;
+  _adminUploadFiles = {};
+
+  document.getElementById('adminUploadInfo').innerHTML =
+    '<strong>📋 Pendaftaran:</strong> ' + esc(namaSatker) +
+    ' &nbsp;|&nbsp; <span style="font-family:monospace">' + esc(refKode) + '</span>';
+
+  adminRenderUploadBody(filesJson, 'daftar');
+  openModal('modalAdminUpload');
+}
+
+// Buka modal upload untuk pergantian
+function adminBukaUploadPerubahan(id, namaSatker, filesJson) {
+  _adminUploadMode  = 'perubahan';
+  _adminUploadId    = id;
+  _adminUploadNama  = namaSatker;
+  _adminUploadFiles = {};
+
+  document.getElementById('adminUploadInfo').innerHTML =
+    '<strong>🔄 Pergantian:</strong> ' + esc(namaSatker) +
+    ' &nbsp;|&nbsp; <span style="font-family:monospace">' + esc(id) + '</span>';
+
+  adminRenderUploadBody(filesJson, 'perubahan');
+  openModal('modalAdminUpload');
+}
+
+function adminRenderUploadBody(filesJson, mode) {
+  const files = (filesJson && typeof filesJson === 'object') ? filesJson : {};
+  const entries = Object.entries(files).filter(function(e){ return !e[0].startsWith('otpFoto_'); });
+  const resolveLbl = mode === 'daftar' ? adminResolveLabelDaftar : adminResolveLabelPg;
+
+  let html = '';
+
+  // Dokumen yang sudah ada (bisa diganti)
+  if (entries.length) {
+    html += '<div style="font-weight:700;font-size:12px;color:var(--gray-600);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">📁 Dokumen yang sudah ada — klik untuk mengganti</div>';
+    entries.forEach(function(entry) {
+      const key = entry[0];
+      const f   = entry[1];
+      const url  = (typeof f === 'object' ? f.url  : f) || '';
+      const name = (typeof f === 'object' ? f.name : '') || key;
+      const lbl  = resolveLbl(key);
+      html += '<div id="adup_row_' + esc(key) + '" style="border:1px solid var(--gray-200);border-radius:8px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+        + '<div style="flex:1;min-width:0">'
+        +   '<div style="font-size:13px;font-weight:600;color:var(--gray-800)">' + esc(lbl) + '</div>'
+        +   '<div style="font-size:11px;color:var(--gray-500);margin-top:2px">File saat ini: ' + esc(name)
+        +     (url ? ' &nbsp;<a href="' + esc(url) + '" target="_blank" style="color:var(--blue);text-decoration:underline">Lihat</a>' : '') + '</div>'
+        + '</div>'
+        + '<label style="cursor:pointer;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;white-space:nowrap">'
+        +   '🔄 Ganti'
+        +   '<input type="file" accept="application/pdf,image/*" style="display:none" onchange="adminHandleFile(event,\'' + esc(key) + '\')">'
+        + '</label>'
+        + '<span id="adup_fname_' + esc(key) + '" style="font-size:11px;color:var(--green);display:none"></span>'
+        + '<button id="adup_btn_' + esc(key) + '" onclick="adminDoUploadFile(\'' + esc(key) + '\')" style="display:none;background:var(--green);color:#fff;border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer">📤 Upload</button>'
+        + '<span id="adup_done_' + esc(key) + '" style="display:none;color:var(--green);font-weight:700;font-size:12px">✅ Berhasil</span>'
+        + '</div>';
+    });
+  }
+
+  // Tambah dokumen baru (key kustom)
+  html += '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-200)">'
+    + '<div style="font-weight:700;font-size:12px;color:var(--gray-600);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">➕ Upload dokumen baru / tambahan</div>'
+    + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    + '<select id="adup_newkey" style="flex:1;min-width:140px;padding:7px 10px;border-radius:6px;border:1px solid var(--gray-300);font-size:13px">';
+
+  const opts = mode === 'daftar'
+    ? Object.entries(ADMIN_DOK_LABEL)
+    : Object.entries(ADMIN_PG_DOK_LABEL);
+  opts.forEach(function(o){ html += '<option value="' + esc(o[0]) + '">' + esc(o[1]) + '</option>'; });
+  html += '<option value="_custom">— Nama kustom —</option>';
+  html += '</select>'
+    + '<input id="adup_customkey" placeholder="Nama key dokumen" style="display:none;flex:1;padding:7px 10px;border-radius:6px;border:1px solid var(--gray-300);font-size:13px">'
+    + '<label style="cursor:pointer;background:var(--blue);color:#fff;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;white-space:nowrap">'
+    +   '📎 Pilih File'
+    +   '<input type="file" accept="application/pdf,image/*" style="display:none" onchange="adminHandleNewFile(event)">'
+    + '</label>'
+    + '</div>'
+    + '<div id="adup_new_preview" style="margin-top:8px;font-size:12px;color:var(--gray-600)"></div>'
+    + '<button id="adup_new_btn" onclick="adminDoUploadNewFile()" style="display:none;margin-top:8px;background:var(--green);color:#fff;border:none;border-radius:6px;padding:6px 16px;font-size:13px;font-weight:700;cursor:pointer">📤 Upload Dokumen Baru</button>'
+    + '</div>';
+
+  document.getElementById('adminUploadBody').innerHTML = html;
+
+  // Handler untuk select _custom
+  const sel = document.getElementById('adup_newkey');
+  if (sel) sel.addEventListener('change', function(){
+    const ci = document.getElementById('adup_customkey');
+    if (ci) ci.style.display = this.value === '_custom' ? 'block' : 'none';
+  });
+}
+
+let _adminNewFile = null;
+
+function adminHandleFile(evt, key) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  _adminUploadFiles[key] = file;
+  const fnEl = document.getElementById('adup_fname_' + key);
+  const btn  = document.getElementById('adup_btn_'   + key);
+  if (fnEl) { fnEl.textContent = file.name; fnEl.style.display = 'inline'; }
+  if (btn)  { btn.style.display = 'inline-block'; }
+}
+
+function adminHandleNewFile(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  _adminNewFile = file;
+  const prev = document.getElementById('adup_new_preview');
+  const btn  = document.getElementById('adup_new_btn');
+  if (prev) prev.textContent = '📄 ' + file.name;
+  if (btn)  btn.style.display = 'inline-block';
+}
+
+async function adminDoUploadFile(key) {
+  const file = _adminUploadFiles[key];
+  if (!file) return;
+  const btn  = document.getElementById('adup_btn_'  + key);
+  const done = document.getElementById('adup_done_' + key);
+  const row  = document.getElementById('adup_row_'  + key);
+  btn.disabled = true; btn.textContent = '⏳...';
+  try {
+    const b64 = await new Promise(function(res, rej){
+      const fr = new FileReader();
+      fr.onload  = function(){ res(fr.result.split(',')[1]); };
+      fr.onerror = rej;
+      fr.readAsDataURL(file);
+    });
+    let result;
+    if (_adminUploadMode === 'daftar') {
+      result = await apiPost({ action:'uploadFile', refKode:_adminUploadId, namaSatker:_adminUploadNama, fileKey:key, fileName:file.name, fileData:b64, mimeType:file.type||'application/pdf' });
+    } else {
+      result = await apiPost({ action:'uploadFilePdf_Perubahan', id:_adminUploadId, fileKey:key, fileName:file.name, fileBase64:b64, fileType:file.type||'application/pdf' });
+    }
+    if (!result || !result.success) { showToast(result?.message||'Gagal upload',true); btn.disabled=false; btn.textContent='📤 Upload'; return; }
+    btn.style.display = 'none';
+    if (done) done.style.display = 'inline';
+    if (row)  { row.style.borderColor='#A5D6A7'; row.style.background='#f0fdf4'; }
+    showToast('✅ ' + file.name + ' berhasil diupload', false, true);
+    // Invalidate cache agar data segar saat modal ditutup
+    if (_adminUploadMode === 'daftar') {
+      _cacheInvalidate('adminDaftarList'); _cacheInvalidate('adminDashboard');
+    } else {
+      _cacheInvalidate('adminDaftarPerubahan'); _cacheInvalidate('adminDashboard');
+    }
+  } catch(e) { showToast('❌ ' + e.message, true); btn.disabled=false; btn.textContent='📤 Upload'; }
+}
+
+async function adminDoUploadNewFile() {
+  if (!_adminNewFile) return;
+  const sel = document.getElementById('adup_newkey');
+  const ci  = document.getElementById('adup_customkey');
+  let key   = sel ? sel.value : '';
+  if (key === '_custom') key = (ci ? ci.value.trim() : '').replace(/\s+/g,'_');
+  if (!key) { showToast('Pilih atau isi nama dokumen terlebih dahulu', true); return; }
+  const btn  = document.getElementById('adup_new_btn');
+  btn.disabled = true; btn.textContent = '⏳...';
+  try {
+    const b64 = await new Promise(function(res, rej){
+      const fr = new FileReader();
+      fr.onload  = function(){ res(fr.result.split(',')[1]); };
+      fr.onerror = rej;
+      fr.readAsDataURL(_adminNewFile);
+    });
+    let result;
+    if (_adminUploadMode === 'daftar') {
+      result = await apiPost({ action:'uploadFile', refKode:_adminUploadId, namaSatker:_adminUploadNama, fileKey:key, fileName:_adminNewFile.name, fileData:b64, mimeType:_adminNewFile.type||'application/pdf' });
+    } else {
+      result = await apiPost({ action:'uploadFilePdf_Perubahan', id:_adminUploadId, fileKey:key, fileName:_adminNewFile.name, fileBase64:b64, fileType:_adminNewFile.type||'application/pdf' });
+    }
+    if (!result || !result.success) { showToast(result?.message||'Gagal upload',true); btn.disabled=false; btn.textContent='📤 Upload Dokumen Baru'; return; }
+    showToast('✅ ' + _adminNewFile.name + ' berhasil diupload sebagai "' + key + '"', false, true);
+    btn.style.display = 'none';
+    document.getElementById('adup_new_preview').innerHTML += ' <span style="color:var(--green);font-weight:700">✅ Tersimpan</span>';
+    _adminNewFile = null;
+    if (_adminUploadMode === 'daftar') {
+      _cacheInvalidate('adminDaftarList'); _cacheInvalidate('adminDashboard');
+    } else {
+      _cacheInvalidate('adminDaftarPerubahan'); _cacheInvalidate('adminDashboard');
+    }
+  } catch(e) { showToast('❌ ' + e.message, true); btn.disabled=false; btn.textContent='📤 Upload Dokumen Baru'; }
+}
+
+</script>
+</body>
+</html>
