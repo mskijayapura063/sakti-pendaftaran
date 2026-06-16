@@ -1313,7 +1313,7 @@ function renderEmailBaru() {
 
 // ── Step indicator ──
 function ebStepBar(current) {
-  const steps = ['Informasi Pengajuan','Data Pegawai','Review & Submit','Upload Dokumen'];
+  const steps = ['Informasi Pengajuan','Data Pegawai','Unduh & Tanda Tangan','Upload Dokumen'];
   return `<div style="display:flex;align-items:center;gap:0;margin-bottom:28px">
     ${steps.map((s,i)=>{
       const n=i+1, done=n<current, active=n===current;
@@ -1483,13 +1483,22 @@ function ebRenderStep3() {
       </tr>`).join('')}</tbody>
     </table>
   </div>
+  <div style="background:#fff;border:2px solid var(--blue);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:18px">
+    <div style="font-size:14px;font-weight:700;color:var(--blue);margin-bottom:8px">📥 Langkah 1 — Unduh & Cetak Excel</div>
+    <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">Unduh file Excel, cetak, dan minta tanda tangan KPA sebelum melanjutkan ke tahap Submit.</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-outline" onclick="ebDownloadExcelPreview()" id="btnEbExcel">📥 Unduh Excel</button>
+      <span id="ebExcelDoneFlag" style="display:none;color:var(--green);font-weight:700;font-size:13px">✅ Excel berhasil diunduh</span>
+    </div>
+  </div>
   <div style="display:flex;gap:10px;justify-content:space-between">
     <button class="btn btn-secondary" onclick="ebPrevStep()">← Kembali Edit</button>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-outline" onclick="ebDownloadExcelPreview()" id="btnEbExcel">📥 Download Excel</button>
-      <button class="btn btn-success" onclick="ebDoSubmit()" id="btnEbSubmit">📤 Submit ke KPPN →</button>
-    </div>
-  </div>`;
+    <button class="btn btn-success" onclick="ebDoSubmit()" id="btnEbSubmit"
+      style="padding:11px 28px;font-size:14px;opacity:0.4;cursor:not-allowed" disabled>
+      📤 Submit ke KPPN →
+    </button>
+  </div>
+  <p id="ebStep3Hint" style="text-align:right;font-size:11px;color:var(--gray-400);margin-top:6px">Unduh Excel terlebih dahulu untuk melanjutkan</p>`;
 }
 
 // ── Step 4: Upload Dokumen PDF ──
@@ -2244,7 +2253,7 @@ function ubOpenEditModal(id){
       <div class="ub-form-group"><label>Email Kedinasan <span style="color:var(--red)">*</span></label><input type="email" id="ube-email" value="${esc(u.email)}" placeholder="xxx@instansi.go.id atau @mil.id"/><div class="ub-hint">Harus berakhiran .go.id atau .mil.id (TNI)</div><div id="ube-email-err" style="display:none;font-size:11px;color:var(--red);margin-top:3px">Email harus berakhiran .go.id atau .mil.id</div></div>
     </div>
     <div class="ub-form-row">
-      <div class="ub-form-group"><label>No. HP</label><input type="text" id="ube-hp" value="${esc(u.hp)}" placeholder="08xxx"/></div>
+      <div class="ub-form-group"><label>No. HP <span style="color:var(--red)">*</span></label><input type="text" id="ube-hp" value="${esc(u.hp)}" placeholder="08xxx"/></div>
       <div class="ub-form-group"><label>Nomor SK <span style="color:var(--red)">*</span></label><input type="text" id="ube-sk" value="${esc(u.sk)}" placeholder="KEP-xx/xx/2024"/></div>
       <div class="ub-form-group"><label>Tanggal SK <span style="color:var(--red)">*</span></label><input type="text" id="ube-tglsk" value="${esc(u.tglsk)}" placeholder="Pilih tanggal..." readonly style="cursor:pointer"/></div>
     </div>
@@ -2313,6 +2322,8 @@ function ubSaveEdit(){
   emailErr.style.display='none';document.getElementById('ube-email')?.classList.remove('err');
   if(!nama){showToast('Nama wajib diisi',true);return;}
   if(!nipnrp){showToast('NIP/NRP wajib diisi',true);return;}
+  if(!nik){showToast('NIK wajib diisi',true);return;}
+  if(!hp){showToast('No. HP wajib diisi',true);return;}
   if(!peranList.length){showToast('Pilih minimal satu peran',true);return;}
   const dupNIP=ubUsers.find(u=>u.id!==ubEditingId&&u.nipnrp&&u.nipnrp===nipnrp);
   if(dupNIP){showToast(`❌ NIP/NRP sudah digunakan oleh: ${dupNIP.nama}`,true);return;}
@@ -2342,6 +2353,8 @@ function ubTrySubmit(){
     const n=i+1;
     if(!u.nama)errors.push(`Pengguna ${n}: Nama wajib diisi`);
     if(!u.nipnrp)errors.push(`Pengguna ${n}: NIP/NRP wajib diisi`);
+    if(!(u.nik||'').trim())errors.push(`Pengguna ${n}: NIK wajib diisi`);
+    if(!(u.hp||'').trim())errors.push(`Pengguna ${n}: No. HP wajib diisi`);
     if(!u.sk)errors.push(`Pengguna ${n}: Nomor SK wajib diisi`);
     if(!u.tglsk)errors.push(`Pengguna ${n}: Tanggal SK wajib diisi`);
     if(!u.peranList.length)errors.push(`Pengguna ${n}: Pilih minimal satu peran`);
@@ -2548,33 +2561,42 @@ async function initUserBaru() {
   const body = document.getElementById('userBaruBody');
   if (!body) return;
   ubUsers.length=0; ubUserIdSeq=0; ubLocked=false; ubLastRefKode='';
+  ubStep=1; ubExcelDownloaded=false; ubRefKodeStep3=''; ubFnameStep3='';
+  window._ubCurrentData=null; window._ubStep1Data=null;
   const kode = currentUser?.username||'';
 
   try {
     const res = _cacheGet('dashboard') || await apiPost({ action:'getSatkerDashboard' });
     _cacheSet('dashboard', res);
-    // res.latest / res.list[0] = record terbaru milik satker ini (punya refKode, status, usersJson, dll)
-    // res.data = object statistik (total, submitted, dll) — TIDAK punya refKode
     const d = (res.success && (res.latest || (res.list && res.list[0]))) || null;
     if (d && d.refKode) {
       ubLocked = ['submitted','diproses','terdaftar'].includes((d.status||'').toLowerCase());
-      body.innerHTML = ubBuildFormHTML(d, kode);
-      // Load users dari existing data
+      window._ubCurrentData = d;
+      // Load users ke state
       try {
         const existUsers = Array.isArray(d.usersJson) ? d.usersJson
           : JSON.parse(typeof d.usersJson === 'string' ? d.usersJson : '[]');
         existUsers.forEach(u => {
-          const id = ubAddUser({nama:u.nama||'',nipnrp:u.nipnrp||u.nip||'',nik:u.nik||'',
+          ubAddUser({nama:u.nama||'',nipnrp:u.nipnrp||u.nip||'',nik:u.nik||'',
             email:u.email||'',hp:u.hp||'',sk:u.sk||'',tglsk:u.tglsk||'',peranList:u.peranList||[]});
-          ubRenderUserSummary(id);
         });
       } catch(e) {}
+      ubReindexUsers();
+      // Kalau locked → langsung step 4 (upload), kalau ada refKode → mulai step 1
+      if (ubLocked) {
+        ubRefKodeStep3 = d.refKode || '';
+        ubExcelDownloaded = true;  // sudah pernah download
+        ubGoToStep(4);
+      } else {
+        body.innerHTML = ubRenderStep1(d, kode);
+        setTimeout(()=>ubInitFlatpickrSurat(), 80);
+      }
     } else {
       ubLocked = false;
-      body.innerHTML = ubBuildFormHTML(null, kode);
+      window._ubCurrentData = null;
+      body.innerHTML = ubRenderStep1(null, kode);
+      setTimeout(()=>ubInitFlatpickrSurat(), 80);
     }
-    ubReindexUsers();
-    setTimeout(()=>ubInitFlatpickrSurat(), 80);
   } catch(e) {
     body.innerHTML = `<div class="info-box red">❌ Gagal memuat data. <button class="btn btn-secondary btn-sm" onclick="initUserBaru()">Coba Lagi</button></div>`;
   }
@@ -2691,7 +2713,433 @@ function ubResetForm(){
   initUserBaru();
 }
 
-// (old ub* functions removed — replaced by full card-based implementation above)
+// ════════════════════════════════════════════════════════
+// PENDAFTARAN USER BARU — 4-STEP FLOW
+// ════════════════════════════════════════════════════════
+let ubStep = 1;           // 1=Info Satker, 2=Data Pegawai, 3=Unduh Excel, 4=Upload Dokumen
+let ubExcelDownloaded = false;  // anti-skip: harus download sebelum lanjut step 4
+let ubRefKodeStep3 = '';  // kode referensi yang didapat setelah download
+let ubFnameStep3  = '';   // nama file excel
+
+function ubStepBar(current) {
+  const steps = ['Informasi Pengajuan','Data Pegawai','Unduh & Tanda Tangan','Upload Dokumen'];
+  return `<div style="display:flex;align-items:center;gap:0;margin-bottom:28px">
+    ${steps.map((s,i)=>{
+      const n=i+1, done=n<current, active=n===current;
+      const bg = done?'var(--green)':active?'var(--blue)':'var(--gray-200)';
+      const col = (done||active)?'#fff':'var(--gray-500)';
+      const tcol = done?'var(--green)':active?'var(--blue)':'var(--gray-400)';
+      return `<div style="display:flex;align-items:center;flex:1;min-width:0">
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+          <div style="width:34px;height:34px;border-radius:50%;background:${bg};color:${col};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;margin-bottom:5px">${done?'✓':n}</div>
+          <div style="font-size:11px;font-weight:600;color:${tcol};text-align:center;white-space:nowrap">${s}</div>
+        </div>
+        ${i<steps.length-1?`<div style="height:2px;flex:1;background:${done?'var(--green)':'var(--gray-200)'};margin:0 4px;margin-bottom:18px"></div>`:''}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function ubGoToStep(n) {
+  ubStep = n;
+  const body = document.getElementById('userBaruBody');
+  if (!body) return;
+  const kode = currentUser?.username||'';
+  const d = window._ubCurrentData || null;
+  if (n === 1) {
+    body.innerHTML = ubRenderStep1(d, kode);
+    setTimeout(()=>ubInitFlatpickrSurat(), 80);
+  } else if (n === 2) {
+    body.innerHTML = ubRenderStep2();
+    ubReRenderUsers();
+  } else if (n === 3) {
+    body.innerHTML = ubRenderStep3(d);
+  } else if (n === 4) {
+    body.innerHTML = ubRenderStep4(d);
+  }
+}
+
+function ubRenderStep1(d, kode) {
+  const ro = ubLocked ? 'readonly' : '';
+  const statusHtml = d ? (()=>{
+    const status = d?.status||'';
+    const locked = ['submitted','diproses','terdaftar'].includes(status.toLowerCase());
+    const clr = status.toLowerCase()==='ditolak'?'red':locked?'orange':'green';
+    const icon = status.toLowerCase()==='ditolak'?'❌':locked?'🔒':'✅';
+    return `<div class="info-box ${clr}" style="margin-bottom:14px">${icon} Pendaftaran sudah ada — status: <strong>${esc(status)}</strong>.${locked?' Data tidak dapat diubah selama sedang diproses KPPN.':''}${status.toLowerCase()==='ditolak'?' Perbaiki data lalu unduh ulang Excel.':''}</div>`;
+  })() : '';
+  return `
+  ${ubStepBar(1)}
+  ${statusHtml}
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">🏢 Data Satker</div>
+    <div class="ub-form-row">
+      <div class="ub-form-group" style="max-width:160px">
+        <label>Kode Satker</label>
+        <input type="text" value="${esc(kode)}" readonly style="background:var(--gray-100);font-family:monospace;font-weight:700;letter-spacing:1px"/>
+      </div>
+      <div class="ub-form-group">
+        <label>Nama Satker <span style="color:var(--red)">*</span></label>
+        <input type="text" id="ub_namaSatker" value="${esc(d?d.namaSatker:currentUser?.namaLengkap||'')}" ${ro} placeholder="Nama lengkap satker"/>
+      </div>
+      <input type="hidden" id="ub_levelSatker" value="Satker"/>
+      <input type="hidden" id="ub_existingRefKode" value="${esc(d?.refKode||'')}"/>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">🏛️ Data KPA (Penandatangan)</div>
+    <div class="ub-form-row">
+      <div class="ub-form-group">
+        <label>Nama KPA <span style="color:var(--red)">*</span></label>
+        <input type="text" id="ub_namaKPA" value="${esc(d?d.namaKpa:'')}" ${ro} placeholder="Nama lengkap KPA"/>
+      </div>
+      <div class="ub-form-group">
+        <label>NIP KPA <span style="color:var(--red)">*</span></label>
+        <input type="text" id="ub_nipKPA" value="${esc(d?d.nip:'')}" ${ro} placeholder="Contoh: 199001012020011001" maxlength="18" style="font-family:monospace"/>
+      </div>
+    </div>
+    <div class="ub-form-row">
+      <div class="ub-form-group">
+        <label>No. HP / WA <span style="color:var(--red)">*</span></label>
+        <input type="text" id="ub_noHp" value="${esc(d?d.noHp:'')}" ${ro} placeholder="08xx-xxxx-xxxx"/>
+      </div>
+      <div class="ub-form-group">
+        <label>Kota / Tempat TTD</label>
+        <input type="text" id="ub_kotaTTD" value="${esc(d?d.alamat:'Jayapura')}" ${ro} placeholder="Jayapura"/>
+      </div>
+      <div class="ub-form-group">
+        <label>Tanggal Surat</label>
+        <input type="text" id="ub_tanggalSurat" value="${esc(d?d.tglSurat:'')}" placeholder="Pilih tanggal..." ${ro} style="cursor:${ubLocked?'default':'pointer'}"/>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;margin-top:8px">
+    ${!ubLocked?`<button class="btn btn-primary" onclick="ubNextFromStep1()" style="padding:11px 28px;font-size:14px">Selanjutnya → Data Pegawai</button>`
+    :`<button class="btn btn-outline btn-sm" onclick="ubGoToStep(2)">Lihat Data Pegawai →</button>`}
+  </div>`;
+}
+
+function ubRenderStep2() {
+  return `
+  ${ubStepBar(2)}
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>👥 Data Pengguna yang Akan Didaftarkan</span>
+      ${!ubLocked?`<div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="openModal('modalPanggilRekamanUB')">🔍 Panggil Rekaman</button>
+      </div>`:''}
+    </div>
+    <div id="ubUserList"></div>
+    ${!ubLocked?`<button class="btn-add-user" id="ubBtnTambah" onclick="ubAddUser()">+ Tambah Pengguna</button>`:''}
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-top:8px">
+    <button class="btn btn-outline" onclick="ubGoToStep(1)">← Kembali</button>
+    ${!ubLocked?`<button class="btn btn-primary" onclick="ubNextFromStep2()" style="padding:11px 28px;font-size:14px">Selanjutnya → Unduh Excel</button>`
+    :`<button class="btn btn-outline" onclick="ubGoToStep(3)">Selanjutnya →</button>`}
+  </div>`;
+}
+
+function ubRenderStep3(d) {
+  const refKode = ubRefKodeStep3 || (window._ubCurrentData?.refKode) || '';
+  const isDitolak = (d?.status||'').toLowerCase() === 'ditolak';
+  return `
+  ${ubStepBar(3)}
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">📋 Pernyataan & Persetujuan</div>
+    <p style="font-size:13px;line-height:1.7;color:var(--gray-700);margin-bottom:16px">
+      Dengan mengunduh dan menandatangani formulir ini, kami menyatakan bahwa data yang diajukan
+      adalah benar dan bertanggung jawab atas penggunaan akses SAKTI yang dimohonkan.
+    </p>
+    <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:16px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--gray-500);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Instruksi</div>
+      <ol style="padding-left:18px;margin:0;font-size:13px;line-height:2;color:var(--gray-700)">
+        <li>Klik <strong>"Unduh Excel"</strong> di bawah ini</li>
+        <li>Cetak file Excel yang diunduh</li>
+        <li>Minta tanda tangan KPA pada formulir cetak</li>
+        <li>Klik <strong>"Lanjut Upload Dokumen"</strong> untuk mengunggah berkas yang diperlukan</li>
+      </ol>
+    </div>
+    ${refKode?`<div style="background:var(--blue-50,#eff6ff);border:1.5px solid var(--blue);border-radius:8px;padding:14px 18px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Kode Referensi Pengajuan</div>
+      <div style="font-size:22px;font-weight:800;font-family:monospace;color:var(--blue);letter-spacing:2px">${esc(refKode)}</div>
+      <div style="font-size:11px;color:var(--gray-500);margin-top:4px">Simpan kode ini. Diperlukan jika ada pertanyaan dari KPPN.</div>
+    </div>`:''}
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <button class="btn btn-success" id="btnUbDownloadExcel" onclick="ubDoDownloadExcel()" style="padding:11px 24px;font-size:14px">
+        ⬇️ ${isDitolak?'Unduh Ulang Excel':'Unduh Excel'}
+      </button>
+      <button class="btn btn-primary" id="btnUbLanjutUpload" onclick="ubGoToStep(4)"
+        style="padding:11px 28px;font-size:14px;opacity:${ubExcelDownloaded?'1':'0.4'};cursor:${ubExcelDownloaded?'pointer':'not-allowed'}"
+        ${ubExcelDownloaded?'':'disabled'}>
+        Lanjut Upload Dokumen →
+      </button>
+    </div>
+    ${!ubExcelDownloaded?`<p id="ubStep3Hint" style="font-size:12px;color:var(--gray-500);margin-top:8px">⚠️ Unduh Excel terlebih dahulu untuk melanjutkan</p>`:''}
+  </div>
+  <div style="display:flex;justify-content:flex-start;margin-top:4px">
+    <button class="btn btn-outline" onclick="ubGoToStep(2)">← Kembali ke Data Pegawai</button>
+  </div>`;
+}
+
+function ubRenderStep4(d) {
+  const refKode = ubRefKodeStep3 || (d?.refKode) || '';
+  const hasFiles = d && d.uploadedFiles && (Array.isArray(d.uploadedFiles)?d.uploadedFiles.length:(Object.keys(d.uploadedFiles||{}).length));
+  return `
+  ${ubStepBar(4)}
+  <div class="info-box green" style="margin-bottom:20px">
+    ✅ <strong>Excel berhasil diunduh!</strong> Selanjutnya upload dokumen pendukung yang sudah ditandatangani KPA.
+    ${refKode?`<br/><span style="font-size:12px">Kode referensi: <strong style="font-family:monospace">${esc(refKode)}</strong></span>`:''}
+  </div>
+  <div id="ubUploadBody">
+    ${ubBuildUploadBodyHTML(d?.uploadedFiles, (d?.status||'').toLowerCase()==='ditolak')}
+  </div>
+  <div style="display:flex;justify-content:flex-start;margin-top:16px">
+    <button class="btn btn-outline" onclick="ubGoToStep(3)">← Kembali ke Unduh Excel</button>
+  </div>`;
+}
+
+function ubBuildUploadBodyHTML(existingFiles, isDitolak) {
+  const docs = [
+    { key:'surat_permohonan', label:'Surat Permohonan Pendaftaran User SAKTI' },
+    { key:'ktp_nip',          label:'Fotokopi KTP / NIP Pengguna' },
+    { key:'sk_penunjukan',    label:'SK Penunjukan / Penetapan' },
+    { key:'berita_acara',     label:'Berita Acara (jika ada)' },
+  ];
+  const files = existingFiles || {};
+  const isObj = typeof files === 'object' && !Array.isArray(files);
+  return `<div class="card">
+    <div class="card-title">📎 Upload Dokumen Pendukung</div>
+    <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">
+      Upload file PDF/JPG/PNG untuk setiap dokumen pendukung di bawah ini.
+      ${isDitolak?'<strong style="color:var(--red)">Pengajuan ditolak — perbaiki dan upload ulang dokumen yang diperlukan.</strong>':''}
+    </p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">
+      ${docs.map(doc=>{
+        const uploaded = isObj ? files[doc.key] : null;
+        const uploadedName = uploaded?.name || uploaded || '';
+        return `<div style="border:1.5px solid ${uploadedName?'var(--green)':'var(--gray-200)'};border-radius:10px;padding:14px;background:${uploadedName?'#f0fdf4':'var(--white)'}">
+          <div style="font-size:12px;font-weight:700;color:var(--gray-700);margin-bottom:8px">${doc.label}</div>
+          ${uploadedName?`<div style="font-size:11px;color:var(--green);margin-bottom:8px">✅ ${esc(uploadedName)}</div>`:'<div style="font-size:11px;color:var(--gray-400);margin-bottom:8px">Belum diupload</div>'}
+          <label style="cursor:pointer">
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="ubHandleFileUpload(event,'${doc.key}','${doc.label}',this)"/>
+            <span class="btn ${uploadedName?'btn-outline':'btn-secondary'} btn-sm">${uploadedName?'🔄 Upload Ulang':'📎 Pilih File'}</span>
+          </label>
+        </div>`;
+      }).join('')}
+    </div>
+    <div id="ubUploadProgress" style="margin-top:14px"></div>
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--gray-200)">
+      <button class="btn btn-success" onclick="ubFinishUpload()" style="padding:11px 28px">✅ Selesai &amp; Lihat Riwayat</button>
+    </div>
+  </div>`;
+}
+
+async function ubHandleFileUpload(event, docKey, docLabel, inputEl) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const maxMB = 5;
+  if (file.size > maxMB * 1024 * 1024) { showToast(`File terlalu besar (maks ${maxMB}MB)`, true); inputEl.value=''; return; }
+  const prog = document.getElementById('ubUploadProgress');
+  if (prog) prog.innerHTML = `<div class="info-box blue">⏳ Mengunggah <strong>${esc(docLabel)}</strong>...</div>`;
+  try {
+    const refKode = ubRefKodeStep3 || window._ubCurrentData?.refKode || '';
+    if (!refKode) { showToast('Kode referensi tidak ditemukan. Unduh Excel dulu.', true); return; }
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64 = e.target.result.split(',')[1];
+      const res = await apiPost({ action:'uploadDokumenPendaftaran', refKode, docKey, docLabel, fileName:file.name, fileBase64:base64, mimeType:file.type });
+      if (res && res.success) {
+        if (prog) prog.innerHTML = `<div class="info-box green">✅ <strong>${esc(docLabel)}</strong> berhasil diupload.</div>`;
+        _cacheInvalidate('dashboard');
+        setTimeout(()=>{ if(prog)prog.innerHTML=''; }, 3000);
+        // Refresh upload body
+        const d = window._ubCurrentData;
+        if (!d) return;
+        const res2 = await apiPost({ action:'getSatkerDashboard' });
+        if (res2 && res2.success) {
+          _cacheSet('dashboard', res2);
+          window._ubCurrentData = res2.latest || (res2.list&&res2.list[0]) || d;
+        }
+        const uploadBody = document.getElementById('ubUploadBody');
+        if (uploadBody) uploadBody.innerHTML = ubBuildUploadBodyHTML(window._ubCurrentData?.uploadedFiles, (window._ubCurrentData?.status||'').toLowerCase()==='ditolak');
+      } else {
+        if (prog) prog.innerHTML = `<div class="info-box red">❌ Gagal upload: ${esc(res?.message||'Server error')}</div>`;
+      }
+    };
+    reader.readAsDataURL(file);
+  } catch(err) {
+    if (prog) prog.innerHTML = `<div class="info-box red">❌ Error: ${esc(err.message)}</div>`;
+  }
+}
+
+function ubFinishUpload() {
+  _cacheInvalidate('dashboard');
+  _cacheInvalidate('riwayatPendaftaran');
+  showToast('✅ Dokumen telah diupload. Silakan cek status di Riwayat.');
+  switchTab('user-riwayat');
+}
+
+function ubNextFromStep1() {
+  if (ubLocked) { ubGoToStep(2); return; }
+  // Baca nilai dari form step 1
+  const namaSatker = (document.getElementById('ub_namaSatker')?.value||'').trim();
+  const namaKPA    = (document.getElementById('ub_namaKPA')?.value||'').trim();
+  const nipKPA     = (document.getElementById('ub_nipKPA')?.value||'').trim();
+  const noHp       = (document.getElementById('ub_noHp')?.value||'').trim();
+  if (!namaSatker) { showToast('Nama Satker wajib diisi', true); return; }
+  if (!namaKPA)    { showToast('Nama KPA wajib diisi', true); return; }
+  if (!nipKPA)     { showToast('NIP KPA wajib diisi', true); return; }
+  if (!noHp)       { showToast('No. HP / WA wajib diisi', true); return; }
+  // Simpan nilai untuk dipakai di step berikutnya
+  window._ubStep1Data = {
+    namaSatker,
+    namaKPA,
+    nipKPA,
+    noHp,
+    kotaTTD:  (document.getElementById('ub_kotaTTD')?.value||'').trim() || 'Jayapura',
+    tglSurat: (document.getElementById('ub_tanggalSurat')?.value||'').trim(),
+    levelSatker: (document.getElementById('ub_levelSatker')?.value||'Satker'),
+    existingRefKode: (document.getElementById('ub_existingRefKode')?.value||''),
+  };
+  ubGoToStep(2);
+}
+
+function ubNextFromStep2() {
+  if (ubLocked) { ubGoToStep(3); return; }
+  if (!ubUsers.length) { showToast('Tambahkan minimal satu pengguna', true); return; }
+  const errors = [];
+  const seenNIK=new Map(), seenNIP=new Map(), seenEmail=new Map(), seenHP=new Map();
+  ubUsers.forEach((u,i)=>{
+    const n=i+1;
+    if(!u.nama)         errors.push(`Pengguna ${n}: Nama wajib diisi`);
+    if(!u.nipnrp)       errors.push(`Pengguna ${n}: NIP/NRP wajib diisi`);
+    if(!(u.nik||'').trim())  errors.push(`Pengguna ${n}: NIK wajib diisi`);
+    if(!(u.hp||'').trim())   errors.push(`Pengguna ${n}: No. HP wajib diisi`);
+    if(!u.sk)           errors.push(`Pengguna ${n}: Nomor SK wajib diisi`);
+    if(!u.tglsk)        errors.push(`Pengguna ${n}: Tanggal SK wajib diisi`);
+    if(!u.peranList.length) errors.push(`Pengguna ${n}: Pilih minimal satu peran`);
+    if(u.email){const el=u.email.toLowerCase();if(!el.endsWith('.go.id')&&!el.endsWith('.mil.id'))errors.push(`Pengguna ${n}: Email harus berakhiran .go.id atau .mil.id`);}
+    u.peranList.forEach((kode,idx)=>{const r=ubCheckPeranConflict(kode,u.peranList.slice(0,idx));if(r.conflict&&r.block)errors.push(`Pengguna ${n} (${u.nama}): ${r.warn}`);});
+    if(u.nik){if(seenNIK.has(u.nik))errors.push(`Pengguna ${n}: NIK duplikat`);else seenNIK.set(u.nik,i);}
+    if(u.nipnrp){if(seenNIP.has(u.nipnrp))errors.push(`Pengguna ${n}: NIP/NRP duplikat`);else seenNIP.set(u.nipnrp,i);}
+    if(u.email){const ek=u.email.toLowerCase();if(seenEmail.has(ek))errors.push(`Pengguna ${n}: Email duplikat`);else seenEmail.set(ek,i);}
+    if(u.hp){if(seenHP.has(u.hp))errors.push(`Pengguna ${n}: No. HP duplikat`);else seenHP.set(u.hp,i);}
+  });
+  const allPeran=ubUsers.flatMap(u=>u.peranList);
+  if(allPeran.filter(k=>k==='SATKER_KPA').length>1)errors.push('Hanya boleh ada 1 KPA dalam satu formulir.');
+  if(allPeran.filter(k=>k==='SATKER_PPSPM').length>1)errors.push('Hanya boleh ada 1 PPSPM dalam satu formulir.');
+  if(allPeran.filter(k=>k==='SATKER_BENDAHARA_PENGELUARAN').length>1)errors.push('Hanya boleh ada 1 Bendahara Pengeluaran.');
+  if(allPeran.filter(k=>k==='SATKER_BENDAHARA_PENERIMAAN').length>1)errors.push('Hanya boleh ada 1 Bendahara Penerimaan.');
+  if (errors.length) {
+    showToast(`⚠️ ${errors[0]}`, true);
+    // Show full list in a brief alert
+    if (errors.length > 1) {
+      const listHtml = errors.map(e=>`• ${e}`).join('\n');
+      alert('Harap perbaiki data berikut:\n\n' + listHtml);
+    }
+    return;
+  }
+  ubGoToStep(3);
+}
+
+async function ubDoDownloadExcel() {
+  const btn = document.getElementById('btnUbDownloadExcel');
+  if (btn) { btn.disabled=true; btn.textContent='⏳ Membuat Excel...'; }
+  // Ambil data dari cache step 1 atau dari DOM (jika user balik ke step 1 lalu maju lagi)
+  const s1 = window._ubStep1Data || {};
+  const kode = window._ubCurrentData;
+  const kodeSatker = currentUser?.username||'';
+  const namaSatker = s1.namaSatker || (document.getElementById('ub_namaSatker')?.value||'').trim() || (window._ubCurrentData?.namaSatker||'');
+  const namaKPA    = s1.namaKPA    || (document.getElementById('ub_namaKPA')?.value||'').trim()    || (window._ubCurrentData?.namaKpa||'');
+  const nipKPA     = s1.nipKPA     || (document.getElementById('ub_nipKPA')?.value||'').trim()     || (window._ubCurrentData?.nip||'');
+  const noHp       = s1.noHp       || (document.getElementById('ub_noHp')?.value||'').trim()       || (window._ubCurrentData?.noHp||'');
+  const kotaTTD    = s1.kotaTTD    || 'Jayapura';
+  const tglSurat   = s1.tglSurat   || (window._ubCurrentData?.tglSurat||'');
+  const levelSatker= s1.levelSatker|| 'Satker';
+  const tglStr     = tglSurat ? ubFormatTglIndo(tglSurat) : '______';
+  const existingRef = s1.existingRefKode || (window._ubCurrentData?.refKode) || '';
+  const refKode = ubLastRefKode || existingRef || ubGenRefKode(kodeSatker);
+  ubLastRefKode = refKode;
+  ubRefKodeStep3 = refKode;
+  showToast('⏳ Membuat Excel, mohon tunggu...');
+  let fname;
+  try {
+    const res = await apiPost({
+      action:'generateExcel',
+      kodeSatker, namaSatker, levelSatker,
+      namaKpa: namaKPA, nip: nipKPA,
+      kota: kotaTTD, tglStr, refKode,
+      users: ubUsers.map(u=>({
+        nama:u.nama||'', nipnrp:u.nipnrp||'', nik:u.nik||'',
+        email:u.email||'', hp:u.hp||'', sk:u.sk||'',
+        tglsk:ubFormatTgl(u.tglsk)||'', peranList:u.peranList||[]
+      }))
+    });
+    if (!res||!res.success) throw new Error((res&&res.message)||'Server tidak merespons');
+    fname = res.fileName || `Form-SAKTI-${kodeSatker}-${refKode}.xlsx`;
+    ubFnameStep3 = fname;
+    const bytes = Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
+    const blob  = new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement('a'); a.href=url; a.download=fname; a.click(); URL.revokeObjectURL(url);
+  } catch(e) {
+    showToast('❌ Gagal buat Excel: '+e.message, true);
+    if (btn) { btn.disabled=false; btn.textContent='⬇️ Unduh Excel'; }
+    return;
+  }
+  // Simpan data ke server
+  try {
+    showToast('⏳ Menyimpan data ke server...');
+    const submitPayload = {
+      action:'submitDaftar',
+      refKode, namaSatker, kodeSatker,
+      namaKPA, nip: nipKPA,
+      noHp, email:'', alamat: kotaTTD, levelSatker,
+      tglSurat, fname,
+      userCount: ubUsers.length,
+      usersJson: JSON.stringify(ubUsers.map(u=>({
+        nama:u.nama, nipnrp:u.nipnrp, nik:u.nik,
+        email:u.email, hp:u.hp, sk:u.sk,
+        tglsk:u.tglsk, peranList:u.peranList
+      })))
+    };
+    const res2 = await apiPost(submitPayload);
+    if (!res2.success) throw new Error(res2.message||'Gagal simpan');
+    _cacheInvalidate('dashboard');
+    // Refresh window._ubCurrentData
+    try {
+      const res3 = await apiPost({ action:'getSatkerDashboard' });
+      if (res3&&res3.success) {
+        _cacheSet('dashboard', res3);
+        window._ubCurrentData = res3.latest || (res3.list&&res3.list[0]) || window._ubCurrentData;
+      }
+    } catch(e2){}
+  } catch(e) {
+    showToast('⚠️ Excel terunduh, tapi gagal simpan ke server: '+e.message, true);
+    // Tetap unlock tombol — Excel sudah ada
+  }
+  // Unlock tombol "Lanjut Upload"
+  ubExcelDownloaded = true;
+  const btnLanjut = document.getElementById('btnUbLanjutUpload');
+  if (btnLanjut) { btnLanjut.disabled=false; btnLanjut.style.opacity='1'; btnLanjut.style.cursor='pointer'; }
+  const hint = document.getElementById('ubStep3Hint');
+  if (hint) hint.remove();
+  if (btn) { btn.disabled=false; btn.textContent='⬇️ Unduh Ulang Excel'; }
+  showToast('✅ Excel berhasil diunduh! Klik "Lanjut Upload Dokumen" untuk melanjutkan.');
+}
+
+function ubReRenderUsers() {
+  const listEl = document.getElementById('ubUserList');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  if (!ubUsers.length) {
+    // Tambah satu user kosong jika belum ada
+    ubAddUser();
+  } else {
+    ubUsers.forEach(u => ubRenderUserCard(u.id));
+    ubReindexUsers();
+  }
+}
 
 // ════════════════════════════════════════════════════════
 // USER SAKTI — PERGANTIAN
@@ -2711,13 +3159,16 @@ async function initUserGanti() {
   const body = document.getElementById('pgBody');
   if (!body) return;
   pgSemulaUsers=[]; pgMenjadiUsers=[]; pgUserIdSeq=0; pgCurrentId=null; pgLocked=false;
+  pgStep=1; pgExcelDownloaded=false; window._pgCurrentData=null; window._pgStep1Data=null;
   const kode = currentUser?.username||'';
   try {
     const res = _cacheGet('riwayatPerubahan') || await apiPost({ action:'getRiwayatPerubahan' });
     _cacheSet('riwayatPerubahan', res);
     const list = res.list || [];
-    // Kalau ada targetId (mis. dari klik "Perbaiki Data" di Riwayat), pakai itu;
-    // selain itu pakai record terbaru.
+    // Simpan cache per-id untuk pgBukaUploadInline
+    window._pgRiwayatCache = {};
+    (list||[]).forEach(item => { if(item.id) window._pgRiwayatCache[item.id] = item; });
+
     let target = null;
     if (window._pgPerbaikiTargetId) {
       target = list.find(x => x.id === window._pgPerbaikiTargetId) || null;
@@ -2732,21 +3183,27 @@ async function initUserGanti() {
     if (aktif) {
       pgCurrentId = target.id;
       pgLocked    = ['diproses','terdaftar','selesai'].includes(stat);
-      body.innerHTML = pgBuildFormHTML(target, kode);
+      window._pgCurrentData = target;
+      body.innerHTML = pgRenderStep1(target, kode);
+      // Pre-load users ke state (tidak dirender sampai step 2)
       (target.semula||[]).forEach(u => pgAddUser('semula',u));
       (target.menjadi||[]).forEach(u => pgAddUser('menjadi',u));
+      pgReindexAll();
+      // Kalau locked, langsung tampilkan step 4 (riwayat saja)
+      if (pgLocked) { pgGoToStep(4); }
     } else if (ditolak) {
-      // PERBAIKAN: prefill data dari record yang ditolak agar satker bisa edit & re-submit.
-      pgCurrentId = target.id;     // re-use ID yg sama saat submit (overwrite di server)
+      pgCurrentId = target.id;
       pgLocked    = false;
-      body.innerHTML = pgBuildFormHTML(target, kode);
+      window._pgCurrentData = target;
+      body.innerHTML = pgRenderStep1(target, kode);
       (target.semula||[]).forEach(u => pgAddUser('semula',u));
       (target.menjadi||[]).forEach(u => pgAddUser('menjadi',u));
+      pgReindexAll();
     } else {
       pgLocked = false;
-      body.innerHTML = pgBuildFormHTML(null, kode);
+      window._pgCurrentData = null;
+      body.innerHTML = pgRenderStep1(null, kode);
     }
-    pgReindexAll();
     setTimeout(()=>{ pgInitFlatpickr(); }, 80);
   } catch(e) {
     body.innerHTML = `<div class="info-box red">❌ Gagal memuat data. <button class="btn btn-secondary btn-sm" onclick="initUserGanti()">Coba Lagi</button></div>`;
@@ -2758,6 +3215,352 @@ function pgPerbaikiData(id) {
   window._pgPerbaikiTargetId = id;
   switchTab('user-ganti');
 }
+
+// ── Step state untuk Pergantian ──
+let pgStep = 1;  // 1=Info, 2=Data Pegawai, 3=Unduh Excel, 4=Upload Dokumen
+let pgExcelDownloaded = false;  // anti-skip: harus download dulu sebelum lanjut step 4
+
+function pgStepBar(current) {
+  const steps = ['Informasi Pengajuan','Data Pegawai','Unduh & Tanda Tangan','Upload Dokumen'];
+  return `<div style="display:flex;align-items:center;gap:0;margin-bottom:28px">
+    ${steps.map((s,i)=>{
+      const n=i+1, done=n<current, active=n===current;
+      const bg = done?'var(--green)':active?'var(--blue)':'var(--gray-200)';
+      const col = (done||active)?'#fff':'var(--gray-500)';
+      const tcol = done?'var(--green)':active?'var(--blue)':'var(--gray-400)';
+      return `<div style="display:flex;align-items:center;flex:1;min-width:0">
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+          <div style="width:34px;height:34px;border-radius:50%;background:${bg};color:${col};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;margin-bottom:5px">${done?'✓':n}</div>
+          <div style="font-size:11px;font-weight:600;color:${tcol};text-align:center;white-space:nowrap">${s}</div>
+        </div>
+        ${i<steps.length-1?`<div style="height:2px;flex:1;background:${done?'var(--green)':'var(--gray-200)'};margin:0 4px;margin-bottom:18px"></div>`:''}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function pgRenderStep1(d, kode) {
+  const ro = pgLocked ? 'readonly' : '';
+  const status = d?.status||'';
+  const isDitolak = status.toLowerCase()==='ditolak';
+  const statusHtml = d ? (()=>{
+    const locked=['diproses','terdaftar'].includes(status.toLowerCase());
+    const clr=isDitolak?'red':locked?'orange':'green';
+    const icon=isDitolak?'❌':locked?'🔒':'✅';
+    return `<div class="info-box ${clr}" style="margin-bottom:18px">${icon} Pengajuan perubahan — status: <strong>${esc(status)}</strong>.
+      ${locked?' Data <strong>tidak dapat diubah</strong> selama sedang diproses KPPN.':''}
+      ${isDitolak?`<br/>Catatan: <em>${esc(d.catatanAdmin||'-')}</em><br/>Perbaiki data lalu unduh ulang Excel.`:''}</div>`;
+  })() : '';
+  return `
+  ${pgStepBar(1)}
+  ${statusHtml}
+  <div class="error-panel" id="pgErrPanel"><strong>⚠️ Harap perbaiki:</strong><ul id="pgErrList"></ul></div>
+
+  <!-- Blok identitas satker -->
+  <div style="background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:20px;box-shadow:var(--shadow)">
+    <div style="background:var(--blue);padding:12px 20px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:16px">🏛️</span>
+      <span style="color:#fff;font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase">Identitas Satker</span>
+    </div>
+    <div style="padding:20px;display:grid;grid-template-columns:160px 1fr;gap:0;border-bottom:1px solid var(--gray-100)">
+      <div style="border-right:1px solid var(--gray-100);padding-right:20px">
+        <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Kode Satker</div>
+        <div style="font-size:15px;font-weight:800;color:var(--blue);font-family:monospace">${esc(kode)}</div>
+      </div>
+      <div style="padding:0 0 0 20px">
+        <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Nama Satker <span style="color:var(--red)">*</span></div>
+        <input type="text" id="pg_namaSatker" value="${esc(d?.namaSatker||currentUser?.namaLengkap||'')}" ${ro} placeholder="Nama lengkap satker"
+          style="border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:8px 12px;font-size:13px;width:100%;max-width:400px"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- Blok KPA -->
+  <div style="background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:20px;box-shadow:var(--shadow)">
+    <div style="background:var(--blue);padding:12px 20px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:16px">👤</span>
+      <span style="color:#fff;font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase">Data KPA (Penandatangan)</span>
+    </div>
+    <div style="padding:20px 24px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group" style="margin:0">
+          <label style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.5px">Nama KPA <span style="color:var(--red)">*</span></label>
+          <input type="text" id="pg_namaKpa" value="${esc(d?.namaKpa||'')}" ${ro} placeholder="Nama lengkap KPA"
+            style="margin-top:6px;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:10px 14px;font-size:14px;width:100%"/>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.5px">NIP KPA <span style="color:var(--red)">*</span></label>
+          <input type="text" id="pg_nip" value="${esc(d?.nip||'')}" ${ro} placeholder="18 digit NIP" maxlength="18"
+            style="margin-top:6px;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:10px 14px;font-size:14px;font-family:monospace;width:100%"/>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.5px">No. HP / WA <span style="color:var(--red)">*</span></label>
+          <input type="text" id="pg_noHp" value="${esc(d?.noHp||'')}" ${ro} placeholder="08xx-xxxx-xxxx"
+            style="margin-top:6px;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:10px 14px;font-size:14px;width:100%"/>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.5px">Kota / Tempat TTD</label>
+          <input type="text" id="pg_kota" value="${esc(d?.kota||'Jayapura')}" ${ro} placeholder="Jayapura"
+            style="margin-top:6px;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:10px 14px;font-size:14px;width:100%"/>
+        </div>
+        <div class="form-group" style="margin:0;grid-column:1/-1">
+          <label style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.5px">Tanggal Surat</label>
+          <input type="text" id="pg_tglSurat" value="${esc(d?.tglSurat||'')}" placeholder="Pilih tanggal..." readonly style="cursor:${pgLocked?'default':'pointer'};margin-top:6px;border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:10px 14px;font-size:14px;max-width:240px"/>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:flex-end">
+    <button class="btn btn-primary" onclick="pgNextFromStep1()" style="padding:11px 28px;font-size:14px">
+      Selanjutnya &rarr; Data Pegawai
+    </button>
+  </div>`;
+}
+
+function pgRenderStep2(d) {
+  const ro = pgLocked ? 'readonly' : '';
+  return `
+  ${pgStepBar(2)}
+  <div class="error-panel" id="pgErrPanel"><strong>⚠️ Harap perbaiki:</strong><ul id="pgErrList"></ul></div>
+
+  <!-- Tabel SEMULA -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>📋 Data Pengguna SEMULA (kondisi saat ini)</span>
+    </div>
+    <div id="pgSemulaList"></div>
+    ${!pgLocked?`<button class="btn-add-user" onclick="pgAddUser('semula')">+ Tambah Pengguna Semula</button>`:''}
+  </div>
+
+  <!-- Tabel MENJADI -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>✅ Data Pengguna MENJADI (kondisi yang diinginkan)</span>
+    </div>
+    <div id="pgMenjadiList"></div>
+    ${!pgLocked?`<button class="btn-add-user" onclick="pgAddUser('menjadi')">+ Tambah Pengguna Menjadi</button>`:''}
+  </div>
+
+  <div style="display:flex;gap:10px;justify-content:space-between;margin-top:4px">
+    <button class="btn btn-secondary" onclick="pgGoToStep(1)">← Kembali</button>
+    <button class="btn btn-primary" onclick="pgNextFromStep2()" style="padding:11px 28px;font-size:14px">
+      Selanjutnya &rarr; Unduh Excel
+    </button>
+  </div>`;
+}
+
+function pgRenderStep3() {
+  const {namaSatker,namaKpa,nip,noHp,kota,tglSurat} = pgCollectData();
+  const semula = pgSemulaUsers;
+  const menjadi = pgMenjadiUsers;
+  return `
+  ${pgStepBar(3)}
+
+  <div class="info-box orange" style="margin-bottom:18px">
+    ⚠️ Periksa kembali seluruh data sebelum mengunduh Excel. Setelah diunduh dan ditandatangani, <strong>upload dokumen PDF</strong> di langkah berikutnya.
+  </div>
+
+  <!-- Review data -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">🏢 Identitas & KPA</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+      <div><span style="color:var(--gray-500)">Nama Satker</span><br/><strong>${esc(namaSatker)}</strong></div>
+      <div><span style="color:var(--gray-500)">Nama KPA</span><br/><strong>${esc(namaKpa)}</strong></div>
+      <div><span style="color:var(--gray-500)">NIP KPA</span><br/><strong style="font-family:monospace">${esc(nip)}</strong></div>
+      <div><span style="color:var(--gray-500)">No. HP/WA</span><br/><strong>${esc(noHp)}</strong></div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">📋 Data Pengguna SEMULA (${semula.length} orang)</div>
+    <table class="tbl"><thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Peran</th></tr></thead>
+    <tbody>${semula.map((u,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${esc(u.nama)}</td><td style="font-family:monospace">${esc(u.nipnrp)}</td><td style="font-size:11px">${(u.peranList||[]).join(', ')}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--gray-400)">—</td></tr>'}</tbody>
+    </table>
+  </div>
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-title">✅ Data Pengguna MENJADI (${menjadi.length} orang)</div>
+    <table class="tbl"><thead><tr><th>#</th><th>Nama</th><th>NIP/NRP</th><th>Peran</th></tr></thead>
+    <tbody>${menjadi.map((u,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${esc(u.nama)}</td><td style="font-family:monospace">${esc(u.nipnrp)}</td><td style="font-size:11px">${(u.peranList||[]).join(', ')}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--gray-400)">—</td></tr>'}</tbody>
+    </table>
+  </div>
+
+  <!-- Unduh Excel -->
+  <div style="background:#fff;border:2px solid var(--blue);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:18px">
+    <div style="font-size:14px;font-weight:700;color:var(--blue);margin-bottom:8px">📥 Langkah 1 — Unduh & Cetak Excel</div>
+    <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">Klik tombol di bawah untuk mengunduh file Excel. Cetak, minta tanda tangan KPA, lalu lanjut ke langkah upload.</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-success" onclick="pgDoDownloadExcel()" id="btnPgDownloadExcel" style="padding:11px 24px;font-size:14px">
+        ⬇️ Unduh Excel Perubahan
+      </button>
+      <span id="pgExcelDoneFlag" style="display:none;color:var(--green);font-weight:700;font-size:13px">✅ Excel berhasil diunduh</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;justify-content:space-between;margin-top:4px">
+    <button class="btn btn-secondary" onclick="pgGoToStep(2)">← Kembali Edit Data</button>
+    <button class="btn btn-primary" id="btnPgLanjutUpload" onclick="pgGoToStep(4)"
+      style="padding:11px 28px;font-size:14px;opacity:0.4;cursor:not-allowed" disabled>
+      Lanjut Upload Dokumen →
+    </button>
+  </div>
+  <p id="pgStep3Hint" style="text-align:right;font-size:11px;color:var(--gray-400);margin-top:6px">Unduh Excel terlebih dahulu untuk melanjutkan</p>`;
+}
+
+function pgRenderStep4(id) {
+  return `
+  ${pgStepBar(4)}
+
+  <div class="info-box green" style="margin-bottom:18px">
+    ✅ Excel berhasil diunduh! Selanjutnya cetak, minta tanda tangan KPA, lalu upload semua dokumen yang diperlukan di bawah ini.
+    ${id ? '<br/>ID Pengajuan: <strong style="font-family:monospace">' + esc(id) + '</strong>' : ''}
+  </div>
+
+  <div id="pgUploadBody">
+    <p style="text-align:center;color:var(--gray-400);padding:20px">⏳ Memuat daftar dokumen...</p>
+  </div>
+
+  <div style="display:flex;gap:10px;justify-content:space-between;margin-top:16px">
+    <button class="btn btn-secondary" onclick="pgGoToStep(3)">← Kembali</button>
+    <button class="btn btn-primary" onclick="pgUploadSelesai()" id="btnPgSelesai" style="padding:11px 28px;font-size:14px">
+      ✅ Selesai & Perbarui Riwayat
+    </button>
+  </div>`;
+}
+
+function pgGoToStep(n) {
+  pgStep = n;
+  const body = document.getElementById('pgBody');
+  if (!body) return;
+  const kode = currentUser?.username||'';
+  const d = window._pgCurrentData || null;
+  if (n === 1) { body.innerHTML = pgRenderStep1(d, kode); setTimeout(()=>pgInitFlatpickr(), 80); }
+  else if (n === 2) { body.innerHTML = pgRenderStep2(d); pgReRenderUsers(); setTimeout(()=>pgInitFlatpickr(), 80); }
+  else if (n === 3) { body.innerHTML = pgRenderStep3(); }
+  else if (n === 4) {
+    body.innerHTML = pgRenderStep4(pgCurrentId);
+    pgBukaUploadInline(pgCurrentId);
+  }
+}
+
+function pgReRenderUsers() {
+  pgSemulaUsers.forEach(u => pgRenderUserSummary(u.id));
+  pgMenjadiUsers.forEach(u => pgRenderUserSummary(u.id));
+}
+
+function pgNextFromStep1() {
+  const errors = [];
+  const {namaSatker,namaKpa,nip,noHp} = pgCollectData();
+  if (!namaSatker) errors.push('Nama Satker wajib diisi');
+  if (!namaKpa)   errors.push('Nama KPA wajib diisi');
+  if (!nip)       errors.push('NIP KPA wajib diisi');
+  if (!noHp)      errors.push('No. HP wajib diisi');
+  const panel = document.getElementById('pgErrPanel');
+  const list  = document.getElementById('pgErrList');
+  if (errors.length) {
+    panel.style.display='block';
+    list.innerHTML = errors.map(e=>`<li>${e}</li>`).join('');
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+    return;
+  }
+  if (panel) panel.style.display='none';
+  // Simpan data step 1 ke state
+  window._pgStep1Data = {namaSatker, namaKpa, nip, noHp,
+    kota: (document.getElementById('pg_kota')?.value||'Jayapura').trim(),
+    tglSurat: (document.getElementById('pg_tglSurat')?.value||'').trim()};
+  pgGoToStep(2);
+}
+
+function pgNextFromStep2() {
+  // Validasi data pegawai
+  const errors = [];
+  if (!pgSemulaUsers.length) errors.push('Data SEMULA wajib diisi minimal 1 pengguna');
+  if (!pgMenjadiUsers.length) errors.push('Data MENJADI wajib diisi minimal 1 pengguna');
+  const pgSeenNIPMenjadi = new Map();
+  pgSemulaUsers.forEach((u,i)=>{
+    if(!pgIsFilled(u)) errors.push(`Pengguna Semula ${i+1}: Data belum lengkap — klik Isi Data (wajib: Nama, NIP/NRP, Peran)`);
+  });
+  pgMenjadiUsers.forEach((u,i)=>{
+    const label = `Pengguna Menjadi ${i+1} (${(u.nama||'').trim()||'belum diisi'})`;
+    if (!(u.nama||'').trim())          errors.push(`${label}: Nama wajib diisi`);
+    if (!(u.nipnrp||'').trim())        errors.push(`${label}: NIP/NRP wajib diisi`);
+    if (!(u.nik||'').trim())           errors.push(`${label}: NIK wajib diisi`);
+    if (!(u.hp||'').trim())            errors.push(`${label}: No. HP wajib diisi`);
+    if (!u.peranList||!u.peranList.length) errors.push(`${label}: Pilih minimal 1 peran`);
+    if (!(u.email||'').trim())         errors.push(`${label}: Email kedinasan wajib diisi`);
+    if (!(u.sk||'').trim())            errors.push(`${label}: Nomor SK wajib diisi`);
+    if (!(u.tglsk||'').trim())         errors.push(`${label}: Tanggal SK wajib diisi`);
+    if((u.nipnrp||'').trim()){
+      if(pgSeenNIPMenjadi.has(u.nipnrp.trim())) errors.push(`${label}: NIP/NRP duplikat`);
+      else pgSeenNIPMenjadi.set(u.nipnrp.trim(), i+1);
+    }
+  });
+  const panel = document.getElementById('pgErrPanel');
+  const list  = document.getElementById('pgErrList');
+  if (errors.length) {
+    panel.style.display='block';
+    list.innerHTML = errors.map(e=>`<li>${e}</li>`).join('');
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+    return;
+  }
+  if (panel) panel.style.display='none';
+  pgGoToStep(3);
+}
+
+async function pgDoDownloadExcel() {
+  const btn = document.getElementById('btnPgDownloadExcel');
+  if (btn) { btn.disabled=true; btn.textContent='⏳ Menyiapkan...'; }
+  const {namaSatker,namaKpa,nip,noHp,kota,tglSurat} = pgCollectData();
+  const tglStr = tglSurat ? ubFormatTglIndo(tglSurat) : '______';
+  const semula  = pgSemulaUsers.map(u=>({nama:u.nama,nipnrp:u.nipnrp,nik:u.nik,email:u.email,hp:u.hp,sk:u.sk,tglsk:u.tglsk,peranList:u.peranList,keterangan:u.keterangan}));
+  const menjadi = pgMenjadiUsers.map(u=>({nama:u.nama,nipnrp:u.nipnrp,nik:u.nik,email:u.email,hp:u.hp,sk:u.sk,tglsk:u.tglsk,peranList:u.peranList,keterangan:u.keterangan}));
+  try {
+    const res = await apiPost({action:'generatePerubahanExcel',id:pgCurrentId||'',namaSatker,namaKpa,nip,noHp,kota,tglStr,tglSurat,semula,menjadi});
+    if (!res.success) { showToast(res.message||'Gagal generate Excel',true); if(btn){btn.disabled=false;btn.textContent='⬇️ Unduh Excel Perubahan';} return; }
+    pgCurrentId = res.id;
+    _cacheInvalidate('riwayatPerubahan');
+    const bytes = Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
+    const blob  = new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement('a'); a.href=url; a.download=res.fileName||'Form_Perubahan_SAKTI.xlsx'; a.click();
+    URL.revokeObjectURL(url);
+    // Unlock tombol lanjut
+    pgExcelDownloaded = true;
+    const flagEl  = document.getElementById('pgExcelDoneFlag');
+    const lanjut  = document.getElementById('btnPgLanjutUpload');
+    const hint    = document.getElementById('pgStep3Hint');
+    if (flagEl)  flagEl.style.display='inline';
+    if (lanjut)  { lanjut.disabled=false; lanjut.style.opacity='1'; lanjut.style.cursor='pointer'; }
+    if (hint)    hint.style.display='none';
+    if (btn)     { btn.disabled=false; btn.textContent='⬇️ Unduh Ulang Excel'; }
+    showToast('✅ Excel berhasil diunduh. Silakan cetak dan minta tanda tangan KPA.',false,true);
+  } catch(e) {
+    showToast('❌ Gagal generate Excel',true);
+    if (btn) { btn.disabled=false; btn.textContent='⬇️ Unduh Excel Perubahan'; }
+  }
+}
+
+// Upload inline (di dalam pgBody step 4, bukan modal terpisah)
+function pgBukaUploadInline(id) {
+  pgUploadId           = id;
+  pgUploadFiles        = {};
+  pgUploadDoneMap      = {};
+  pgUploadNewInSession = {};
+  let menjadiList = pgMenjadiUsers;
+  let cached = (window._pgRiwayatCache || {})[id] || null;
+  if (!menjadiList || !menjadiList.length) {
+    if (cached && Array.isArray(cached.menjadi) && cached.menjadi.length) menjadiList = cached.menjadi;
+  }
+  pgUploadDokList = pgBuildDokumenList(menjadiList || []);
+  const existingFiles = (cached && cached.filesJson) ? cached.filesJson : {};
+  const isDitolak = cached && (cached.status||'').toLowerCase() === 'ditolak';
+  pgUploadDokList.forEach(d => {
+    if (existingFiles[d.key] && existingFiles[d.key].url) pgUploadDoneMap[d.key] = true;
+  });
+  const body = document.getElementById('pgUploadBody');
+  if (!body) return;
+  body.innerHTML = pgBuildUploadBodyHTML(existingFiles, isDitolak);
+}
+
 
 function pgBuildFormHTML(d, kode) {
   const ro = pgLocked ? 'readonly' : '';
@@ -3024,6 +3827,8 @@ function pgSaveFromEditModal(){
 
   if (!nama)    { showToast('Nama wajib diisi', true); return false; }
   if (!nipnrp)  { showToast('NIP/NRP wajib diisi', true); return false; }
+  if (!nik)     { showToast('NIK wajib diisi', true); return false; }
+  if (!hp)      { showToast('No. HP wajib diisi', true); return false; }
   if (!email)   {
     if (emailErr) { emailErr.textContent = 'Email kedinasan wajib diisi.'; emailErr.style.display = 'block'; }
     showToast('Email kedinasan wajib diisi', true); return false;
@@ -3146,12 +3951,14 @@ function pgValidate(){
   const pgSeenNIPMenjadi = new Map();
   pgMenjadiUsers.forEach((u,i)=>{
     const label = `Pengguna Menjadi ${i+1} (${(u.nama||'').trim()||'belum diisi'})`;
-    if (!(u.nama||'').trim())         errors.push(`${label}: Nama wajib diisi`);
-    else if (!(u.nipnrp||'').trim())  errors.push(`${label}: NIP/NRP wajib diisi`);
-    else if (!u.peranList||!u.peranList.length) errors.push(`${label}: Pilih minimal 1 peran`);
-    else if (!(u.email||'').trim())   errors.push(`${label}: Email kedinasan wajib diisi`);
-    else if (!(u.sk||'').trim())      errors.push(`${label}: Nomor SK wajib diisi`);
-    else if (!(u.tglsk||'').trim())   errors.push(`${label}: Tanggal SK wajib diisi`);
+    if (!(u.nama||'').trim())          errors.push(`${label}: Nama wajib diisi`);
+    if (!(u.nipnrp||'').trim())        errors.push(`${label}: NIP/NRP wajib diisi`);
+    if (!(u.nik||'').trim())           errors.push(`${label}: NIK wajib diisi`);
+    if (!(u.hp||'').trim())            errors.push(`${label}: No. HP wajib diisi`);
+    if (!u.peranList||!u.peranList.length) errors.push(`${label}: Pilih minimal 1 peran`);
+    if (!(u.email||'').trim())         errors.push(`${label}: Email kedinasan wajib diisi`);
+    if (!(u.sk||'').trim())            errors.push(`${label}: Nomor SK wajib diisi`);
+    if (!(u.tglsk||'').trim())         errors.push(`${label}: Tanggal SK wajib diisi`);
     if((u.nipnrp||'').trim()){
       if(pgSeenNIPMenjadi.has(u.nipnrp.trim())) errors.push(`${label}: NIP/NRP duplikat dengan pengguna MENJADI lain di form ini`);
       else pgSeenNIPMenjadi.set(u.nipnrp.trim(), i+1);
@@ -3169,26 +3976,10 @@ function pgValidate(){
   return true;
 }
 
+// pgTrySubmit sekarang digantikan pgDoDownloadExcel di step 3 flow baru
+// Stub ini tetap ada untuk backward-compat jika ada referensi lain
 async function pgTrySubmit(){
-  if(!pgValidate())return;
-  const {namaSatker,namaKpa,nip,noHp,kota,tglSurat}=pgCollectData();
-  const tglStr=tglSurat?ubFormatTglIndo(tglSurat):'______';
-  const semula=pgSemulaUsers.map(u=>({nama:u.nama,nipnrp:u.nipnrp,nik:u.nik,email:u.email,hp:u.hp,sk:u.sk,tglsk:u.tglsk,peranList:u.peranList,keterangan:u.keterangan}));
-  const menjadi=pgMenjadiUsers.map(u=>({nama:u.nama,nipnrp:u.nipnrp,nik:u.nik,email:u.email,hp:u.hp,sk:u.sk,tglsk:u.tglsk,peranList:u.peranList,keterangan:u.keterangan}));
-  showToast('⏳ Menyiapkan Excel...');
-  try{
-    const res=await apiPost({action:'generatePerubahanExcel',id:pgCurrentId||'',namaSatker,namaKpa,nip,noHp,kota,tglStr,tglSurat,semula,menjadi});
-    if(!res.success){showToast(res.message||'Gagal generate Excel',true);return;}
-    pgCurrentId=res.id;
-    const bytes=Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
-    const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');a.href=url;a.download=res.fileName||'Form_Perubahan_SAKTI.xlsx';a.click();
-    URL.revokeObjectURL(url);
-    showToast('✅ Excel berhasil didownload! Silakan upload dokumen setelah ditandatangani.',false,true);
-    // Tampilkan tombol upload
-    setTimeout(()=>pgBukaUploadModal(pgCurrentId), 800);
-  }catch(e){showToast('❌ Gagal generate Excel',true);}
+  pgDoDownloadExcel();
 }
 
 function pgResetForm(){
@@ -3213,6 +4004,61 @@ const PG_PERAN_SPEC  = PG_PERAN_SK; // Specimen TTD: KPA, PPK, PPSPM, Bendahara
 const PG_PERAN_BNT   = ['SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU','SATKER_BENDAHARA_PENERIMAAN'];
 const PG_PERAN_PNT   = ['SATKER_PPK','SATKER_PPK_DFDD'];
 const PG_PERAN_SNT   = ['SATKER_PPSPM'];
+
+// Helper: build HTML isi area upload (dipakai baik inline step 4 maupun modal)
+function pgBuildUploadBodyHTML(existingFiles, isDitolak) {
+  existingFiles = existingFiles || {};
+  return `
+    <div style="background:#F3E8FF;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#6D28D9">
+      <strong>ID Pergantian:</strong> <span style="font-family:monospace;font-weight:700">${esc(pgUploadId||'')}</span>
+    </div>
+    ${isDitolak ? `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#9a3412;line-height:1.6">
+      ⚠️ <strong>Mode perbaikan dokumen</strong> — dokumen yang sudah pernah diupload <u>tetap tersimpan</u>. Pilih yang perlu diganti.
+    </div>` : ''}
+    <p style="font-size:12px;color:var(--gray-600);margin-bottom:14px">
+      Format <strong>PDF</strong> untuk semua dokumen, kecuali Scan KTP boleh <strong>PDF/JPG/PNG/dll</strong>. Maks. <strong>2 MB</strong> per file.
+    </p>
+    <div id="pgudGrid">
+      ${pgUploadDokList.map(dok => {
+        const existing = existingFiles[dok.key];
+        const sudahAda = !!(existing && existing.url);
+        const rowBg     = sudahAda ? (isDitolak ? '#fffbeb' : '#f0fdf4') : '#fff';
+        const rowBorder = sudahAda ? (isDitolak ? '#fcd34d' : '#86efac') : (dok.required ? '#fca5a5' : 'var(--gray-200)');
+        return `<div id="pgud_row_${dok.key}" style="border:1px solid ${rowBorder};border-radius:8px;padding:12px 14px;margin-bottom:8px;background:${rowBg};transition:.15s">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:700;color:var(--gray-800);margin-bottom:2px">
+                ${dok.required?'<span style="color:var(--red);margin-right:3px">*</span>':''}${esc(dok.label)}
+              </div>
+              <div style="font-size:11px;color:var(--gray-500);line-height:1.5">${esc(dok.desc||'')}</div>
+            </div>
+            <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+              ${sudahAda ? `
+                <span id="pgud_status_${dok.key}" style="font-size:11px;color:${isDitolak?'#92400e':'var(--green)'};font-weight:600">${isDitolak?'⚠️ Perlu dicek':'✅ Terupload'}</span>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+                  <a href="${esc(existing.url)}" target="_blank" class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 8px">🔗 Lihat</a>
+                  <label class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px;cursor:pointer;margin:0">
+                    🔄 Ganti<input type="file" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="pgudSelectFile(event,'${dok.key}')"/>
+                  </label>
+                  <button class="btn btn-sm" onclick="pgudHapusFile('${dok.key}')" style="font-size:11px;padding:3px 8px;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5">🗑️ Hapus</button>
+                </div>
+              ` : `
+                <label class="btn btn-primary btn-sm" style="font-size:11px;padding:5px 12px;cursor:pointer;margin:0;background:#7C3AED;border-color:#7C3AED">
+                  📎 Pilih File<input type="file" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="pgudSelectFile(event,'${dok.key}')"/>
+                </label>
+              `}
+              <div id="pgud_preview_${dok.key}" style="display:none;margin-top:6px;background:#e0f2fe;border:1px solid #7dd3fc;border-radius:6px;padding:7px 10px;align-items:center;gap:8px">
+                <div style="font-size:11px;font-weight:600;color:var(--gray-700)" id="pgud_flabel_${dok.key}"></div>
+                <button id="pgud_btn_${dok.key}" onclick="pgudUploadFile('${dok.key}')" class="btn btn-primary btn-sm" style="font-size:11px;padding:4px 10px;background:#7C3AED;border-color:#7C3AED">📤 Upload</button>
+              </div>
+              <div id="pgud_done_${dok.key}" style="display:none;font-size:11px;color:var(--green);font-weight:600">✅ Berhasil diupload</div>
+              <div id="pgud_err_${dok.key}" style="display:none;font-size:11px;color:var(--red)"></div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
 
 function pgBuildDokumenList(menjadiUsers) {
   const semuaPeran = (menjadiUsers || []).flatMap(u => u.peranList || []);
@@ -5150,6 +5996,8 @@ function erOpenEditModal(id) {
     document.getElementById('ube-email')?.classList.remove('err');
     if (!nama)               { showToast('Nama wajib diisi', true); return; }
     if (!nipnrp)             { showToast('NIP/NRP wajib diisi', true); return; }
+    if (!nik)                { showToast('NIK wajib diisi', true); return; }
+    if (!hp)                 { showToast('No. HP wajib diisi', true); return; }
     if (!peranList.length)   { showToast('Pilih minimal satu peran', true); return; }
 
     // Validasi duplikat lintas pengguna lain (selain yang sedang diedit)
@@ -5205,6 +6053,8 @@ async function doSimpanEditRiwayat() {
     const u = ubUsers[i]; const n = i + 1;
     if (!u.nama) { showToast(`Pengguna ${n}: Nama wajib diisi`, true); return; }
     if (!u.nipnrp) { showToast(`Pengguna ${n}: NIP/NRP wajib diisi`, true); return; }
+    if (!(u.nik||'').trim()) { showToast(`Pengguna ${n}: NIK wajib diisi`, true); return; }
+    if (!(u.hp||'').trim()) { showToast(`Pengguna ${n}: No. HP wajib diisi`, true); return; }
     if (!u.peranList.length) { showToast(`Pengguna ${n}: Pilih minimal satu peran`, true); return; }
   }
 
@@ -5503,27 +6353,19 @@ window.addEventListener('DOMContentLoaded', async () => {
 // ── Escape key: tutup modal yang sedang terbuka ──────────────────────────────
 document.addEventListener('keydown', function(e) {
   if (e.key !== 'Escape') return;
-  // Modal yang TIDAK boleh ditutup dengan Escape (konfirmasi kritis / wajib ganti password)
-  const PROTECTED = ['modalPernyataanUB', 'modalGantiPasswordWajib'];
-  // Coba tutup modal dinamis (modalDetailPg dll yang di-inject ke DOM)
-  const dynModal = document.getElementById('modalDetailPg');
-  if (dynModal) { dynModal.remove(); return; }
-  // Cari modal statis yang sedang terbuka (punya class .on atau display flex/block)
-  const MODAL_IDS = [
-    'modalKonfirmasiEmail','modalDetailEmail','modalPassword',
-    'modalSuksesUB','modalUploadDokumen','modalPerbaikiData',
-    'modalPanggilRekamanUB','modalEditRiwayat','modalEditUB',
-    'modalUploadPerubahan',
-  ];
-  for (const id of MODAL_IDS) {
-    if (PROTECTED.includes(id)) continue;
-    const el = document.getElementById(id);
-    if (el && (el.classList.contains('on') || el.style.display === 'flex' || el.style.display === 'block')) {
-      closeModal(id);
-      return;
+  // Modal yang TIDAK boleh ditutup paksa (mis. modal konfirmasi)
+  const noEscIds = [];
+  // Cari semua modal yang sedang tampil
+  document.querySelectorAll('.modal').forEach(m => {
+    const vis = m.style.display === 'flex' || m.style.display === 'block' || m.classList.contains('active');
+    if (vis && !noEscIds.includes(m.id)) {
+      closeModal(m.id);
+      // Kalau modal edit-riwayat ditutup, restore ubSaveEdit
+      if (m.id === 'modalEditRiwayat') erRestoreSaveEdit();
     }
-  }
+  });
 });
+
 </script>
 </body>
 </html>
