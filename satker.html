@@ -4519,6 +4519,15 @@ async function initUserRiwayat() {
           refKode: d.refKode, namaSatker: d.namaSatker, namaKpa: d.namaKpa,
           nip: d.nip, noHp: d.noHp, levelSatker: d.levelSatker, usersJson: usersArr,
           filesJson: d.filesJson || {},
+          status: d.status || 'Menunggu',
+          tanggalDaftar: d.tanggalDaftar || d.createdAt || '',
+          kota: d.kota || 'Jayapura',
+          tglSurat: d.tglSurat || '',
+          catatanAdmin: d.catatanAdmin || '',
+          sudahUpload: d.sudahUpload || d.hasFiles || false,
+          sudahUploadLengkap: d.sudahUploadLengkap != null ? d.sudahUploadLengkap : undefined,
+          butuhAktivasiOTP: d.butuhAktivasiOTP,
+          otpSelesai: d.otpSelesai || d.sudahTerdaftar || false,
         };
       } else if (d._kind === 'ganti') {
         const semula  = Array.isArray(d.semula)  ? d.semula  : (typeof d.semula==='string'?(()=>{try{return JSON.parse(d.semula);}catch(e){return [];}})():[]);
@@ -5861,7 +5870,7 @@ function bukaEditRiwayat(refKode) {
         </div>
         <div class="ub-form-group">
           <label>NIP KPA <span style="color:var(--red)">*</span></label>
-          <input type="text" id="er_nip" value="${esc(info.nip||'')}" placeholder="199001012020011001" maxlength="18" style="font-family:monospace"/>
+       
         </div>
       </div>
       <div class="ub-form-row">
@@ -6139,7 +6148,6 @@ function bukaPerbaikiData(refKode) {
     <div style="background:#fff1f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#991b1b">
       <strong>Pendaftaran Ditolak — Ref: ${esc(info.refKode)}</strong><br/>
       Perbaiki data di bawah, lalu klik <strong>Simpan & Unduh Form Baru</strong>.
-      Form Excel baru akan otomatis terundu
       Form Excel baru akan otomatis terunduh dan Anda diarahkan ke halaman upload dokumen.
     </div>
 
@@ -6179,7 +6187,6 @@ function bukaPerbaikiData(refKode) {
       </div>
     </div>
 
-    <!-- Daftar pengguna (read-only, bisa dilihat) -->
     ${users.length ? `
     <details style="margin-bottom:12px">
       <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--blue);padding:4px 0">
@@ -6261,8 +6268,6 @@ async function doSimpanPerbaikan() {
         refKode:    pdData.refKode,
         namaSatker: namaSatker,
         usersJson:  pdData.usersJson || [],
-        // Pertahankan filesJson dari data lama agar dokumen sebelumnya masih kelihatan
-        // dan bisa dipakai sebagai referensi/download. Upload ulang akan overwrite per-key.
         filesJson:  pdData.filesJson || {},
         needsReupload: true,
       };
@@ -6294,7 +6299,6 @@ function fmtTglWaktu(iso) {
 }
 
 function badgeStatus(s, sudahUpload) {
-  // Jika ditolak tapi sudah upload ulang → tampilkan sebagai "Perbaikan"
   if ((s === 'Ditolak' || s === 'ditolak') && sudahUpload) {
     return `<span class="badge" style="background:#EDE9FE;color:#5B21B6;border-color:#C4B5FD">Perbaikan</span>`;
   }
@@ -6331,20 +6335,40 @@ window.addEventListener('DOMContentLoaded', async () => {
   try {
     currentUser = JSON.parse(saved);
     if (!currentUser?.token) { sessionStorage.removeItem('sakti_satker'); currentUser=null; return; }
-    // Validasi token + prefetch semua data PARALLEL — hemat 2-3x waktu tunggu
     const [v] = await Promise.all([
       apiPost({ action:'validateToken' }),
-      _prefetchAll(),  // mulai prefetch semua data di background
+      _prefetchAll(),
     ]);
     if (!v || !v.success) {
       sessionStorage.removeItem('sakti_satker');
       currentUser = null;
-      _cache = {};     // buang cache kalau token invalid
+      _cache = {};
       return;
     }
     showApp();
   } catch(e) {
     sessionStorage.removeItem('sakti_satker');
+    currentUser = null;
+  }
+});
+
+// ── Escape key: tutup modal yang sedang terbuka ──────────────────────────────
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  const noEscIds = [];
+  document.querySelectorAll('.modal').forEach(m => {
+    const vis = m.style.display === 'flex' || m.style.display === 'block' || m.classList.contains('active');
+    if (vis && !noEscIds.includes(m.id)) {
+      closeModal(m.id);
+      if (m.id === 'modalEditRiwayat') erRestoreSaveEdit();
+    }
+  });
+});
+
+</script>
+</body>
+</html>
+ sessionStorage.removeItem('sakti_satker');
     currentUser = null;
   }
 });
