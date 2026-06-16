@@ -2638,7 +2638,7 @@ function ubBuildFormHTML(d, kode) {
       </div>
       <div class="ub-form-group">
         <label>Nama Satker <span style="color:var(--red)">*</span></label>
-        <input type="text" id="ub_namaSatker" value="${esc(d?d.namaSatker:currentUser?.namaLengkap||'')}" ${ro} placeholder="Nama lengkap satker"/>
+        <input type="text" id="ub_namaSatker" value="${esc(d?d.namaSatker:currentUser?.namaSatker||'')}" ${ro} placeholder="Nama lengkap satker"/>
       </div>
       <input type="hidden" id="ub_levelSatker" value="Satker"/>
       <input type="hidden" id="ub_existingRefKode" value="${esc(d?.refKode||'')}"/>
@@ -2665,7 +2665,7 @@ function ubBuildFormHTML(d, kode) {
       </div>
       <div class="ub-form-group">
         <label>Kota / Tempat TTD</label>
-        <input type="text" id="ub_kotaTTD" value="${esc(d?d.alamat:'Jayapura')}" ${ro} placeholder="Jayapura"/>
+        <input type="text" id="ub_kotaTTD" value="${esc(d?d.kota||d.alamat||'Jayapura':'Jayapura')}" ${ro} placeholder="Jayapura"/>
       </div>
       <div class="ub-form-group">
         <label>Tanggal Surat</label>
@@ -2780,7 +2780,7 @@ function ubRenderStep1(d, kode) {
       </div>
       <div class="ub-form-group">
         <label>Nama Satker <span style="color:var(--red)">*</span></label>
-        <input type="text" id="ub_namaSatker" value="${esc(d?d.namaSatker:currentUser?.namaLengkap||'')}" ${ro} placeholder="Nama lengkap satker"/>
+        <input type="text" id="ub_namaSatker" value="${esc(d?d.namaSatker:currentUser?.namaSatker||'')}" ${ro} placeholder="Nama lengkap satker"/>
       </div>
       <input type="hidden" id="ub_levelSatker" value="Satker"/>
       <input type="hidden" id="ub_existingRefKode" value="${esc(d?.refKode||'')}"/>
@@ -2805,7 +2805,7 @@ function ubRenderStep1(d, kode) {
       </div>
       <div class="ub-form-group">
         <label>Kota / Tempat TTD</label>
-        <input type="text" id="ub_kotaTTD" value="${esc(d?d.alamat:'Jayapura')}" ${ro} placeholder="Jayapura"/>
+        <input type="text" id="ub_kotaTTD" value="${esc(d?d.kota||d.alamat||'Jayapura':'Jayapura')}" ${ro} placeholder="Jayapura"/>
       </div>
       <div class="ub-form-group">
         <label>Tanggal Surat</label>
@@ -3269,7 +3269,7 @@ function pgRenderStep1(d, kode) {
       </div>
       <div style="padding:0 0 0 20px">
         <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Nama Satker <span style="color:var(--red)">*</span></div>
-        <input type="text" id="pg_namaSatker" value="${esc(d?.namaSatker||currentUser?.namaLengkap||'')}" ${ro} placeholder="Nama lengkap satker"
+        <input type="text" id="pg_namaSatker" value="${esc(d?.namaSatker||currentUser?.namaSatker||'')}" ${ro} placeholder="Nama lengkap satker"
           style="border:1.5px solid var(--gray-300);border-radius:var(--radius);padding:8px 12px;font-size:13px;width:100%;max-width:400px"/>
       </div>
     </div>
@@ -3597,7 +3597,7 @@ function pgBuildFormHTML(d, kode) {
       </div>
       <div class="ub-form-group">
         <label>Nama Satker <span style="color:var(--red)">*</span></label>
-        <input type="text" id="pg_namaSatker" value="${esc(d?.namaSatker||currentUser?.namaLengkap||'')}" ${ro} placeholder="Nama lengkap satker"/>
+        <input type="text" id="pg_namaSatker" value="${esc(d?.namaSatker||currentUser?.namaSatker||'')}" ${ro} placeholder="Nama lengkap satker"/>
       </div>
     </div>
   </div>
