@@ -235,11 +235,12 @@
 // ═══════════════════════════════════════════════════════════════
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-LEjXzM-3XaNNn_bR343B4b-Z4H33eU0CVHz18oQPO-dT8xCtJmPsGXs_q7oBMCjsoA/exec';
 
-let _currentUser  = null;
-let _dataDaftar   = [];  // semua pendaftaran dari server
-let _dataPg       = [];  // semua pergantian dari server
-let _expandedRows = new Set();
-const _detailCache = {}; // cache detail dokumen per pendaftaran: key = 'daftar_<refKode>'
+let _currentUser    = null;
+let _dataDaftar     = [];  // semua pendaftaran dari server
+let _dataPg         = [];  // semua pergantian dari server
+let _expandedRows   = new Set();
+const _detailCache  = {}; // cache detail dokumen per pendaftaran: key = 'daftar_<refKode>'
+let _prefetchDone   = false; // true setelah semua getDetail selesai di-prefetch
 
 // ═══════════════════════════════════════════════════════════════
 // ATURAN DOKUMEN — SAMA PERSIS DENGAN pgBuildDokumenList di satker.html
@@ -462,6 +463,7 @@ async function loadAllData() {
     if (!resPg.success)     throw new Error('Pergantian: ' + (resPg.message || 'Gagal'));
 
     // Simpan semua data
+    _prefetchDone = false;
     _dataDaftar = resDaftar.list || [];
     _dataPg     = (resPg.list || []).map(p => ({
       ...p,
@@ -476,10 +478,45 @@ async function loadAllData() {
 
     document.getElementById('loadingMain').style.display = 'none';
     document.getElementById('mainContent').style.display = 'block';
+
+    // Pre-fetch detail dokumen semua pendaftaran bermasalah secara paralel
+    // sehingga saat user klik detail, hasilnya sudah tersedia (tanpa delay)
+    prefetchDaftarDetails();
   } catch(e) {
     document.getElementById('loadingMain').innerHTML =
       `<div class="alert alert-red" style="max-width:480px;margin:0 auto">❌ Gagal memuat data:<br/><strong>${e.message}</strong><br/><br/><button class="btn btn-primary" onclick="loadAllData()">Coba Lagi</button></div>`;
   }
+}
+
+// Pre-fetch semua detail pendaftaran bermasalah secara paralel
+// dipanggil setelah loadAllData() selesai — tidak memblokir tampilan awal
+async function prefetchDaftarDetails() {
+  // Hanya yang bermasalah (belum terdaftar / selesai / diproses)
+  const bermasalah = _dataDaftar.filter(d => {
+    const s = (d.status||'').toLowerCase();
+    return !['terdaftar','selesai','diproses'].includes(s);
+  });
+
+  if (!bermasalah.length) { _prefetchDone = true; return; }
+
+  // Jalankan semua request secara paralel, batas 5 sekaligus untuk menghindari throttle GAS
+  const BATCH = 5;
+  for (let i = 0; i < bermasalah.length; i += BATCH) {
+    const batch = bermasalah.slice(i, i + BATCH);
+    await Promise.allSettled(batch.map(async d => {
+      if (_detailCache['daftar_' + d.refKode] !== undefined) return; // sudah ada
+      try {
+        const res = await apiPost({ action:'getDetail', refKode: d.refKode });
+        _detailCache['daftar_' + d.refKode] = (res.success ? (res.files || res.filesJson || {}) : {});
+      } catch(e) {
+        _detailCache['daftar_' + d.refKode] = {};
+      }
+    }));
+  }
+
+  _prefetchDone = true;
+  // Re-render tabel pendaftaran supaya kurang dokumen tampil langsung di baris
+  filterDaftar();
 }
 
 function parseJsonField(v) {
@@ -648,10 +685,11 @@ function renderDaftarTable(list) {
     const belumUpload = !d.sudahUpload && !ditolak;
     const tidakLengkap = d.sudahUpload && !d.sudahUploadLengkap;
 
-    // Untuk pendaftaran: getDaftarList tidak membawa detail filesJson.
-    // Kita hanya tahu dari flag sudahUpload dan sudahUploadLengkap.
-    // Detail per-dokumen hanya tersedia via getDetail (dimuat saat expand).
-    const detailFiles = _detailCache['daftar_'+d.refKode] || null; // diisi saat expand
+    // Detail dokumen: sudah tersedia di _detailCache karena di-prefetch saat loadAllData()
+    // _detailCache['daftar_X'] = {} berarti ada tapi kosong, undefined = belum selesai prefetch
+    const detailFiles = _detailCache['daftar_'+d.refKode] !== undefined
+                        ? _detailCache['daftar_'+d.refKode]
+                        : null;
     const rowKey      = 'daftar_' + idx;
     const expanded    = _expandedRows.has(rowKey);
 
@@ -661,9 +699,10 @@ function renderDaftarTable(list) {
     if (belumUpload) {
       kurangHtml = `<div style="color:#d97706;font-size:11px;font-weight:600">⚠️ Satker belum upload dokumen apapun</div>`;
     } else if (!detailFiles) {
-      // Belum ada detail — tampilkan info dari backend + undang untuk expand
-      kurangHtml = `<div style="color:#d97706;font-size:11px">⚠️ ${ditolak ? 'Ditolak/perlu perbaikan' : 'Dokumen belum lengkap'} · klik <em>▼ Detail</em> untuk rincian</div>`;
+      // Prefetch masih berjalan — tampilkan spinner kecil
+      kurangHtml = `<div style="color:#3b82f6;font-size:11px"><div class="spinner" style="display:inline-block;width:10px;height:10px;border-width:2px;margin-right:6px;vertical-align:middle"></div>Memeriksa dokumen...</div>`;
     } else {
+      // Detail sudah ada — tampilkan langsung di baris tanpa perlu expand
       kurangHtml = kurang.length
         ? kurang.slice(0,3).map(l=>`<div style="color:#b91c1c;font-size:11px">✕ ${esc(l)}</div>`).join('') +
           (kurang.length>3 ? `<div style="color:#b91c1c;font-size:11px">+${kurang.length-3} dokumen lagi</div>` : '')
@@ -881,18 +920,21 @@ function toggleExpand(rowKey, type, idx) {
   }
   _expandedRows.add(rowKey);
   if (type === 'daftar') {
-    // Render dulu (dengan spinner), lalu load detail, lalu render ulang
-    filterDaftar();
     const record = _dataDaftar[idx];
-    if (record && !_detailCache['daftar_' + record.refKode]) {
+    if (record && _detailCache['daftar_' + record.refKode] === undefined) {
+      // Belum ada di cache (prefetch belum sampai ke record ini) — load sekarang
+      filterDaftar(); // render dulu dengan spinner
       loadDetailDaftar(record.refKode).then(files => {
         _detailCache['daftar_' + record.refKode] = files || {};
-        filterDaftar(); // re-render dengan data detail
+        filterDaftar();
         setTimeout(() => {
           const el = document.getElementById('detail_' + rowKey);
           if (el) el.scrollIntoView({ behavior:'smooth', block:'nearest' });
         }, 50);
       });
+    } else {
+      // Cache sudah ada (dari prefetch) — langsung render, nol delay
+      filterDaftar();
     }
   } else {
     filterPg();
