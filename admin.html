@@ -626,6 +626,7 @@ function esc(str){
     .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
     .replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+const escHtml = esc; // alias
 
 let _toastTimer;
 function showToast(msg, isErr=false, isSuccess=false){
@@ -1441,6 +1442,40 @@ async function loadSubmissions(){
 }
 
 /**
+ * Cek kelengkapan dokumen pendaftaran berdasarkan key yang ADA di filesObj.
+ * Tidak mengecek isi/validitas file — selama key ada, dianggap sudah upload.
+ *
+ * Key wajib (format baru):
+ *   formPendaftaran, skPengguna, ktpKpa, skPejabat,
+ *   minimal 1 formOTP atau formOTP_*, minimal 1 spesimen atau spesimen_*
+ *
+ * Legacy key aliases (format lama): ktp → ktpKpa, suratPermohonan → skPengguna/formPendaftaran
+ * Untuk legacy, cukup salah satu alias ada → dianggap terpenuhi.
+ */
+function cekLengkapDaftar(filesObj) {
+  if (!filesObj || typeof filesObj !== 'object') return false;
+  // Kecualikan foto OTP dari pengecekan kelengkapan dokumen
+  const keys = Object.keys(filesObj).filter(k => !k.startsWith('otpFoto_'));
+
+  // Cek apakah ada key dengan nama persis, atau prefixed dengan '_' diikuti angka
+  // Contoh: punya('formOTP') → true untuk 'formOTP', 'formOTP_0', 'formOTP_1'
+  // Hindari false positive: 'formOTPFoto' tidak akan cocok karena harus diikuti '_' atau persis sama
+  const punya = k => keys.some(key => key === k || key.startsWith(k + '_'));
+
+  // Legacy key aliases: satker lama mungkin upload dengan key nama lama
+  // ktp      → alias lama untuk ktpKpa
+  // suratPermohonan → alias lama untuk skPengguna (di versi awal)
+  const punyaKtp     = punya('ktpKpa') || punya('ktp');
+  const punyaSk      = punya('skPengguna') || punya('suratPermohonan');
+  const punyaForm    = punya('formPendaftaran');
+  const punyaSkPejab = punya('skPejabat') || punya('skPejabatPerbendaharaan');
+  const punyaOTP     = punya('formOTP');
+  const punyaSpesim  = punya('spesimen');
+
+  return punyaForm && punyaSk && punyaKtp && punyaSkPejab && punyaOTP && punyaSpesim;
+}
+
+/**
  * Prioritas tampilan tabel (angka lebih kecil = lebih atas):
  * 0 — Perbaikan  : Ditolak + sudahUpload  → satker sudah perbaiki, perlu admin cek ulang
  * 1 — Siap Proses: Menunggu/submitted + sudahUploadLengkap → dokumen lengkap, siap diproses
@@ -1497,12 +1532,12 @@ function renderSubTable(list){
   if(!list.length){body.innerHTML='<tr class="tbl-empty"><td colspan="7">Tidak ada data.</td></tr>';return;}
   const isAdmin=['Admin','SuperAdmin'].includes(currentUser?.role);
   body.innerHTML=list.map(s=>{
-    // belumUpload: belum ada file sama sekali
+    // belumUpload: belum ada file sama sekali → Proses dikunci
     const belumUpload     = !s.sudahUpload && ['submitted','Menunggu'].includes(s.status);
-    // dokBelumLengkap: ada file tapi belum semua dokumen wajib terpenuhi
+    // dokBelumLengkap: ada file tapi backend bilang belum lengkap → tampilkan warning, tapi Proses tetap bisa diklik (cek detail dulu)
     const dokBelumLengkap = s.sudahUpload && !s.sudahUploadLengkap && ['submitted','Menunggu'].includes(s.status);
-    // Proses dikunci jika belum upload sama sekali ATAU dokumen belum lengkap
-    const prosesLocked    = ['submitted','Menunggu'].includes(s.status) && !s.sudahUploadLengkap;
+    // Proses dikunci HANYA jika belum ada upload sama sekali
+    const prosesLocked    = ['submitted','Menunggu'].includes(s.status) && !s.sudahUpload;
     return `
     <tr>
       <td style="font-family:monospace;font-size:11px">${esc(s.refKode)}</td>
@@ -1513,7 +1548,7 @@ function renderSubTable(list){
         ${bstat(s.status, s.sudahUpload)}
         ${s.revisiKe>0?`<br/><span style="font-size:10px;color:var(--orange)">Revisi ke-${s.revisiKe}</span>`:''}
         ${belumUpload?`<br/><span style="font-size:10px;color:var(--red);font-weight:600">⚠️ Belum upload</span>`:''}
-        ${dokBelumLengkap?`<br/><span style="font-size:10px;color:#D97706;font-weight:600">⚠️ Dok. belum lengkap</span>`:''}
+        ${dokBelumLengkap?`<br/><span style="font-size:10px;color:#D97706;font-weight:600">⚠️ Cek kelengkapan</span>`:''}
       </td>
       <td style="font-size:11px;color:var(--gray-600);font-family:monospace;white-space:nowrap">${s.diprosesoleh?esc(s.diprosesoleh):'<span style="color:var(--gray-400)">—</span>'}</td>
       <td>
@@ -1523,7 +1558,7 @@ function renderSubTable(list){
           ${['submitted','Menunggu'].includes(s.status)?`
             <button class="btn btn-outline btn-sm" style="color:var(--blue);border-color:var(--blue)" onclick="adminEditDaftar('${esc(s.refKode)}')">✏️ Edit</button>
             ${prosesLocked
-              ? `<button class="btn btn-secondary btn-sm" title="${belumUpload?'Dokumen belum diupload satker':'Dokumen belum lengkap — satker perlu upload semua dokumen wajib'}" disabled style="opacity:.5;cursor:not-allowed">🔒 Proses</button>`
+              ? `<button class="btn btn-secondary btn-sm" title="Dokumen belum diupload satker" disabled style="opacity:.5;cursor:not-allowed">🔒 Proses</button>`
               : `<button class="btn btn-success btn-sm" onclick="bukaProses('${esc(s.refKode)}')">✅ Proses</button>`
             }
             <button class="btn btn-danger btn-sm" onclick="bukaTolak('${esc(s.refKode)}')">❌ Tolak</button>
@@ -1547,6 +1582,8 @@ async function lihatDetail(refKode){
     const body=document.getElementById('detailBody');
     // Kumpulkan daftar dokumen yang diupload
     const filesObj = s.files || s.filesJson || {};
+    // Override sudahUploadLengkap: cek dari key yang ada, tidak peduli isi file
+    s.sudahUploadLengkap = cekLengkapDaftar(filesObj);
     const LABEL_MAP = {
       formPendaftaran:'Form Pendaftaran User SAKTI',
       skPengguna:     'SK Pengguna SAKTI',
@@ -1633,10 +1670,25 @@ async function lihatDetail(refKode){
         ${fileEntries.map(([key,f])=>{
           let label = LABEL_MAP[key] || key;
           // Resolve label dinamis berdasarkan key prefix
+          const BNT_LBL_DAFTAR = {'SATKER_BENDAHARA_PENGELUARAN':'BNT Pengeluaran','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU':'BNT Pengeluaran Pembantu','SATKER_BENDAHARA_PENERIMAAN':'BNT Penerimaan'};
           if (key.startsWith('ktp_user_')) {
             const idx = parseInt(key.slice(9), 10);
             const u   = (s.users||[])[idx];
             label = 'KTP — ' + ((u && (u.nama||u.namaLengkap)) ? (u.nama||u.namaLengkap) : ('Pengguna #' + (idx+1)));
+          } else if (key.startsWith('sertBNT_')) {
+            const idx = parseInt(key.slice(8), 10);
+            const u   = (s.users||[])[idx];
+            const nama = (u && (u.nama||u.namaLengkap)) ? (u.nama||u.namaLengkap) : ('Pengguna #' + (idx+1));
+            const bntP = u ? (u.peranList||[]).find(p=>BNT_LBL_DAFTAR[p]) : null;
+            label = 'Sertifikat ' + (bntP ? BNT_LBL_DAFTAR[bntP] : 'BNT') + ' — ' + nama;
+          } else if (key.startsWith('sertPNT_')) {
+            const idx = parseInt(key.slice(8), 10);
+            const u   = (s.users||[])[idx];
+            label = 'Sertifikat PNT — ' + ((u && (u.nama||u.namaLengkap)) ? (u.nama||u.namaLengkap) : ('Pengguna #' + (idx+1)));
+          } else if (key.startsWith('sertSNT_')) {
+            const idx = parseInt(key.slice(8), 10);
+            const u   = (s.users||[])[idx];
+            label = 'Sertifikat SNT — ' + ((u && (u.nama||u.namaLengkap)) ? (u.nama||u.namaLengkap) : ('Pengguna #' + (idx+1)));
           } else if (key.startsWith('formOTP_')) {
             const idx = parseInt(key.slice(8), 10);
             const u   = (s.users||[])[idx];
@@ -1706,13 +1758,20 @@ async function lihatDetail(refKode){
       <!-- Aksi proses/tolak -->
       ${['submitted','Menunggu'].includes(s.status)?`
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${!s.sudahUploadLengkap
-          ? `<button class="btn btn-secondary btn-sm" disabled style="opacity:.5;cursor:not-allowed" title="${!s.sudahUpload?'Dokumen belum diupload':'Dokumen belum lengkap — satker perlu upload semua dokumen wajib'}">🔒 Proses</button>`
-          : `<button class="btn btn-success btn-sm" onclick="closeModal('modalDetail');bukaProses('${esc(s.refKode)}')">✅ Proses</button>`
+        ${!s.sudahUpload
+          ? `<button class="btn btn-secondary btn-sm" disabled style="opacity:.5;cursor:not-allowed" title="Dokumen belum diupload satker">🔒 Proses</button>`
+          : !s.sudahUploadLengkap
+            ? `<button class="btn btn-warning btn-sm" onclick="if(confirm('Dokumen terdeteksi belum lengkap berdasarkan pengecekan key. Lanjut proses tetap?')){closeModal('modalDetail');bukaProses('${esc(s.refKode)}')}" title="Dokumen wajib belum lengkap — klik untuk tetap proses">⚠️ Proses (Cek Dulu)</button>`
+            : `<button class="btn btn-success btn-sm" onclick="closeModal('modalDetail');bukaProses('${esc(s.refKode)}')">✅ Proses</button>`
         }
         <button class="btn btn-danger btn-sm" onclick="closeModal('modalDetail');bukaTolak('${esc(s.refKode)}')">❌ Tolak</button>
       </div>
-      ${!s.sudahUpload?`<div style="margin-top:8px;font-size:11px;color:#991b1b">🔒 Dokumen belum diupload — tombol Proses dikunci sampai dokumen tersedia.</div>`:(!s.sudahUploadLengkap?`<div style="margin-top:8px;font-size:11px;color:#D97706">⚠️ Dokumen belum lengkap — satker perlu upload semua dokumen wajib sebelum bisa diproses.</div>`:'')}`:''}
+      ${!s.sudahUpload
+        ? `<div style="margin-top:8px;font-size:11px;color:#991b1b">🔒 Dokumen belum diupload — tombol Proses dikunci sampai dokumen tersedia.</div>`
+        : (!s.sudahUploadLengkap
+          ? `<div style="margin-top:8px;font-size:11px;color:#D97706">⚠️ Pengecekan otomatis menemukan kemungkinan dokumen wajib belum lengkap. Periksa daftar dokumen di atas — jika semua sudah ada, klik "⚠️ Proses (Cek Dulu)" untuk tetap lanjut.</div>`
+          : '')
+      }`:''}
       ${s.status==='Ditolak'?`
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gray-200)">
         ${s.sudahUpload ? `
@@ -2616,7 +2675,7 @@ function renderPgTable(list){
           ${isMenunggu?`
             <button class="btn btn-outline btn-sm" style="color:var(--blue);border-color:var(--blue)" onclick="adminEditPg('${esc(p.id)}')">✏️ Edit</button>
             ${prosesLocked
-              ? `<button class="btn btn-secondary btn-sm" title="${belumUpload?'Dokumen belum diupload satker':'Dokumen belum lengkap — satker perlu upload semua dokumen wajib'}" disabled style="opacity:.5;cursor:not-allowed">🔒 Proses</button>`
+              ? `<button class="btn btn-secondary btn-sm" title="Dokumen belum diupload satker" disabled style="opacity:.5;cursor:not-allowed">🔒 Proses</button>`
               : `<button class="btn btn-success btn-sm" onclick="prosesPg('${esc(p.id)}')">✅ Proses</button>`}
             <button class="btn btn-danger btn-sm" onclick="tolakPg('${esc(p.id)}')">❌ Tolak</button>
           `:''}
@@ -2674,11 +2733,21 @@ function lihatDetailPg(id){
       const peranStr=u?(u.peranList||[]).filter(p=>OTP_LABEL_PG[p]).map(p=>OTP_LABEL_PG[p]).join('/'):'';
       return 'Spesimen TTD — '+nama+(peranStr?' ('+peranStr+')':'');
     }
-    if (k.startsWith('sertBNT_'))    { const i=parseInt(k.slice(8),10);  return 'BNT — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
-    if (k.startsWith('sertPNT_'))    { const i=parseInt(k.slice(8),10);  return 'PNT — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
-    if (k.startsWith('sertSNT_'))    { const i=parseInt(k.slice(8),10);  return 'SNT — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
+    if (k.startsWith('sertBNT_'))    {
+      const i=parseInt(k.slice(8),10);
+      const u=menjadi[i];
+      const nama=(u&&u.nama)||('Pengguna #'+(i+1));
+      const BNT_LBL_ADMIN={'SATKER_BENDAHARA_PENGELUARAN':'BNT Pengeluaran',
+        'SATKER_BENDAHARA_PENGELUARAN_PEMBANTU':'BNT Pengeluaran Pembantu',
+        'SATKER_BENDAHARA_PENERIMAAN':'BNT Penerimaan'};
+      const bntP=(u&&(u.peranList||[]).find(p=>BNT_LBL_ADMIN[p]));
+      return 'Sertifikat '+(bntP?BNT_LBL_ADMIN[bntP]:'BNT')+' — '+nama;
+    }
+    if (k.startsWith('sertPNT_'))    { const i=parseInt(k.slice(8),10);  return 'Sertifikat PNT — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
+    if (k.startsWith('sertSNT_'))    { const i=parseInt(k.slice(8),10);  return 'Sertifikat SNT — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
     if (k.startsWith('fotoOTP_'))    { const i=parseInt(k.slice(8),10);  return 'Foto OTP (Bukti Satker) — '+((menjadi[i]&&menjadi[i].nama)||('Pengguna #'+(i+1))); }
     if (k.startsWith('otpFoto_'))    { const p=k.replace('otpFoto_',''); return 'Foto OTP (Konfirmasi KPPN) — '+p; }
+    if (k === 'dokumenLain')         return 'Dokumen Lainnya';
     return k;
   };
   function renderUserMini(u){
@@ -2757,8 +2826,8 @@ function lihatDetailPg(id){
   // Inject tombol upload — tidak bisa masuk template literal karena butuh referensi objek
   const _pgUploadBtn = document.createElement('div');
   _pgUploadBtn.style.cssText = 'margin:10px 0 4px';
-  _pgUploadBtn.innerHTML = '<button style="display:inline-flex;align-items:center;gap:6px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer" onclick="adminBukaUploadPerubahan(_pgUploadRef.id, _pgUploadRef.nama, _pgUploadRef.files)">📤 Upload / Ganti Dokumen</button>';
-  window._pgUploadRef = { id: p.id, nama: p.namaSatker||'', files: filesJson };
+  _pgUploadBtn.innerHTML = '<button style="display:inline-flex;align-items:center;gap:6px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer" onclick="adminBukaUploadPerubahan(_pgUploadRef.id, _pgUploadRef.nama, _pgUploadRef.files, _pgUploadRef.menjadi)">📤 Upload / Ganti Dokumen</button>';
+  window._pgUploadRef = { id: p.id, nama: p.namaSatker||'', files: filesJson, menjadi: menjadi };
   const _pgActionArea = document.querySelector('#modalDetailPg .modal-box > div:last-child') || document.querySelector('#modalDetailPg .modal-box');
   if (_pgActionArea) _pgActionArea.prepend(_pgUploadBtn);
 }
@@ -3001,7 +3070,7 @@ function doResetPassword(username) {
   overlay.innerHTML = `
     <div style="background:#fff;border-radius:14px;padding:28px 24px;max-width:400px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,.2)">
       <div style="font-size:20px;font-weight:700;margin-bottom:4px">🔑 Reset Password</div>
-      <div style="font-size:13px;color:#6b7280;margin-bottom:18px">Satker: <strong>${username}</strong></div>
+      <div style="font-size:13px;color:#6b7280;margin-bottom:18px">Satker: <strong>${esc(username)}</strong></div>
       <div id="rpwErr" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;font-size:12px;color:#b91c1c;margin-bottom:12px"></div>
       <div style="margin-bottom:10px">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Password Baru</label>
@@ -3017,7 +3086,7 @@ function doResetPassword(username) {
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button onclick="document.getElementById('modalResetPw').remove()"
           style="padding:8px 18px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">Batal</button>
-        <button id="rpwBtn" onclick="doResetPasswordSubmit('${username}')"
+        <button id="rpwBtn" onclick="doResetPasswordSubmit('${esc(username)}')"
           style="padding:8px 18px;border:none;border-radius:8px;background:#7C3AED;color:#fff;cursor:pointer;font-size:13px;font-weight:600">✅ Reset Password</button>
       </div>
     </div>`;
@@ -3329,10 +3398,11 @@ async function doSaveEditDaftar(){
 // ════════════════════════════════════════════════════════
 // ADMIN UPLOAD DOKUMEN — Upload/ganti dokumen milik satker
 // ════════════════════════════════════════════════════════
-let _adminUploadMode   = '';   // 'daftar' | 'perubahan'
-let _adminUploadId     = '';   // refKode (daftar) atau id (perubahan)
-let _adminUploadNama   = '';   // nama satker (untuk info)
-let _adminUploadFiles  = {};   // {key: File}
+let _adminUploadMode    = '';   // 'daftar' | 'perubahan'
+let _adminUploadId      = '';   // refKode (daftar) atau id (perubahan)
+let _adminUploadNama    = '';   // nama satker (untuk info)
+let _adminUploadFiles   = {};   // {key: File}
+let _adminUploadMenjadi = [];   // array menjadi users untuk label resolver (perubahan)
 
 // Label mapping untuk pendaftaran
 const ADMIN_DOK_LABEL = {
@@ -3362,14 +3432,34 @@ function adminResolveLabelDaftar(key) {
   if (key.startsWith('ktp_user_'))   return 'KTP — Pengguna #' + (parseInt(key.slice(9),10)+1);
   if (key.startsWith('formOTP_'))    return 'Form OTP — Pengguna #' + (parseInt(key.slice(8),10)+1);
   if (key.startsWith('spesimen_'))   return 'Spesimen TTD — Pengguna #' + (parseInt(key.slice(9),10)+1);
+  if (key.startsWith('sertBNT_')) {
+    const parts = key.split('_'); // ['sertBNT', idx, 'SATKER', 'BENDAHARA', ...]
+    const idx = parseInt(parts[1], 10);
+    const BNT_LBL = {'SATKER_BENDAHARA_PENGELUARAN':'BNT Pengeluaran','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU':'BNT Pengeluaran Pembantu','SATKER_BENDAHARA_PENERIMAAN':'BNT Penerimaan'};
+    const peranKode = parts.slice(2).join('_');
+    return 'Sertifikat ' + (BNT_LBL[peranKode]||'BNT') + ' — Pengguna #' + (idx+1);
+  }
+  if (key.startsWith('sertPNT_'))    return 'Sertifikat PNT — Pengguna #' + (parseInt(key.slice(8),10)+1);
+  if (key.startsWith('sertSNT_'))    return 'Sertifikat SNT — Pengguna #' + (parseInt(key.slice(8),10)+1);
   return key;
 }
 
-function adminResolveLabelPg(key) {
+function adminResolveLabelPg(key, menjadiArr) {
   if (ADMIN_PG_DOK_LABEL[key]) return ADMIN_PG_DOK_LABEL[key];
   if (key.startsWith('formOTP_'))  return 'Form OTP — Pengguna #' + (parseInt(key.slice(8),10)+1);
   if (key.startsWith('spesimen_')) return 'Spesimen TTD — Pengguna #' + (parseInt(key.slice(9),10)+1);
+  if (key.startsWith('ktp_menjadi_')) return 'KTP — Pengguna #' + (parseInt(key.slice(12),10)+1);
   if (key.startsWith('ktp_'))     return 'KTP — Pengguna #' + (parseInt(key.slice(4),10)+1);
+  if (key.startsWith('fotoOTP_')) return 'Foto OTP — Pengguna #' + (parseInt(key.slice(8),10)+1);
+  if (key.startsWith('sertBNT_')) {
+    const i = parseInt(key.slice(8),10);
+    const u = menjadiArr && menjadiArr[i];
+    const BNT_LBL_PG_A = {'SATKER_BENDAHARA_PENGELUARAN':'BNT Pengeluaran','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU':'BNT Pengeluaran Pembantu','SATKER_BENDAHARA_PENERIMAAN':'BNT Penerimaan'};
+    const bntP = u ? (u.peranList||[]).find(p=>BNT_LBL_PG_A[p]) : null;
+    return 'Sertifikat ' + (bntP ? BNT_LBL_PG_A[bntP] : 'BNT') + ' — Pengguna #' + (i+1);
+  }
+  if (key.startsWith('sertPNT_')) return 'Sertifikat PNT — Pengguna #' + (parseInt(key.slice(8),10)+1);
+  if (key.startsWith('sertSNT_')) return 'Sertifikat SNT — Pengguna #' + (parseInt(key.slice(8),10)+1);
   return key;
 }
 
@@ -3389,11 +3479,12 @@ function adminBukaUploadDaftar(refKode, namaSatker, filesJson) {
 }
 
 // Buka modal upload untuk pergantian
-function adminBukaUploadPerubahan(id, namaSatker, filesJson) {
-  _adminUploadMode  = 'perubahan';
-  _adminUploadId    = id;
-  _adminUploadNama  = namaSatker;
-  _adminUploadFiles = {};
+function adminBukaUploadPerubahan(id, namaSatker, filesJson, menjadiArr) {
+  _adminUploadMode    = 'perubahan';
+  _adminUploadId      = id;
+  _adminUploadNama    = namaSatker;
+  _adminUploadFiles   = {};
+  _adminUploadMenjadi = Array.isArray(menjadiArr) ? menjadiArr : (window._pgUploadRef && window._pgUploadRef.menjadi) || [];
 
   document.getElementById('adminUploadInfo').innerHTML =
     '<strong>🔄 Pergantian:</strong> ' + esc(namaSatker) +
@@ -3406,7 +3497,7 @@ function adminBukaUploadPerubahan(id, namaSatker, filesJson) {
 function adminRenderUploadBody(filesJson, mode) {
   const files = (filesJson && typeof filesJson === 'object') ? filesJson : {};
   const entries = Object.entries(files).filter(function(e){ return !e[0].startsWith('otpFoto_'); });
-  const resolveLbl = mode === 'daftar' ? adminResolveLabelDaftar : adminResolveLabelPg;
+  const resolveLbl = mode === 'daftar' ? adminResolveLabelDaftar : (k => adminResolveLabelPg(k, _adminUploadMenjadi||[]));
 
   let html = '';
 

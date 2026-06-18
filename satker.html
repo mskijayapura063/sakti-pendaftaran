@@ -1921,7 +1921,7 @@ async function initEmailRiwayat() {
   try {
     const res = _cacheGet('emailRiwayat') || await apiPost({ action:'getRiwayatEmailSakti' });
     _cacheSet('emailRiwayat', res);
-    if (!res.success) { body.innerHTML = `<p style="color:var(--red)">❌ ${res.message}</p>`; return; }
+    if (!res.success) { body.innerHTML = `<p style="color:var(--red)">❌ ${esc(res.message)}</p>`; return; }
     emailRiwayat = res.list || [];
     renderEmailRiwayatTable();
   } catch(e) {
@@ -2102,7 +2102,7 @@ const PERAN_DATA = [
   {kode:'SATKER_ADMIN',                         label:'Admin Satker',                        kelompok:'ADMIN',     modul:['ADMIN']},
 ];
 function ubGetKelompok(k){return (PERAN_DATA.find(p=>p.kode===k)||{}).kelompok||null;}
-function ubGetLabel(k){return (PERAN_DATA.find(p=>p.kode===k)||{}).label||k;}
+function ubGetLabel(k){return esc((PERAN_DATA.find(p=>p.kode===k)||{}).label||k);}
 function ubGetModul(k){return (PERAN_DATA.find(p=>p.kode===k)||{}).modul||[];}
 
 // ─── KONFLIK PERAN ─────────────────────────────────────
@@ -2212,11 +2212,11 @@ function ubRenderUserSummary(id){
   const kelompoks=[...new Set(u.peranList.map(k=>ubGetKelompok(k)).filter(Boolean))];
   const kbCls=kelompoks.length>1?'kb-M':kelompoks[0]?`kb-${kelompoks[0][0]}`:'';
   el.innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--gray-700)">
-    <span><strong>Nama:</strong> ${u.nama||'<em style="color:var(--gray-400)">belum diisi</em>'}</span>
+    <span><strong>Nama:</strong> ${u.nama?esc(u.nama):'<em style="color:var(--gray-400)">belum diisi</em>'}</span>
     <span style="color:var(--gray-300)">|</span>
-    <span><strong>NIP/NRP:</strong> ${u.nipnrp||'—'}</span>
+    <span><strong>NIP/NRP:</strong> ${u.nipnrp?esc(u.nipnrp):'—'}</span>
     <span style="color:var(--gray-300)">|</span>
-    <span><strong>Email:</strong> ${u.email||'—'}</span>
+    <span><strong>Email:</strong> ${u.email?esc(u.email):'—'}</span>
     <span style="color:var(--gray-300)">|</span>
     <span><strong>Peran:</strong> ${u.peranList.length?u.peranList.map(k=>`<span class="kb ${kbCls}">${ubGetLabel(k)}</span>`).join(''):'<em style="color:var(--red)">belum dipilih</em>'}</span>
   </div>`;
@@ -2359,7 +2359,7 @@ function ubTrySubmit(){
     if(!u.tglsk)errors.push(`Pengguna ${n}: Tanggal SK wajib diisi`);
     if(!u.peranList.length)errors.push(`Pengguna ${n}: Pilih minimal satu peran`);
     if(u.email){const el=u.email.toLowerCase();if(!el.endsWith('.go.id')&&!el.endsWith('.mil.id'))errors.push(`Pengguna ${n}: Email harus berakhiran .go.id atau .mil.id`);}
-    u.peranList.forEach((kode,idx)=>{const r=ubCheckPeranConflict(kode,u.peranList.slice(0,idx));if(r.conflict&&r.block)errors.push(`Pengguna ${n} (${u.nama}): ${r.warn}`);});
+    u.peranList.forEach((kode,idx)=>{const r=ubCheckPeranConflict(kode,u.peranList.slice(0,idx));if(r.conflict&&r.block)errors.push(`Pengguna ${n} (${esc(u.nama)}): ${r.warn}`);});
     if(u.nik){if(seenNIK.has(u.nik))errors.push(`Pengguna ${n}: NIK duplikat`);else seenNIK.set(u.nik,i);}
     if(u.nipnrp){if(seenNIP.has(u.nipnrp))errors.push(`Pengguna ${n}: NIP/NRP duplikat`);else seenNIP.set(u.nipnrp,i);}
     if(u.email){const ek=u.email.toLowerCase();if(seenEmail.has(ek))errors.push(`Pengguna ${n}: Email duplikat`);else seenEmail.set(ek,i);}
@@ -2371,7 +2371,7 @@ function ubTrySubmit(){
   if(allPeran.filter(k=>k==='SATKER_BENDAHARA_PENGELUARAN').length>1)errors.push('Hanya boleh ada 1 Bendahara Pengeluaran.');
   if(allPeran.filter(k=>k==='SATKER_BENDAHARA_PENERIMAAN').length>1)errors.push('Hanya boleh ada 1 Bendahara Penerimaan.');
   const panel=document.getElementById('ubErrPanel'),list=document.getElementById('ubErrList');
-  if(errors.length){panel.style.display='block';list.innerHTML=errors.map(e=>`<li>${e}</li>`).join('');panel.scrollIntoView({behavior:'smooth',block:'center'});return;}
+  if(errors.length){panel.style.display='block';list.innerHTML=errors.map(e=>`<li>${esc(e)}</li>`).join('');panel.scrollIntoView({behavior:'smooth',block:'center'});return;}
   panel.style.display='none';openModal('modalPernyataanUB');
 }
 
@@ -2480,7 +2480,7 @@ async function ubDoGenerateExcel(){
     const errPanel = document.getElementById('ubErrPanel');
     const errList  = document.getElementById('ubErrList');
     if (errPanel && errList) {
-      errList.innerHTML = `<li>⚠️ Excel berhasil diunduh (<strong>${fname}</strong>), TAPI data GAGAL tersimpan ke server.</li>
+      errList.innerHTML = `<li>⚠️ Excel berhasil diunduh (<strong>${esc(fname)}</strong>), TAPI data GAGAL tersimpan ke server.</li>
         <li>Pesan error: <strong>${esc(submitMsg||'Tidak ada pesan dari server')}</strong></li>
         <li>Coba klik tombol <strong>"Unduh Excel & Dapatkan Kode Referensi"</strong> sekali lagi, atau hubungi admin KPPN.</li>
         <li style="font-size:10px;color:var(--gray-500)">Debug: ${esc(submitDebug)}</li>`;
@@ -3019,7 +3019,7 @@ function ubNextFromStep2() {
     if(!u.tglsk)        errors.push(`Pengguna ${n}: Tanggal SK wajib diisi`);
     if(!u.peranList.length) errors.push(`Pengguna ${n}: Pilih minimal satu peran`);
     if(u.email){const el=u.email.toLowerCase();if(!el.endsWith('.go.id')&&!el.endsWith('.mil.id'))errors.push(`Pengguna ${n}: Email harus berakhiran .go.id atau .mil.id`);}
-    u.peranList.forEach((kode,idx)=>{const r=ubCheckPeranConflict(kode,u.peranList.slice(0,idx));if(r.conflict&&r.block)errors.push(`Pengguna ${n} (${u.nama}): ${r.warn}`);});
+    u.peranList.forEach((kode,idx)=>{const r=ubCheckPeranConflict(kode,u.peranList.slice(0,idx));if(r.conflict&&r.block)errors.push(`Pengguna ${n} (${esc(u.nama)}): ${r.warn}`);});
     if(u.nik){if(seenNIK.has(u.nik))errors.push(`Pengguna ${n}: NIK duplikat`);else seenNIK.set(u.nik,i);}
     if(u.nipnrp){if(seenNIP.has(u.nipnrp))errors.push(`Pengguna ${n}: NIP/NRP duplikat`);else seenNIP.set(u.nipnrp,i);}
     if(u.email){const ek=u.email.toLowerCase();if(seenEmail.has(ek))errors.push(`Pengguna ${n}: Email duplikat`);else seenEmail.set(ek,i);}
@@ -3458,7 +3458,7 @@ function pgNextFromStep1() {
   const list  = document.getElementById('pgErrList');
   if (errors.length) {
     panel.style.display='block';
-    list.innerHTML = errors.map(e=>`<li>${e}</li>`).join('');
+    list.innerHTML = errors.map(e=>`<li>${esc(e)}</li>`).join('');
     panel.scrollIntoView({behavior:'smooth',block:'start'});
     return;
   }
@@ -3480,7 +3480,7 @@ function pgNextFromStep2() {
     if(!pgIsFilled(u)) errors.push(`Pengguna Semula ${i+1}: Data belum lengkap — klik Isi Data (wajib: Nama, NIP/NRP, Peran)`);
   });
   pgMenjadiUsers.forEach((u,i)=>{
-    const label = `Pengguna Menjadi ${i+1} (${(u.nama||'').trim()||'belum diisi'})`;
+    const label = `Pengguna Menjadi ${i+1} (${esc((u.nama||'').trim()||'belum diisi')})`;
     if (!(u.nama||'').trim())          errors.push(`${label}: Nama wajib diisi`);
     if (!(u.nipnrp||'').trim())        errors.push(`${label}: NIP/NRP wajib diisi`);
     if (!(u.nik||'').trim())           errors.push(`${label}: NIK wajib diisi`);
@@ -3498,7 +3498,7 @@ function pgNextFromStep2() {
   const list  = document.getElementById('pgErrList');
   if (errors.length) {
     panel.style.display='block';
-    list.innerHTML = errors.map(e=>`<li>${e}</li>`).join('');
+    list.innerHTML = errors.map(e=>`<li>${esc(e)}</li>`).join('');
     panel.scrollIntoView({behavior:'smooth',block:'start'});
     return;
   }
@@ -3751,9 +3751,9 @@ function pgRenderUserSummary(id, tipe){
     }
   }
   el.innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--gray-700)">
-    <span><strong>Nama:</strong> ${u.nama||'<em style="color:var(--gray-400)">belum diisi</em>'}</span>
+    <span><strong>Nama:</strong> ${u.nama?esc(u.nama):'<em style="color:var(--gray-400)">belum diisi</em>'}</span>
     <span style="color:var(--gray-300)">|</span>
-    <span><strong>NIP/NRP:</strong> ${u.nipnrp||'—'}</span>
+    <span><strong>NIP/NRP:</strong> ${u.nipnrp?esc(u.nipnrp):'—'}</span>
     <span style="color:var(--gray-300)">|</span>
     <span><strong>Email:</strong> ${u.email?esc(u.email):'<em style="color:var(--red)">wajib diisi</em>'}</span>
     <span style="color:var(--gray-300)">|</span>
@@ -3979,7 +3979,7 @@ function pgValidate(){
 // pgTrySubmit sekarang digantikan pgDoDownloadExcel di step 3 flow baru
 // Stub ini tetap ada untuk backward-compat jika ada referensi lain
 async function pgTrySubmit(){
-  pgDoDownloadExcel();
+  try { await pgDoDownloadExcel(); } catch(e) { showToast('❌ Gagal memproses. Coba lagi.', true); }
 }
 
 function pgResetForm(){
@@ -4113,24 +4113,40 @@ function pgBuildDokumenList(menjadiUsers) {
   });
   list.push({ key:'formPergantian', label:'Form Pergantian Pengguna SAKTI',
       desc:'Form pergantian (hasil download) yang sudah ditandatangani KPA — dipindai sebagai PDF', required:true });
+  // Label BNT per jenis Bendahara — agar tampilan konsisten dengan flow Pendaftaran
+  const BNT_LABEL_PG = {
+    'SATKER_BENDAHARA_PENGELUARAN':         'BNT Pengeluaran',
+    'SATKER_BENDAHARA_PENGELUARAN_PEMBANTU':'BNT Pengeluaran Pembantu',
+    'SATKER_BENDAHARA_PENERIMAAN':          'BNT Penerimaan',
+  };
   (menjadiUsers || []).forEach((u, idx) => {
     const nama  = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
+    const nip   = (u.nipnrp || '').trim();
     const peran = u.peranList || [];
     // Cek apakah user ini merangkap KPA — jika ya, PNT dan SNT tidak diminta
     const isKPA = peran.includes('SATKER_KPA');
-    // BNT — Bendahara (pengeluaran, pengeluaran pembantu, penerimaan)
-    if (peran.some(p => PG_PERAN_BNT.includes(p))) list.push({ key:'sertBNT_'+idx,
-      label:'Sertifikat BNT — ' + nama,
-      desc:'Sertifikat Bendahara Negara Tersertifikasi (BNT) untuk Bendahara Pengeluaran/Penerimaan', required:true });
+    // BNT — Bendahara (tidak boleh rangkap peran → 1 BNT per user, key sertBNT_idx tanpa peranKode)
+    // NOTE: key sertBNT_${idx} (tanpa suffix peranKode) — JANGAN diubah, menjaga kesinambungan
+    // dokumen yang sudah tersimpan di server pada pengajuan sebelumnya.
+    const bntPeran = peran.find(p => PG_PERAN_BNT.includes(p)); // ambil 1 (tidak rangkap)
+    if (bntPeran) {
+      const bntLabel = BNT_LABEL_PG[bntPeran] || 'BNT';
+      list.push({ key:'sertBNT_'+idx,
+        label:'Sertifikat ' + bntLabel + ' — ' + nama,
+        desc:'Sertifikat ' + bntLabel + ' atas nama ' + nama + (nip?' (NIP/NRP: '+nip+')':''), required:true });
+    }
     // PNT — PPK, tapi tidak jika PPK dirangkap KPA
     if (!isKPA && peran.some(p => PG_PERAN_PNT.includes(p))) list.push({ key:'sertPNT_'+idx,
       label:'Sertifikat PNT — ' + nama,
-      desc:'Sertifikat PPK Negara Tersertifikasi (PNT) untuk role PPK', required:true });
+      desc:'Sertifikat PPK Negara Tersertifikasi (PNT) atas nama ' + nama + (nip?' (NIP/NRP: '+nip+')':''), required:true });
     // SNT — PPSPM, tapi tidak jika PPSPM dirangkap KPA
     if (!isKPA && peran.some(p => PG_PERAN_SNT.includes(p))) list.push({ key:'sertSNT_'+idx,
       label:'Sertifikat SNT — ' + nama,
-      desc:'Sertifikat PPSPM Negara Tersertifikasi (SNT) untuk role PPSPM', required:true });
+      desc:'Sertifikat PPSPM Negara Tersertifikasi (SNT) atas nama ' + nama + (nip?' (NIP/NRP: '+nip+')':''), required:true });
   });
+  // Dokumen Lainnya — opsional, konsisten dengan flow Pendaftaran
+  list.push({ key:'dokumenLain', label:'Dokumen Lainnya (opsional)',
+      desc:'Dokumen pendukung tambahan jika ada.', required:false });
   return list;
 }
 
@@ -4293,6 +4309,8 @@ async function pgudHapusFile(key, label) {
     if (window._pgRiwayatCache && window._pgRiwayatCache[pgUploadId]?.filesJson) {
       delete window._pgRiwayatCache[pgUploadId].filesJson[key];
     }
+    // FIX: hapus dari donemap agar validasi wajib ikut terblokir jika file ini wajib
+    delete pgUploadDoneMap[key];
     pgUploadDoneMap[key+'_deleted'] = true;
   } catch(e) {
     if (errEl) { errEl.textContent='Gagal terhubung ke server.'; errEl.style.display='block'; }
@@ -4871,6 +4889,20 @@ function rwRenderDetailDaftar(d, rowKey){
             const nama = (u && u.nama) ? u.nama : ('Pengguna #' + (idx+1));
             const ps = u ? (u.peranList||[]).filter(p=>OTP_LBL_RW[p]).map(p=>OTP_LBL_RW[p]).join('/') : '';
             label = 'Spesimen TTD — ' + nama + (ps ? ' (' + ps + ')' : '');
+          } else if (key.startsWith('sertBNT_')) {
+            const idx = parseInt(key.split('_')[1], 10);
+            const u = usersArr[idx];
+            const BNT_LBL={'SATKER_BENDAHARA_PENGELUARAN':'BNT Pengeluaran','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU':'BNT Pengeluaran Pembantu','SATKER_BENDAHARA_PENERIMAAN':'BNT Penerimaan'};
+            const peranKode = key.split('_').slice(2).join('_');
+            label = 'Sertifikat ' + (BNT_LBL[peranKode]||'BNT') + ' — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+          } else if (key.startsWith('sertPNT_')) {
+            const idx = parseInt(key.slice(8), 10);
+            const u = usersArr[idx];
+            label = 'Sertifikat PNT — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+          } else if (key.startsWith('sertSNT_')) {
+            const idx = parseInt(key.slice(8), 10);
+            const u = usersArr[idx];
+            label = 'Sertifikat SNT — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
           }
           return `<button onclick="satkerDownloadDokumen('${esc(f.url||'')}','${esc(label)}')"
             style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid var(--gray-300);color:var(--gray-700);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:.15s"
@@ -4982,15 +5014,34 @@ function rwRenderDetailGanti(g, rowKey){
     </div>`;
 
   // Dokumen
-  const LABEL_PG = {formOTP:'Form OTP', skPejabat:'SK Pejabat', skPengguna:'SK Pengguna SAKTI', spesimen:'Spesimen TTD', formPergantian:'Form Pergantian', pdfDokumen:'Dokumen (lama)'};
+  const LABEL_PG = {formOTP:'Form OTP', skPejabat:'SK Pejabat', skPengguna:'SK Pengguna SAKTI', spesimen:'Spesimen TTD', formPergantian:'Form Pergantian', dokumenLain:'Dokumen Lainnya', pdfDokumen:'Dokumen (lama)'};
+  const BNT_LBL_RW_PG = {'SATKER_BENDAHARA_PENGELUARAN':'BNT Pengeluaran','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU':'BNT Pengeluaran Pembantu','SATKER_BENDAHARA_PENERIMAAN':'BNT Penerimaan'};
   const resolveLabelPg = (key) => {
     if (LABEL_PG[key]) return LABEL_PG[key];
-    if (key.startsWith('ktp_menjadi_')) { const i=parseInt(key.slice(12),10); return 'KTP — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
-    if (key.startsWith('sertBNT_')) { const i=parseInt(key.slice(8),10); return 'BNT — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
-    if (key.startsWith('sertPNT_')) { const i=parseInt(key.slice(8),10); return 'PNT — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
-    if (key.startsWith('sertSNT_')) { const i=parseInt(key.slice(8),10); return 'SNT — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
-    if (key.startsWith('fotoOTP_')) { const i=parseInt(key.slice(8),10); return 'Foto OTP — '+(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
-    return key;
+    if (key.startsWith('ktp_menjadi_')) { const i=parseInt(key.slice(12),10); return 'KTP — '+esc(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
+    if (key.startsWith('formOTP_'))    {
+      const i=parseInt(key.slice(8),10); const u=menjadi[i];
+      const nm=esc(u?.nama||'Pengguna #'+(i+1));
+      const OTP_L={SATKER_KPA:'KPA',SATKER_PPK:'PPK',SATKER_PPK_DFDD:'PPK DFDD',SATKER_PPSPM:'PPSPM'};
+      const ps=(u?.peranList||[]).filter(p=>OTP_L[p]).map(p=>OTP_L[p]).join('/');
+      return 'Form OTP — '+nm+(ps?' ('+ps+')':'');
+    }
+    if (key.startsWith('spesimen_'))   {
+      const i=parseInt(key.slice(9),10); const u=menjadi[i];
+      const nm=esc(u?.nama||'Pengguna #'+(i+1));
+      const OTP_L={SATKER_KPA:'KPA',SATKER_PPK:'PPK',SATKER_PPK_DFDD:'PPK DFDD',SATKER_PPSPM:'PPSPM'};
+      const ps=(u?.peranList||[]).filter(p=>OTP_L[p]).map(p=>OTP_L[p]).join('/');
+      return 'Spesimen TTD — '+nm+(ps?' ('+ps+')':'');
+    }
+    if (key.startsWith('sertBNT_')) {
+      const i=parseInt(key.slice(8),10); const u=menjadi[i];
+      const bntP=(u?.peranList||[]).find(p=>BNT_LBL_RW_PG[p]);
+      return 'Sertifikat '+(bntP?BNT_LBL_RW_PG[bntP]:'BNT')+' — '+esc(u?.nama||'Pengguna #'+(i+1));
+    }
+    if (key.startsWith('sertPNT_')) { const i=parseInt(key.slice(8),10); return 'Sertifikat PNT — '+esc(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
+    if (key.startsWith('sertSNT_')) { const i=parseInt(key.slice(8),10); return 'Sertifikat SNT — '+esc(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
+    if (key.startsWith('fotoOTP_')) { const i=parseInt(key.slice(8),10); return 'Foto OTP — '+esc(menjadi[i]?.nama||'Pengguna #'+(i+1)); }
+    return esc(key);
   };
 
   const dokumenHtml = sudahUpload ? `
@@ -5091,51 +5142,54 @@ function rwRenderKartuGanti(g, isLatest) {
     pdfDokumen:'Dokumen (lama)',
   };
   const OTP_LBL_PG = {SATKER_KPA:'KPA',SATKER_PPK:'PPK',SATKER_PPK_DFDD:'PPK DFDD',SATKER_PPSPM:'PPSPM'};
+  const BNT_LBL_KARTU = {'SATKER_BENDAHARA_PENGELUARAN':'BNT Pengeluaran','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU':'BNT Pengeluaran Pembantu','SATKER_BENDAHARA_PENERIMAAN':'BNT Penerimaan'};
   const resolveLabelPg = (key) => {
     if (LABEL_PG[key]) return LABEL_PG[key];
+    if (key === 'dokumenLain') return 'Dokumen Lainnya';
     if (key.startsWith('ktp_menjadi_')) {
       const idx = parseInt(key.slice('ktp_menjadi_'.length), 10);
       const u = menjadi[idx];
-      return 'KTP — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+      return 'KTP — ' + esc((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
     }
     if (key.startsWith('formOTP_')) {
       const idx = parseInt(key.slice('formOTP_'.length), 10);
       const u = menjadi[idx];
-      const nama = (u && u.nama) ? u.nama : ('Pengguna #' + (idx+1));
+      const nama = esc((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
       const peranStr = u ? (u.peranList||[]).filter(p=>OTP_LBL_PG[p]).map(p=>OTP_LBL_PG[p]).join('/') : '';
       return 'Form OTP — ' + nama + (peranStr ? ' (' + peranStr + ')' : '');
     }
     if (key.startsWith('spesimen_')) {
       const idx = parseInt(key.slice('spesimen_'.length), 10);
       const u = menjadi[idx];
-      const nama = (u && u.nama) ? u.nama : ('Pengguna #' + (idx+1));
+      const nama = esc((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
       const peranStr = u ? (u.peranList||[]).filter(p=>OTP_LBL_PG[p]).map(p=>OTP_LBL_PG[p]).join('/') : '';
       return 'Spesimen TTD — ' + nama + (peranStr ? ' (' + peranStr + ')' : '');
     }
     if (key.startsWith('sertBNT_')) {
       const idx = parseInt(key.slice('sertBNT_'.length), 10);
       const u = menjadi[idx];
-      return 'Sertifikat BNT — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+      const bntP = u ? (u.peranList||[]).find(p=>BNT_LBL_KARTU[p]) : null;
+      return 'Sertifikat ' + (bntP ? BNT_LBL_KARTU[bntP] : 'BNT') + ' — ' + esc((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
     }
     if (key.startsWith('sertPNT_')) {
       const idx = parseInt(key.slice('sertPNT_'.length), 10);
       const u = menjadi[idx];
-      return 'Sertifikat PNT — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+      return 'Sertifikat PNT — ' + esc((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
     }
     if (key.startsWith('sertSNT_')) {
       const idx = parseInt(key.slice('sertSNT_'.length), 10);
       const u = menjadi[idx];
-      return 'Sertifikat SNT — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+      return 'Sertifikat SNT — ' + esc((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
     }
     if (key.startsWith('fotoOTP_')) {
       const idx = parseInt(key.slice('fotoOTP_'.length), 10);
       const u = menjadi[idx];
-      return 'Foto OTP (Bukti) — ' + ((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
+      return 'Foto OTP (Bukti) — ' + esc((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
     }
     if (key.startsWith('otpFoto_')) {
-      return 'Konfirmasi OTP KPPN — ' + key.replace('otpFoto_', '');
+      return 'Konfirmasi OTP KPPN — ' + esc(key.replace('otpFoto_', ''));
     }
-    return key;
+    return esc(key);
   };
 
   const renderUserMini = (u, ui) => `<tr>
@@ -5350,9 +5404,15 @@ let udDokList        = []; // daftar dokumen aktif — untuk validasi wajib di u
 let udNeedsReupload  = false; // true saat mode perbaikan (ditolak) → harus reset status ke Menunggu
 let udDonemap   = {}; // { key: true } — file yang sudah berhasil diupload sesi ini atau sudah ada
 
+// Peran yang wajib SK Pejabat: KPA, PPK, PPK DFDD, PPSPM, Bendahara Pengeluaran, Bendahara Penerimaan
+// (Bendahara Pengeluaran Pembantu dan Operator PNBP TIDAK termasuk)
 const PERAN_BUTUH_SK   = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM',
-                           'SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU','SATKER_BENDAHARA_PENERIMAAN'];
+                           'SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENERIMAAN'];
+// Peran yang wajib Form OTP: KPA, PPK, PPK DFDD, PPSPM
 const PERAN_BUTUH_OTP  = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+// Peran yang wajib Spesimen TTD: KPA, PPK, PPK DFDD, PPSPM, Bendahara (semua jenis)
+const PERAN_BUTUH_SPEC = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM',
+                           'SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU','SATKER_BENDAHARA_PENERIMAAN'];
 
 function bukaModalUploadDokumen(info) {
   udRefKode    = info.refKode    || '';
@@ -5369,22 +5429,76 @@ function bukaModalUploadDokumen(info) {
   const butuhSK    = semuaPeran.some(p => PERAN_BUTUH_SK.includes(p));
   const butuhOTP   = semuaPeran.some(p => PERAN_BUTUH_OTP.includes(p));
 
-  // Build dokumen list — KTP dipisah per pengguna yang didaftarkan
+  // ── 1. Form Aktivasi OTP — per nama, per role (KPA / PPK / PPK DFDD / PPSPM) ──
+  const OTP_LABEL_UD = { SATKER_KPA:'KPA', SATKER_PPK:'PPK', SATKER_PPK_DFDD:'PPK DFDD', SATKER_PPSPM:'PPSPM' };
+  const formOTPDocs = [];
+  if (butuhOTP) {
+    users.forEach((u, idx) => {
+      const otpPeran = (u.peranList || []).filter(p => PERAN_BUTUH_OTP.includes(p));
+      if (!otpPeran.length) return;
+      const nama     = (u.nama || '').trim() || ('Pengguna #' + (idx + 1));
+      const nip      = (u.nipnrp || '').trim();
+      const peranStr = otpPeran.map(p => OTP_LABEL_UD[p] || p).join('/');
+      const nipInfo  = nip ? ' (NIP/NRP: ' + nip + ')' : '';
+      formOTPDocs.push({
+        key:      'formOTP_' + idx,
+        label:    'Form Aktivasi OTP — ' + nama + ' (' + peranStr + ')',
+        desc:     'Formulir permohonan aktivasi OTP untuk ' + nama + nipInfo + ', jabatan ' + peranStr + '. Format PDF.',
+        required: true,
+      });
+    });
+  }
+
+  // ── 2. SK Pejabat Pengelola Keuangan (satu file, muncul jika ada KPA/PPK/PPSPM/Bendahara) ──
+  const skPejabatDoc = butuhSK ? [{
+    key:      'skPejabat',
+    label:    'SK Pejabat Pengelola Keuangan',
+    desc:     'SK pengangkatan untuk role KPA, PPK, PPSPM, Bendahara Pengeluaran, atau Bendahara Penerimaan yang masih berlaku.',
+    required: true,
+  }] : [];
+
+  // ── 3. SK Pengguna SAKTI — semua role ──
+  // (selalu wajib, tidak ada kondisi peran)
+
+  // ── 4. Spesimen TTD — per nama, untuk KPA / PPK / PPSPM / Bendahara (semua jenis) ──
+  const SPEC_LABEL_UD = { SATKER_KPA:'KPA', SATKER_PPK:'PPK', SATKER_PPK_DFDD:'PPK DFDD', SATKER_PPSPM:'PPSPM',
+    SATKER_BENDAHARA_PENGELUARAN:'Bendahara Pengeluaran',
+    SATKER_BENDAHARA_PENGELUARAN_PEMBANTU:'Bendahara Pengeluaran Pembantu',
+    SATKER_BENDAHARA_PENERIMAAN:'Bendahara Penerimaan' };
+  const spesimenDocs = [];
+  users.forEach((u, idx) => {
+    const specPeran = (u.peranList || []).filter(p => PERAN_BUTUH_SPEC.includes(p));
+    if (!specPeran.length) return;
+    const nama     = (u.nama || '').trim() || ('Pengguna #' + (idx + 1));
+    const nip      = (u.nipnrp || '').trim();
+    const peranStr = specPeran.map(p => SPEC_LABEL_UD[p] || p).join('/');
+    const nipInfo  = nip ? ' (NIP/NRP: ' + nip + ')' : '';
+    spesimenDocs.push({
+      key:      'spesimen_' + idx,
+      label:    'Spesimen TTD — ' + nama + ' (' + peranStr + ')',
+      desc:     'Lembar spesimen tanda tangan ' + nama + nipInfo + ', jabatan ' + peranStr + '.',
+      required: true,
+    });
+  });
+
+  // ── 5. FC KTP — per nama (semua pengguna yang didaftarkan) ──
   const ktpDocs = users.map((u, idx) => {
     const nama = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
     const nip  = (u.nipnrp || '').trim();
-    const desc = nip ? ('KTP ' + nama + ' (NIP/NRP: ' + nip + ')') : ('KTP ' + nama);
+    const desc = nip ? ('FC/Scan KTP atas nama ' + nama + ' (NIP/NRP: ' + nip + ')') : ('FC/Scan KTP atas nama ' + nama);
     return {
-      key: 'ktp_user_' + idx,
-      label: 'Scan KTP — ' + nama,
-      desc: desc,
-      required: true,
-      acceptImage: true   // izinkan PDF + gambar
+      key:         'ktp_user_' + idx,
+      label:       'FC KTP — ' + nama,
+      desc:        desc,
+      required:    true,
+      acceptImage: true,  // izinkan PDF + gambar
     };
   });
 
-  // Sertifikat per-user: BNT (Bendahara), PNT (PPK), SNT (PPSPM)
-  // Pengecualian: PPK atau PPSPM yang dirangkap KPA → PNT/SNT TIDAK diminta
+  // ── 7. Sertifikat BNT/PNT/SNT — per nama user yang mengemban role tersebut ──
+  // BNT: Bendahara Pengeluaran / Pembantu / Penerimaan
+  // PNT: PPK (tidak berlaku jika dirangkap KPA)
+  // SNT: PPSPM (tidak berlaku jika dirangkap KPA)
   const PERAN_BNT_UD = ['SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU','SATKER_BENDAHARA_PENERIMAAN'];
   const PERAN_PNT_UD = ['SATKER_PPK','SATKER_PPK_DFDD'];
   const BNT_LABEL_UD = {
@@ -5398,69 +5512,52 @@ function bukaModalUploadDokumen(info) {
     const nip   = (u.nipnrp || '').trim();
     const peran = u.peranList || [];
     const isKPA = peran.includes('SATKER_KPA');
-    // BNT — semua jenis bendahara (boleh rangkap apapun)
+    // BNT — tiap jenis bendahara dapat sertifikat sendiri
     peran.forEach(p => {
       if (PERAN_BNT_UD.includes(p)) sertDocs.push({
-        key: 'sertBNT_' + idx + '_' + p,
-        label: 'Sertifikat ' + (BNT_LABEL_UD[p]||'BNT') + ' — ' + nama,
-        desc:  'Sertifikat ' + (BNT_LABEL_UD[p]||'BNT') + ' atas nama ' + nama + (nip?' (NIP: '+nip+')':''),
-        required: true
+        key:      'sertBNT_' + idx + '_' + p,
+        label:    'Sertifikat ' + (BNT_LABEL_UD[p]||'BNT') + ' — ' + nama,
+        desc:     'Sertifikat ' + (BNT_LABEL_UD[p]||'BNT') + ' atas nama ' + nama + (nip?' (NIP/NRP: '+nip+')':''),
+        required: true,
       });
     });
     // PNT — PPK, tidak berlaku jika dirangkap KPA
     if (!isKPA && peran.some(p => PERAN_PNT_UD.includes(p))) sertDocs.push({
-      key: 'sertPNT_' + idx,
-      label: 'Sertifikat PNT — ' + nama,
-      desc:  'Sertifikat PPK Negara Tersertifikasi (PNT) atas nama ' + nama + (nip?' (NIP: '+nip+')':''),
-      required: true
+      key:      'sertPNT_' + idx,
+      label:    'Sertifikat PNT — ' + nama,
+      desc:     'Sertifikat PPK Negara Tersertifikasi (PNT) atas nama ' + nama + (nip?' (NIP/NRP: '+nip+')':''),
+      required: true,
     });
     // SNT — PPSPM, tidak berlaku jika dirangkap KPA
     if (!isKPA && peran.includes('SATKER_PPSPM')) sertDocs.push({
-      key: 'sertSNT_' + idx,
-      label: 'Sertifikat SNT — ' + nama,
-      desc:  'Sertifikat PPSPM Negara Tersertifikasi (SNT) atas nama ' + nama + (nip?' (NIP: '+nip+')':''),
-      required: true
+      key:      'sertSNT_' + idx,
+      label:    'Sertifikat SNT — ' + nama,
+      desc:     'Sertifikat PPSPM Negara Tersertifikasi (SNT) atas nama ' + nama + (nip?' (NIP/NRP: '+nip+')':''),
+      required: true,
     });
   });
 
-  // Form Aktivasi OTP per-orang per-jabatan (KPA/PPK/PPK DFDD/PPSPM)
-  const OTP_LABEL_UD = { SATKER_KPA:'KPA', SATKER_PPK:'PPK', SATKER_PPK_DFDD:'PPK DFDD', SATKER_PPSPM:'PPSPM' };
-  const formOTPDocs = [];
-  const spesimenDocs = [];
-  if (butuhOTP) {
-    users.forEach((u, idx) => {
-      const otpPeran = (u.peranList || []).filter(p => PERAN_BUTUH_OTP.includes(p));
-      if (!otpPeran.length) return;
-      const nama     = (u.nama || '').trim() || ('Pengguna #' + (idx + 1));
-      const nip      = (u.nipnrp || '').trim();
-      const peranStr = otpPeran.map(p => OTP_LABEL_UD[p] || p).join('/');
-      const nipInfo  = nip ? ' (NIP/NRP: ' + nip + ')' : '';
-      formOTPDocs.push({
-        key:      'formOTP_' + idx,
-        label:    'Form Aktivasi OTP — ' + nama + ' (' + peranStr + ')',
-        desc:     'Form permohonan aktivasi OTP untuk ' + nama + nipInfo + ', jabatan ' + peranStr + '. Format PDF.',
-        required: true,
-      });
-      spesimenDocs.push({
-        key:      'spesimen_' + idx,
-        label:    'Spesimen Tanda Tangan — ' + nama + ' (' + peranStr + ')',
-        desc:     'Lembar spesimen tanda tangan ' + nama + nipInfo + ', jabatan ' + peranStr + '.',
-        required: true,
-      });
-    });
-  }
-
+  // ── Susun urutan dokumen sesuai permintaan ──
   const dokumen = [
-    { key:'formPendaftaran', label:'Form Pendaftaran User SAKTI',    desc:'Form pendaftaran yang sudah ditandatangani KPA', required:true },
-    { key:'skPengguna',      label:'SK Pengguna SAKTI',              desc:'Surat Keputusan penetapan pengguna SAKTI dari pimpinan satker', required:true },
-    ...ktpDocs,
-    ...(butuhSK ? [
-      { key:'skPejabat',     label:'SK Pejabat Perbendaharaan',      desc:'SK pengangkatan KPA, PPK, PPSPM, atau Bendahara yang masih berlaku', required:true },
-    ] : []),
-    ...sertDocs,
+    // 1. Form OTP per nama per role (KPA/PPK/PPSPM)
     ...formOTPDocs,
+    // 2. SK Pejabat Pengelola Keuangan (KPA/PPK/PPSPM/Bendahara)
+    ...skPejabatDoc,
+    // 3. SK Pengguna SAKTI — semua role
+    { key:'skPengguna', label:'SK Pengguna SAKTI',
+      desc:'Surat Keputusan penetapan pengguna SAKTI dari pimpinan satker, mencakup semua role yang didaftarkan.', required:true },
+    // 4. Spesimen TTD per nama (KPA/PPK/PPSPM/Bendahara)
     ...spesimenDocs,
-    { key:'dokumenLain',     label:'Dokumen Lainnya (opsional)',     desc:'Dokumen pendukung tambahan jika ada', required:false },
+    // 5. FC KTP per nama — semua pengguna
+    ...ktpDocs,
+    // 6. Formulir Pendaftaran User SAKTI
+    { key:'formPendaftaran', label:'Formulir Permohonan Pendaftaran User SAKTI',
+      desc:'Formulir permohonan pendaftaran yang sudah ditandatangani KPA (hasil download/cetak dari sistem).', required:true },
+    // 7. Sertifikat BNT/PNT/SNT per nama
+    ...sertDocs,
+    // Opsional
+    { key:'dokumenLain', label:'Dokumen Lainnya (opsional)',
+      desc:'Dokumen pendukung tambahan jika ada.', required:false },
   ];
 
   // Simpan ke state untuk validasi di udSelesai()
@@ -5609,6 +5706,8 @@ async function udHapusFile(key, label) {
     if (dlBtn) dlBtn.remove();
     const hapusBtn = row?.querySelector('button[onclick^="udHapusFile"]');
     if (hapusBtn) hapusBtn.remove();
+    // FIX: hapus dari udDonemap agar validasi wajib ikut terblokir jika file ini wajib
+    delete udDonemap[key];
     // Tandai di udUploading bahwa sesi ini melakukan perubahan (agar refresh saat selesai)
     udUploading[key+'_deleted'] = true;
   } catch(e) {
@@ -5640,7 +5739,7 @@ async function udUploadFile(key) {
       fileKey:     key,
       fileName:    file.name,
       fileData:    b64,
-      mimeType:    'application/pdf',
+      mimeType:    file.type || 'application/pdf',
     });
 
     if (!result.success) {
@@ -5947,11 +6046,11 @@ function erRenderUserSummary(id) {
   const kelompoks = [...new Set(u.peranList.map(k => ubGetKelompok(k)).filter(Boolean))];
   const kbCls = kelompoks.length > 1 ? 'kb-M' : kelompoks[0] ? `kb-${kelompoks[0][0]}` : '';
   el.innerHTML = `<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--gray-700)">
-    <span><strong>Nama:</strong> ${u.nama || '<em style="color:var(--gray-400)">belum diisi</em>'}</span>
+    <span><strong>Nama:</strong> ${u.nama ? esc(u.nama) : '<em style="color:var(--gray-400)">belum diisi</em>'}</span>
     <span style="color:var(--gray-300)">|</span>
-    <span><strong>NIP/NRP:</strong> ${u.nipnrp || '—'}</span>
+    <span><strong>NIP/NRP:</strong> ${u.nipnrp ? esc(u.nipnrp) : '—'}</span>
     <span style="color:var(--gray-300)">|</span>
-    <span><strong>Email:</strong> ${u.email || '—'}</span>
+    <span><strong>Email:</strong> ${u.email ? esc(u.email) : '—'}</span>
     <span style="color:var(--gray-300)">|</span>
     <span><strong>Peran:</strong> ${u.peranList.length ? u.peranList.map(k => `<span class="kb ${kbCls}">${ubGetLabel(k)}</span>`).join('') : '<em style="color:var(--red)">belum dipilih</em>'}</span>
   </div>`;

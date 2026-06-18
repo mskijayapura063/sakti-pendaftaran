@@ -312,8 +312,13 @@ function buildDokListPergantian(menjadiUsers) {
     const isKPA = peran.includes('SATKER_KPA');
     const nip   = (u.nipnrp || '').trim();
     const info  = nip ? ' (NIP: '+nip+')' : '';
-    if (peran.some(p => PG_PERAN_BNT.includes(p)))
-      list.push({ key:'sertBNT_'+idx, label:'Sertifikat BNT — '+nama+info });
+    // BNT — label spesifik sesuai jenis Bendahara (tidak rangkap → cari 1 peran BNT)
+    const BNT_LBL_LAPORAN = {'SATKER_BENDAHARA_PENGELUARAN':'BNT Pengeluaran',
+      'SATKER_BENDAHARA_PENGELUARAN_PEMBANTU':'BNT Pengeluaran Pembantu',
+      'SATKER_BENDAHARA_PENERIMAAN':'BNT Penerimaan'};
+    const bntP = peran.find(p => PG_PERAN_BNT.includes(p));
+    if (bntP)
+      list.push({ key:'sertBNT_'+idx, label:'Sertifikat '+(BNT_LBL_LAPORAN[bntP]||'BNT')+' — '+nama+info });
     if (!isKPA && peran.some(p => PG_PERAN_PNT.includes(p)))
       list.push({ key:'sertPNT_'+idx, label:'Sertifikat PNT — '+nama+info });
     if (!isKPA && peran.some(p => PG_PERAN_SNT.includes(p)))
@@ -484,7 +489,7 @@ async function loadAllData() {
     prefetchDaftarDetails();
   } catch(e) {
     document.getElementById('loadingMain').innerHTML =
-      `<div class="alert alert-red" style="max-width:480px;margin:0 auto">❌ Gagal memuat data:<br/><strong>${e.message}</strong><br/><br/><button class="btn btn-primary" onclick="loadAllData()">Coba Lagi</button></div>`;
+      `<div class="alert alert-red" style="max-width:480px;margin:0 auto">❌ Gagal memuat data:<br/><strong>${esc(e.message)}</strong><br/><br/><button class="btn btn-primary" onclick="loadAllData()">Coba Lagi</button></div>`;
   }
 }
 
@@ -844,7 +849,7 @@ function renderPgTable(list) {
 
     // Nama-nama pengguna MENJADI
     const menjadiNames = menjadi.map(u => {
-      const roles = (u.peranList||[]).map(r => r.replace('SATKER_','')).join(', ');
+      const roles = esc((u.peranList||[]).map(r => r.replace('SATKER_','')).join(', '));
       return `<span class="chip" title="${esc(u.nama||'')} — ${esc(roles)}">${esc(u.nama||'?')} <span style="color:#7c3aed">[${esc(roles)}]</span></span>`;
     }).join('');
 
@@ -879,7 +884,7 @@ function renderPgTable(list) {
                 <strong>No HP:</strong> ${esc(p.noHp||'—')}
               </div>
               <div style="margin-top:6px;font-size:11px;color:#64748b">
-                <strong>SEMULA (${(p.semula||[]).length} pengguna):</strong> ${(p.semula||[]).map(u=>`${esc(u.nama||'?')} [${(u.peranList||[]).map(r=>r.replace('SATKER_','')).join(', ')}]`).join(' | ')||'—'}
+                <strong>SEMULA (${(p.semula||[]).length} pengguna):</strong> ${(p.semula||[]).map(u=>`${esc(u.nama||'?')} [${esc((u.peranList||[]).map(r=>r.replace('SATKER_','')).join(', '))}]`).join(' | ')||'—'}
               </div>
               ${p.catatanAdmin ? `<div style="margin-top:6px;padding:6px 10px;background:#fee2e2;border-radius:6px;font-size:11px;color:#991b1b"><strong>Catatan KPPN:</strong> ${esc(p.catatanAdmin)}</div>` : ''}
             </div>
