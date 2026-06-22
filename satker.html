@@ -2764,8 +2764,46 @@ function ubGoToStep(n) {
   } else if (n === 3) {
     body.innerHTML = ubRenderStep3(d);
   } else if (n === 4) {
-    body.innerHTML = ubRenderStep4(d);
+    // Tampilkan step bar + info sukses dulu, lalu buka modal upload yang sama dengan riwayat
+    body.innerHTML = `
+      ${ubStepBar(4)}
+      <div class="info-box green" style="margin-bottom:20px">
+        ✅ <strong>Excel berhasil diunduh!</strong> Selanjutnya upload dokumen pendukung yang sudah ditandatangani KPA.
+        ${(ubRefKodeStep3||(d?.refKode))?`<br/><span style="font-size:12px">Kode referensi: <strong style="font-family:monospace">${esc(ubRefKodeStep3||(d?.refKode)||'')}</strong></span>`:''}
+      </div>
+      <div class="card" style="text-align:center;padding:32px 20px">
+        <div style="font-size:40px;margin-bottom:12px">📎</div>
+        <p style="color:var(--gray-600);font-size:13px;margin-bottom:16px">Klik tombol di bawah untuk membuka form upload dokumen.</p>
+        <button class="btn btn-primary" style="padding:11px 28px" onclick="ubBukaModalUpload()">📤 Upload Dokumen</button>
+      </div>
+      <div style="display:flex;justify-content:flex-start;margin-top:16px">
+        <button class="btn btn-outline" onclick="ubGoToStep(3)">← Kembali ke Unduh Excel</button>
+      </div>`;
+    // Langsung buka modal tanpa perlu klik
+    setTimeout(()=>ubBukaModalUpload(), 100);
   }
+}
+
+// Buka modal upload dokumen dari step 4 wizard — pakai fungsi yang sama dengan riwayat
+function ubBukaModalUpload() {
+  const d = window._ubCurrentData || {};
+  // Bangun usersJson dari ubUsers state (sudah terisi saat step 2)
+  const usersJson = ubUsers.map(u => ({
+    nama:      u.nama     || '',
+    nipnrp:    u.nipnrp   || '',
+    nik:       u.nik      || '',
+    email:     u.email    || '',
+    peranList: u.peranList|| [],
+    jabatan:   u.jabatan  || '',
+  }));
+  const info = {
+    refKode:    ubRefKodeStep3 || d.refKode    || '',
+    namaSatker: d.namaSatker   || '',
+    usersJson,
+    filesJson:  d.filesJson    || d.uploadedFiles || {},
+    needsReupload: false,
+  };
+  bukaModalUploadDokumen(info);
 }
 
 function ubRenderStep1(d, kode) {
