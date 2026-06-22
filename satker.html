@@ -1528,7 +1528,7 @@ function ebRenderStep4(id) {
         <div style="font-size:12px;color:var(--gray-500);margin-top:4px">Format PDF · Maksimal 1 MB</div>
         <input type="file" id="ebPdfInput" accept="application/pdf,.pdf" style="display:none" onchange="ebHandlePdfSelect(this)"/>
       </div>
-      <div id="ebPdfPreview" style="display:none;margin-top:12px;padding:12px 16px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;display:flex;align-items:center;gap:10px">
+      <div id="ebPdfPreview" style="display:none;margin-top:12px;padding:12px 16px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;align-items:center;gap:10px">
         <span style="font-size:24px">📄</span>
         <div style="flex:1;min-width:0">
           <div id="ebPdfName" style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
@@ -1686,6 +1686,13 @@ async function ebDownloadExcelPreview() {
     const a     = document.createElement('a'); a.href=url; a.download=res.fileName||'Form_Email_SAKTI.xlsx'; a.click();
     URL.revokeObjectURL(url);
     showToast('✅ Form Excel berhasil didownload', false, true);
+    // Unlock tombol Submit setelah Excel berhasil didownload
+    const submitBtn = document.getElementById('btnEbSubmit');
+    const hintEl    = document.getElementById('ebStep3Hint');
+    const doneFlag  = document.getElementById('ebExcelDoneFlag');
+    if (submitBtn) { submitBtn.disabled=false; submitBtn.style.opacity='1'; submitBtn.style.cursor='pointer'; }
+    if (hintEl)    { hintEl.style.display='none'; }
+    if (doneFlag)  { doneFlag.style.display='inline'; }
   } catch(e) { showToast('❌ Gagal download Excel', true); }
   btn.disabled=false; btn.textContent='📥 Download Excel';
 }
@@ -1812,6 +1819,7 @@ async function doUploadPdfRiwayat() {
     document.getElementById('modalUploadPdfRiwayat').style.display='none';
     showToast('✅ Dokumen PDF berhasil diupload! Pengajuan siap diproses KPPN.', false, true);
     emailRiwayat=[];
+    _cacheInvalidate('emailRiwayat');
     initEmailRiwayat();
   } catch(e) {
     showToast('❌ Gagal terhubung ke server', true);
@@ -1890,6 +1898,7 @@ async function ebDoUploadPdf(id) {
         </div>
       </div>`;
     emailRiwayat=[];
+    _cacheInvalidate('emailRiwayat');
   } catch(e) {
     showToast('❌ Gagal terhubung ke server', true);
     btn.disabled=false; btn.textContent='📤 Upload Dokumen PDF';
@@ -4038,18 +4047,21 @@ function pgBuildUploadBodyHTML(existingFiles, isDitolak) {
                 <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
                   <a href="${esc(existing.url)}" target="_blank" class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 8px">🔗 Lihat</a>
                   <label class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px;cursor:pointer;margin:0">
-                    🔄 Ganti<input type="file" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="pgudSelectFile(event,'${dok.key}')"/>
+                    🔄 Ganti<input type="file" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="pgudSelectFile('${dok.key}',this,${dok.acceptImage?'true':'false'})"/>
                   </label>
                   <button class="btn btn-sm" onclick="pgudHapusFile('${dok.key}')" style="font-size:11px;padding:3px 8px;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5">🗑️ Hapus</button>
                 </div>
               ` : `
                 <label class="btn btn-primary btn-sm" style="font-size:11px;padding:5px 12px;cursor:pointer;margin:0;background:#7C3AED;border-color:#7C3AED">
-                  📎 Pilih File<input type="file" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="pgudSelectFile(event,'${dok.key}')"/>
+                  📎 Pilih File<input type="file" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="pgudSelectFile('${dok.key}',this,${dok.acceptImage?'true':'false'})"/>
                 </label>
               `}
               <div id="pgud_preview_${dok.key}" style="display:none;margin-top:6px;background:#e0f2fe;border:1px solid #7dd3fc;border-radius:6px;padding:7px 10px;align-items:center;gap:8px">
-                <div style="font-size:11px;font-weight:600;color:var(--gray-700)" id="pgud_flabel_${dok.key}"></div>
-                <button id="pgud_btn_${dok.key}" onclick="pgudUploadFile('${dok.key}')" class="btn btn-primary btn-sm" style="font-size:11px;padding:4px 10px;background:#7C3AED;border-color:#7C3AED">📤 Upload</button>
+                <span style="font-size:14px;flex-shrink:0">📄</span>
+                <div style="flex:1;font-size:11px;font-weight:600;color:var(--gray-700)" id="pgud_flabel_${dok.key}"></div>
+                <div style="font-size:10px;color:var(--gray-500)" id="pgud_fsize_${dok.key}"></div>
+                <button onclick="pgudClearFile('${dok.key}')" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--gray-400);padding:0" title="Batal">✕</button>
+                <button id="pgud_btn_${dok.key}" onclick="pgudUploadFile('${dok.key}')" class="btn btn-primary btn-sm" style="font-size:11px;padding:4px 10px;flex-shrink:0;background:#7C3AED;border-color:#7C3AED">📤 Upload</button>
               </div>
               <div id="pgud_done_${dok.key}" style="display:none;font-size:11px;color:var(--green);font-weight:600">✅ Berhasil diupload</div>
               <div id="pgud_err_${dok.key}" style="display:none;font-size:11px;color:var(--red)"></div>
