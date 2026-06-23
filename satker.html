@@ -3618,7 +3618,13 @@ function pgBukaUploadInline(id) {
   const existingFiles = (cached && cached.filesJson) ? cached.filesJson : {};
   const isDitolak = cached && (cached.status||'').toLowerCase() === 'ditolak';
   pgUploadDokList.forEach(d => {
-    if (existingFiles[d.key] && existingFiles[d.key].url) pgUploadDoneMap[d.key] = true;
+    if (existingFiles[d.key] && existingFiles[d.key].url) {
+      pgUploadDoneMap[d.key] = true;
+    } else if (d.key === 'spesimen') {
+      // backward compat: data lama pakai spesimen_0, spesimen_1 dst
+      const hasLegacy = Object.keys(existingFiles).some(k => k.startsWith('spesimen_') && existingFiles[k]?.url);
+      if (hasLegacy) pgUploadDoneMap[d.key] = true;
+    }
   });
   const body = document.getElementById('pgUploadBody');
   if (!body) return;
@@ -4231,7 +4237,13 @@ function pgBukaUploadModal(id){
 
   // File yang sudah ada di server langsung dianggap "done" — agar tombol Selesai tidak terblokir
   pgUploadDokList.forEach(d => {
-    if (existingFiles[d.key] && existingFiles[d.key].url) pgUploadDoneMap[d.key] = true;
+    if (existingFiles[d.key] && existingFiles[d.key].url) {
+      pgUploadDoneMap[d.key] = true;
+    } else if (d.key === 'spesimen') {
+      // backward compat: data lama pakai spesimen_0, spesimen_1 dst
+      const hasLegacy = Object.keys(existingFiles).some(k => k.startsWith('spesimen_') && existingFiles[k]?.url);
+      if (hasLegacy) pgUploadDoneMap[d.key] = true;
+    }
   });
 
   const body = document.getElementById('pgUploadBody');
@@ -4419,18 +4431,15 @@ async function pgudUploadFile(key) {
 }
 
 async function pgUploadSelesai() {
-  // Cek semua dokumen wajib — BLOKIR jika belum lengkap, tidak bisa ditembus
+  // Cek kelengkapan — hanya warn, TIDAK blokir (satker boleh upload parsial dan lanjut besok)
   const wajibBelum = pgUploadDokList.filter(d => d.required && !pgUploadDoneMap[d.key]);
   if (wajibBelum.length) {
     showToast(
-      '⚠️ ' + wajibBelum.length + ' dokumen wajib belum diupload: ' +
-      wajibBelum.map(d => d.label).join(', '),
-      true
+      '💾 Disimpan. Masih ada ' + wajibBelum.length + ' dokumen wajib belum diupload: ' +
+      wajibBelum.map(d => d.label).join(', ') + '. Bisa dilengkapi kapan saja.',
+      false, true
     );
-    // Scroll ke dokumen pertama yang belum diupload
-    const firstMissing = document.getElementById('pgud_row_' + wajibBelum[0].key);
-    if (firstMissing) firstMissing.scrollIntoView({ behavior:'smooth', block:'center' });
-    return; // HARD BLOCK — tidak bisa lanjut
+    // Lanjutkan tutup modal (tidak return/blokir)
   }
 
   // Jika ini mode perbaikan (upload ulang setelah ditolak), reset status ke Menunggu
@@ -5618,7 +5627,15 @@ function bukaModalUploadDokumen(info) {
   udDokList = dokumen;
   udNeedsReupload = needsReupload; // simpan flag — dipakai di udSelesai() untuk reset status
   // File yang sudah ada di server dianggap sudah "done"
-  dokumen.forEach(d => { if (filesExist[d.key] && filesExist[d.key].url) udDonemap[d.key] = true; });
+  // Backward compat: key 'spesimen' (tunggal baru) dianggap done jika ada spesimen_0, spesimen_1, dst (key lama)
+  dokumen.forEach(d => {
+    if (filesExist[d.key] && filesExist[d.key].url) {
+      udDonemap[d.key] = true;
+    } else if (d.key === 'spesimen') {
+      const hasLegacy = Object.keys(filesExist).some(k => k.startsWith('spesimen_') && filesExist[k]?.url);
+      if (hasLegacy) udDonemap[d.key] = true;
+    }
+  });
 
   const body = document.getElementById('uploadDokumenBody');
   body.innerHTML = `
@@ -5822,18 +5839,16 @@ async function udUploadFile(key) {
 }
 
 async function udSelesai() {
-  // HARD BLOCK — tidak bisa tutup modal kalau dokumen wajib belum lengkap
+  // Cek kelengkapan — hanya warn, TIDAK blokir (satker boleh upload parsial dan lanjut besok)
   if (udDokList.length) {
     const wajibBelum = udDokList.filter(d => d.required && !udDonemap[d.key]);
     if (wajibBelum.length) {
       showToast(
-        '⚠️ ' + wajibBelum.length + ' dokumen wajib belum diupload: ' +
-        wajibBelum.map(d => d.label).join(', '),
-        true
+        '💾 Disimpan. Masih ada ' + wajibBelum.length + ' dokumen wajib belum diupload: ' +
+        wajibBelum.map(d => d.label).join(', ') + '. Bisa dilengkapi kapan saja.',
+        false, true
       );
-      const firstMissing = document.getElementById('ud_row_' + wajibBelum[0].key);
-      if (firstMissing) firstMissing.scrollIntoView({ behavior:'smooth', block:'center' });
-      return; // BLOKIR
+      // Lanjutkan tutup modal (tidak return/blokir)
     }
   }
 
