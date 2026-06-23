@@ -3398,7 +3398,15 @@ function pgRenderStep2(d) {
 }
 
 function pgRenderStep3() {
-  const {namaSatker,namaKpa,nip,noHp,kota,tglSurat} = pgCollectData();
+  // Kumpulkan dari step1Data (prioritas) lalu fallback DOM, lalu fallback _pgCurrentData
+  const _s1 = window._pgStep1Data || {};
+  const _cd = pgCollectData();
+  const namaSatker = _s1.namaSatker || _cd.namaSatker || (window._pgCurrentData?.namaSatker) || '';
+  const namaKpa    = _s1.namaKpa    || _cd.namaKpa    || (window._pgCurrentData?.namaKpa)    || '';
+  const nip        = _s1.nip        || _cd.nip        || (window._pgCurrentData?.nip)        || '';
+  const noHp       = _s1.noHp       || _cd.noHp       || (window._pgCurrentData?.noHp)       || '';
+  const kota       = _s1.kota       || _cd.kota       || (window._pgCurrentData?.kota)       || 'Jayapura';
+  const tglSurat   = _s1.tglSurat   || _cd.tglSurat   || (window._pgCurrentData?.tglSurat)   || '';
   const semula = pgSemulaUsers;
   const menjadi = pgMenjadiUsers;
   return `
@@ -3556,7 +3564,16 @@ function pgNextFromStep2() {
 async function pgDoDownloadExcel() {
   const btn = document.getElementById('btnPgDownloadExcel');
   if (btn) { btn.disabled=true; btn.textContent='⏳ Menyiapkan...'; }
-  const {namaSatker,namaKpa,nip,noHp,kota,tglSurat} = pgCollectData();
+  // Pada step 3, DOM tidak lagi memiliki input pg_namaSatker dll (sudah digantikan HTML review).
+  // Gunakan _pgStep1Data yang disimpan saat meninggalkan step 1, fallback ke pgCollectData() untuk edit existing.
+  const _s1 = window._pgStep1Data || {};
+  const _cd = pgCollectData();
+  const namaSatker = _s1.namaSatker || _cd.namaSatker || (window._pgCurrentData?.namaSatker) || '';
+  const namaKpa    = _s1.namaKpa    || _cd.namaKpa    || (window._pgCurrentData?.namaKpa)    || '';
+  const nip        = _s1.nip        || _cd.nip        || (window._pgCurrentData?.nip)        || '';
+  const noHp       = _s1.noHp       || _cd.noHp       || (window._pgCurrentData?.noHp)       || '';
+  const kota       = _s1.kota       || _cd.kota       || (window._pgCurrentData?.kota)       || 'Jayapura';
+  const tglSurat   = _s1.tglSurat   || _cd.tglSurat   || (window._pgCurrentData?.tglSurat)   || '';
   const tglStr = tglSurat ? ubFormatTglIndo(tglSurat) : '______';
   const semula  = pgSemulaUsers.map(u=>({nama:u.nama,nipnrp:u.nipnrp,nik:u.nik,email:u.email,hp:u.hp,sk:u.sk,tglsk:u.tglsk,peranList:u.peranList,keterangan:u.keterangan}));
   const menjadi = pgMenjadiUsers.map(u=>({nama:u.nama,nipnrp:u.nipnrp,nik:u.nik,email:u.email,hp:u.hp,sk:u.sk,tglsk:u.tglsk,peranList:u.peranList,keterangan:u.keterangan}));
@@ -4138,21 +4155,13 @@ function pgBuildDokumenList(menjadiUsers) {
       desc:'Khusus untuk role KPA, PPK, PPSPM, dan Bendahara', required:true });
   list.push({ key:'skPengguna', label:'SK Pengguna SAKTI',
       desc:'Surat Keputusan penetapan pengguna SAKTI dari pimpinan satker', required:true });
-  // Spesimen TTD per-orang per-jabatan
+  // Spesimen TTD — cukup 1 dokumen untuk seluruh pejabat (tidak per-orang)
   if (butuhSpec) {
-    (menjadiUsers || []).forEach((u, idx) => {
-      const otpPeran = (u.peranList || []).filter(p => PG_PERAN_OTP.includes(p));
-      if (!otpPeran.length) return;
-      const nama     = (u.nama || '').trim() || ('Pengguna #' + (idx+1));
-      const nip      = (u.nipnrp || '').trim();
-      const peranStr = otpPeran.map(p => PERAN_OTP_LABEL[p] || p).join('/');
-      const nipInfo  = nip ? ' (NIP/NRP: ' + nip + ')' : '';
-      list.push({
-        key:      'spesimen_' + idx,
-        label:    'Spesimen Tanda Tangan — ' + nama + ' (' + peranStr + ')',
-        desc:     'Lembar spesimen tanda tangan ' + nama + nipInfo + ', jabatan ' + peranStr + '.',
-        required: true,
-      });
+    list.push({
+      key:      'spesimen',
+      label:    'Spesimen Tanda Tangan',
+      desc:     'Lembar spesimen tanda tangan seluruh pejabat (KPA/PPK/PPSPM/Bendahara) dalam satu file PDF.',
+      required: true,
     });
   }
   (menjadiUsers || []).forEach((u, idx) => {
@@ -4933,7 +4942,10 @@ function rwRenderDetailDaftar(d, rowKey){
             const nama = (u && u.nama) ? u.nama : ('Pengguna #' + (idx+1));
             const ps = u ? (u.peranList||[]).filter(p=>OTP_LBL_RW[p]).map(p=>OTP_LBL_RW[p]).join('/') : '';
             label = 'Form OTP — ' + nama + (ps ? ' (' + ps + ')' : '');
+          } else if (key === 'spesimen') {
+            label = 'Spesimen Tanda Tangan';
           } else if (key.startsWith('spesimen_')) {
+            // backward compat: data lama menggunakan key spesimen_0, spesimen_1, dst
             const idx = parseInt(key.slice(9), 10);
             const u = usersArr[idx];
             const nama = (u && u.nama) ? u.nama : ('Pengguna #' + (idx+1));
@@ -5076,7 +5088,9 @@ function rwRenderDetailGanti(g, rowKey){
       const ps=(u?.peranList||[]).filter(p=>OTP_L[p]).map(p=>OTP_L[p]).join('/');
       return 'Form OTP — '+nm+(ps?' ('+ps+')':'');
     }
+    if (key === 'spesimen') { return 'Spesimen Tanda Tangan'; }
     if (key.startsWith('spesimen_'))   {
+      // backward compat: data lama menggunakan key spesimen_0, spesimen_1, dst
       const i=parseInt(key.slice(9),10); const u=menjadi[i];
       const nm=esc(u?.nama||'Pengguna #'+(i+1));
       const OTP_L={SATKER_KPA:'KPA',SATKER_PPK:'PPK',SATKER_PPK_DFDD:'PPK DFDD',SATKER_PPSPM:'PPSPM'};
@@ -5208,7 +5222,9 @@ function rwRenderKartuGanti(g, isLatest) {
       const peranStr = u ? (u.peranList||[]).filter(p=>OTP_LBL_PG[p]).map(p=>OTP_LBL_PG[p]).join('/') : '';
       return 'Form OTP — ' + nama + (peranStr ? ' (' + peranStr + ')' : '');
     }
+    if (key === 'spesimen') { return 'Spesimen Tanda Tangan'; }
     if (key.startsWith('spesimen_')) {
+      // backward compat: data lama menggunakan key spesimen_0, spesimen_1, dst
       const idx = parseInt(key.slice('spesimen_'.length), 10);
       const u = menjadi[idx];
       const nama = esc((u && u.nama) ? u.nama : ('Pengguna #' + (idx+1)));
@@ -5510,26 +5526,14 @@ function bukaModalUploadDokumen(info) {
   // ── 3. SK Pengguna SAKTI — semua role ──
   // (selalu wajib, tidak ada kondisi peran)
 
-  // ── 4. Spesimen TTD — per nama, untuk KPA / PPK / PPSPM / Bendahara (semua jenis) ──
-  const SPEC_LABEL_UD = { SATKER_KPA:'KPA', SATKER_PPK:'PPK', SATKER_PPK_DFDD:'PPK DFDD', SATKER_PPSPM:'PPSPM',
-    SATKER_BENDAHARA_PENGELUARAN:'Bendahara Pengeluaran',
-    SATKER_BENDAHARA_PENGELUARAN_PEMBANTU:'Bendahara Pengeluaran Pembantu',
-    SATKER_BENDAHARA_PENERIMAAN:'Bendahara Penerimaan' };
-  const spesimenDocs = [];
-  users.forEach((u, idx) => {
-    const specPeran = (u.peranList || []).filter(p => PERAN_BUTUH_SPEC.includes(p));
-    if (!specPeran.length) return;
-    const nama     = (u.nama || '').trim() || ('Pengguna #' + (idx + 1));
-    const nip      = (u.nipnrp || '').trim();
-    const peranStr = specPeran.map(p => SPEC_LABEL_UD[p] || p).join('/');
-    const nipInfo  = nip ? ' (NIP/NRP: ' + nip + ')' : '';
-    spesimenDocs.push({
-      key:      'spesimen_' + idx,
-      label:    'Spesimen TTD — ' + nama + ' (' + peranStr + ')',
-      desc:     'Lembar spesimen tanda tangan ' + nama + nipInfo + ', jabatan ' + peranStr + '.',
-      required: true,
-    });
-  });
+  // ── 4. Spesimen TTD — cukup 1 dokumen untuk seluruh pejabat ──
+  const butuhSpec  = semuaPeran.some(p => PERAN_BUTUH_SPEC.includes(p));
+  const spesimenDocs = butuhSpec ? [{
+    key:      'spesimen',
+    label:    'Spesimen Tanda Tangan',
+    desc:     'Lembar spesimen tanda tangan seluruh pejabat (KPA/PPK/PPSPM/Bendahara) dalam satu file PDF.',
+    required: true,
+  }] : [];
 
   // ── 5. FC KTP — per nama (semua pengguna yang didaftarkan) ──
   const ktpDocs = users.map((u, idx) => {

@@ -1476,6 +1476,26 @@ function cekLengkapDaftar(filesObj) {
 }
 
 /**
+ * Kembalikan array nama dokumen yang BELUM diupload dari filesObj.
+ * Dipakai untuk menampilkan detail kekurangan di tabel admin.
+ */
+function dokKurangDaftar(filesObj) {
+  if (!filesObj || typeof filesObj !== 'object') {
+    return ['Form Pendaftaran','SK Pengguna','KTP KPA','SK Pejabat','Form OTP','Spesimen TTD'];
+  }
+  const keys = Object.keys(filesObj).filter(k => !k.startsWith('otpFoto_'));
+  const punya = k => keys.some(key => key === k || key.startsWith(k + '_'));
+  const kurang = [];
+  if (!punya('formPendaftaran'))                               kurang.push('Form Pendaftaran');
+  if (!punya('skPengguna') && !punya('suratPermohonan'))       kurang.push('SK Pengguna');
+  if (!punya('ktpKpa') && !punya('ktp'))                       kurang.push('KTP KPA');
+  if (!punya('skPejabat') && !punya('skPejabatPerbendaharaan')) kurang.push('SK Pejabat');
+  if (!punya('formOTP'))                                       kurang.push('Form OTP');
+  if (!punya('spesimen'))                                      kurang.push('Spesimen TTD');
+  return kurang;
+}
+
+/**
  * Prioritas tampilan tabel (angka lebih kecil = lebih atas):
  * 0 — Perbaikan  : Ditolak + sudahUpload  → satker sudah perbaiki, perlu admin cek ulang
  * 1 — Siap Proses: Menunggu/submitted + sudahUploadLengkap → dokumen lengkap, siap diproses
@@ -1548,7 +1568,12 @@ function renderSubTable(list){
         ${bstat(s.status, s.sudahUpload)}
         ${s.revisiKe>0?`<br/><span style="font-size:10px;color:var(--orange)">Revisi ke-${s.revisiKe}</span>`:''}
         ${belumUpload?`<br/><span style="font-size:10px;color:var(--red);font-weight:600">⚠️ Belum upload</span>`:''}
-        ${dokBelumLengkap?`<br/><span style="font-size:10px;color:#D97706;font-weight:600">⚠️ Cek kelengkapan</span>`:''}
+        ${dokBelumLengkap?(()=>{
+          const filesObj = (typeof s.filesJson==='object'&&s.filesJson) ? s.filesJson : null;
+          const kurang = dokKurangDaftar(filesObj);
+          return `<br/><span style="font-size:10px;color:#D97706;font-weight:600">⚠️ Dokumen kurang:</span>`
+            + kurang.map(d=>`<br/><span style="font-size:10px;color:#92400E;padding-left:4px">• ${esc(d)}</span>`).join('');
+        })():''}
       </td>
       <td style="font-size:11px;color:var(--gray-600);font-family:monospace;white-space:nowrap">${s.diprosesoleh?esc(s.diprosesoleh):'<span style="color:var(--gray-400)">—</span>'}</td>
       <td>
@@ -1696,7 +1721,10 @@ async function lihatDetail(refKode){
             const OTP_LBL = {SATKER_KPA:'KPA',SATKER_PPK:'PPK',SATKER_PPK_DFDD:'PPK DFDD',SATKER_PPSPM:'PPSPM'};
             const peranStr = u ? (u.peranList||[]).filter(p=>OTP_LBL[p]).map(p=>OTP_LBL[p]).join('/') : '';
             label = 'Form OTP — ' + nama + (peranStr ? ' (' + peranStr + ')' : '');
+          } else if (key === 'spesimen') {
+            label = 'Spesimen Tanda Tangan';
           } else if (key.startsWith('spesimen_')) {
+            // backward compat: data lama menggunakan key spesimen_0, spesimen_1, dst
             const idx = parseInt(key.slice(9), 10);
             const u   = (s.users||[])[idx];
             const nama = (u && (u.nama||u.namaLengkap)) ? (u.nama||u.namaLengkap) : ('Pengguna #' + (idx+1));
@@ -2726,7 +2754,9 @@ function lihatDetailPg(id){
       const peranStr=u?(u.peranList||[]).filter(p=>OTP_LABEL_PG[p]).map(p=>OTP_LABEL_PG[p]).join('/'):'';
       return 'Form OTP — '+nama+(peranStr?' ('+peranStr+')':'');
     }
+    if (k === 'spesimen') { return 'Spesimen Tanda Tangan'; }
     if (k.startsWith('spesimen_'))    {
+      // backward compat
       const i=parseInt(k.slice(9),10);
       const u=menjadi[i];
       const nama=(u&&u.nama)||('Pengguna #'+(i+1));
