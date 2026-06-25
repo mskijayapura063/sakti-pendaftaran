@@ -4469,15 +4469,15 @@ async function pgUploadSelesai() {
 }
 
 function pgUploadTutup() {
-  // Cek apakah masih ada dokumen wajib yang belum diupload
+  // Tutup modal langsung — tidak blokir, satker boleh upload sebagian dan lanjut besok
   const wajibBelum = pgUploadDokList.filter(d => d.required && !pgUploadDoneMap[d.key]);
   if (wajibBelum.length) {
-    const confirmTutup = confirm(
-      '⚠️ Masih ada ' + wajibBelum.length + ' dokumen wajib yang belum diupload:\n\n' +
-      wajibBelum.map((d,i) => (i+1)+'. '+d.label).join('\n') +
-      '\n\nJika Anda tutup sekarang, pengajuan BELUM dapat diproses. Lanjutkan menutup?'
+    // Hanya infokan (soft warn), tidak blokir
+    showToast(
+      '💾 Tersimpan. Masih ada ' + wajibBelum.length + ' dokumen wajib belum diupload: ' +
+      wajibBelum.map(d => d.label).join(', ') + '. Bisa dilengkapi kapan saja.',
+      false, true
     );
-    if (!confirmTutup) return; // Batal tutup
   }
   closeModal('modalUploadPerubahan');
 }
@@ -4850,6 +4850,55 @@ function rwRenderRow(x) {
     </tr>`;
 }
 
+// ════════════════════════════════════════════════════════
+// CEK KELENGKAPAN DOKUMEN — FRONT-END (mirror admin cekLengkapDaftar)
+// Harus SINKRON dengan cekLengkapDaftar() di admin.html agar banner satker
+// dan tampilan admin menunjukkan status yang sama.
+// ════════════════════════════════════════════════════════
+
+/**
+ * Cek kelengkapan dokumen Pendaftaran dari filesJson.
+ * Mirror dari cekLengkapDaftar() di admin.html.
+ * Kembalikan { lengkap: bool, kurang: string[] }
+ */
+function cekLengkapFrontend(filesJson) {
+  if (!filesJson || typeof filesJson !== 'object') {
+    return { lengkap: false, kurang: ['Form Pendaftaran','SK Pengguna','KTP KPA','SK Pejabat','Form OTP','Spesimen TTD'] };
+  }
+  const keys = Object.keys(filesJson).filter(k => !k.startsWith('otpFoto_'));
+  const punya = k => keys.some(key => key === k || key.startsWith(k + '_'));
+  // Legacy alias: ktp → ktpKpa, suratPermohonan → skPengguna
+  const kurang = [];
+  if (!punya('formPendaftaran'))                                  kurang.push('Form Pendaftaran');
+  if (!punya('skPengguna') && !punya('suratPermohonan'))         kurang.push('SK Pengguna');
+  if (!punya('ktpKpa') && !punya('ktp'))                         kurang.push('KTP KPA');
+  if (!punya('skPejabat') && !punya('skPejabatPerbendaharaan'))  kurang.push('SK Pejabat');
+  if (!punya('formOTP'))                                          kurang.push('Form OTP');
+  if (!punya('spesimen'))                                         kurang.push('Spesimen TTD');
+  return { lengkap: kurang.length === 0, kurang };
+}
+
+/**
+ * Cek kelengkapan dokumen Pergantian dari filesJson + daftar dokumen wajib.
+ * Membangun daftar dokumen dari menjadiUsers (sama persis dengan pgBuildDokumenList),
+ * lalu cek setiap dokumen wajib apakah ada di filesJson.
+ * Kembalikan { lengkap: bool, kurang: string[] }
+ */
+function cekLengkapPgFrontend(filesJson, menjadiUsers) {
+  const fi = (typeof filesJson === 'object' && filesJson) ? filesJson : {};
+  const keys = Object.keys(fi).filter(k => !k.startsWith('otpFoto_'));
+  const punya = k => keys.some(key => key === k || key.startsWith(k + '_'));
+
+  // Bangun daftar dokumen wajib yang sama persis dengan pgBuildDokumenList
+  const dokList = pgBuildDokumenList(menjadiUsers || []);
+  const wajib = dokList.filter(d => d.required);
+  const kurang = [];
+  wajib.forEach(d => {
+    if (!punya(d.key)) kurang.push(d.label);
+  });
+  return { lengkap: kurang.length === 0, kurang };
+}
+
 // Detail untuk Pendaftaran Baru
 function rwRenderDetailDaftar(d, rowKey){
   const status = d.status || 'Menunggu';
@@ -4860,8 +4909,11 @@ function rwRenderDetailDaftar(d, rowKey){
   // sudahUpload: cek field eksplisit, fallback ke filesJson (untuk kompatibilitas data lama)
   const sudahUpload = !!(d.sudahUpload || d.hasFiles ||
     (d.filesJson && typeof d.filesJson === 'object' && Object.keys(d.filesJson).filter(k => !k.startsWith('otpFoto_')).length > 0));
-  // sudahUploadLengkap: dari backend; fallback ke sudahUpload untuk data lama
-  const sudahUploadLengkap = d.sudahUploadLengkap != null ? d.sudahUploadLengkap : sudahUpload;
+  // sudahUploadLengkap: selalu dihitung dari filesJson (sinkron dengan cekLengkapDaftar admin)
+  // TIDAK mengandalkan field dari backend (backend tidak pernah mengirim sudahUploadLengkap)
+  const _cekDaftar = cekLengkapFrontend(d.filesJson);
+  const sudahUploadLengkap = _cekDaftar.lengkap;
+  const _dokKurang = _cekDaftar.kurang; // daftar nama dokumen yang belum diupload
   const belumUpload = !sudahUpload && !isDitolak && !isTerdaftar;
 
   let usersArr = [];
@@ -4900,9 +4952,12 @@ function rwRenderDetailDaftar(d, rowKey){
     </div>`;
   } else if (sudahUpload && !isDiproses && !isTerdaftar && !isDitolak) {
     if (!sudahUploadLengkap) {
-      // Ada file tapi belum semua dokumen wajib
+      // Ada file tapi belum semua dokumen wajib — tampilkan daftar yang kurang
+      const kurangHtml = _dokKurang.length
+        ? `<div style="margin-top:5px;font-size:11px;color:#92400e">📋 Belum diupload: <strong>${_dokKurang.join(', ')}</strong></div>`
+        : '';
       banner = `<div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#92400e;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-        <div>⚠️ <strong>Dokumen belum lengkap.</strong> Masih ada dokumen wajib yang belum diupload. Pengajuan tidak dapat diproses KPPN sampai semua dokumen terpenuhi.</div>
+        <div>⚠️ <strong>Dokumen belum lengkap.</strong> Masih ada ${_dokKurang.length} dokumen wajib yang belum diupload.${kurangHtml}</div>
         <button class="btn btn-primary btn-sm" onclick="bukaUploadDokumenByRef('${esc(d.refKode)}')">📤 Lengkapi Dokumen</button>
       </div>`;
     } else {
@@ -5022,8 +5077,11 @@ function rwRenderDetailGanti(g, rowKey){
   const filesJson = (typeof g.filesJson==='object'&&g.filesJson)?g.filesJson:{};
   const fileKeys = Object.keys(filesJson).filter(k=>!k.startsWith('otpFoto_'));
   const sudahUpload = fileKeys.length>0;
-  // sudahUploadLengkap dari backend; fallback ke sudahUpload untuk data lama
-  const sudahUploadLengkapGanti = g.sudahUploadLengkap != null ? g.sudahUploadLengkap : sudahUpload;
+  // sudahUploadLengkap: selalu dihitung dari filesJson + daftar dokumen wajib pergantian
+  // TIDAK mengandalkan field dari backend (backend tidak mengirim sudahUploadLengkap)
+  const _cekGanti = cekLengkapPgFrontend(filesJson, menjadi);
+  const sudahUploadLengkapGanti = _cekGanti.lengkap;
+  const _dokKurangGanti = _cekGanti.kurang;
   const belumUpload = !sudahUpload && !isDitolak && !isTerdaftar;
 
   const PERAN_OTP = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
@@ -5055,8 +5113,11 @@ function rwRenderDetailGanti(g, rowKey){
     </div>`;
   } else if (sudahUpload && !isDiproses && !isTerdaftar && !isDitolak) {
     if (!sudahUploadLengkapGanti) {
+      const kurangHtmlGanti = _dokKurangGanti.length
+        ? `<div style="margin-top:5px;font-size:11px;color:#92400e">📋 Belum diupload: <strong>${_dokKurangGanti.join(', ')}</strong></div>`
+        : '';
       banner = `<div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#92400e;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-        <div>⚠️ <strong>Dokumen belum lengkap.</strong> Masih ada dokumen wajib yang belum diupload. Pergantian tidak dapat diproses KPPN.</div>
+        <div>⚠️ <strong>Dokumen belum lengkap.</strong> Masih ada ${_dokKurangGanti.length} dokumen wajib yang belum diupload.${kurangHtmlGanti}</div>
         <button class="btn btn-sm" onclick="pgBukaUploadModal('${esc(g.id)}')" style="background:#D97706;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer">📤 Lengkapi Dokumen</button>
       </div>`;
     } else {
@@ -5190,8 +5251,13 @@ function rwRenderKartuGanti(g, isLatest) {
   };
   const filesJson = (typeof g.filesJson === 'object' && g.filesJson) ? g.filesJson :
                     (typeof g.filesJson === 'string' ? (()=>{try{return JSON.parse(g.filesJson);}catch(e){return {};}})() : {});
-  const fileKeys = Object.keys(filesJson||{});
+  const fileKeys = Object.keys(filesJson||{}).filter(k=>!k.startsWith('otpFoto_'));
   const sudahUpload = fileKeys.length > 0;
+
+  // Cek kelengkapan dari filesJson + daftar dokumen wajib (TIDAK dari field backend)
+  const _cekKartu = cekLengkapPgFrontend(filesJson, menjadi);
+  const _pgSudahLengkap = _cekKartu.lengkap;
+  const _pgDokKurang = _cekKartu.kurang;
 
   const PERAN_OTP = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
 
@@ -5315,9 +5381,9 @@ function rwRenderKartuGanti(g, isLatest) {
     </div>`:''}
 
     ${sudahUpload && !isDiproses && !isTerdaftar && !isDitolak?(
-      !g.sudahUploadLengkap
+      !_pgSudahLengkap
         ?`<div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:12px;color:#92400e;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <div><strong>⚠️ Dokumen belum lengkap.</strong> Masih ada dokumen wajib yang belum diupload. Pergantian tidak dapat diproses KPPN.</div>
+          <div><strong>⚠️ Dokumen belum lengkap.</strong> Masih ada ${_pgDokKurang.length} dokumen wajib yang belum diupload.${_pgDokKurang.length?`<div style="margin-top:5px;font-size:11px">📋 Belum diupload: <strong>${_pgDokKurang.join(', ')}</strong></div>`:''}</div>
           <button class="btn btn-sm" style="flex-shrink:0;font-size:12px;background:#D97706;color:#fff;border:none;padding:7px 14px;border-radius:6px;font-weight:700;cursor:pointer" onclick="pgBukaUploadModal('${esc(g.id)}')">📤 Lengkapi Dokumen</button>
         </div>`
         :`<div style="background:#F3E8FF;border:1px solid #C4B5FD;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:12px;color:#6D28D9;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
