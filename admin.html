@@ -2503,7 +2503,7 @@ function renderOTPPejabatList(){
             <input type="radio" name="otpMode_${i}" value="daring" ${isDaring?'checked':''} onchange="otpSetMode(${i},'daring')" style="accent-color:#7C3AED"/>
             <div>
               <div style="font-size:12px;font-weight:700;color:${isDaring?'#7C3AED':'var(--gray-600)'}">💻 Online</div>
-              <div style="font-size:10px;color:var(--gray-500);margin-top:1px">Foto wajib ≤2 MB</div>
+              <div style="font-size:10px;color:var(--gray-500);margin-top:1px">Foto/video wajib diupload</div>
             </div>
           </label>
         </div>
@@ -2570,7 +2570,7 @@ async function doAktivasiOTP(){
       catatan,
       photos: _otpPejabatData.map(p=>({
         nama: p.nama, peran: p.peran, peranRaw: p.peranRaw||p.peran||'', mode: p.mode,
-        photoBase64: p.photoBase64||'', photoName: p.photoName||'', mimeType: p.mimeType||'image/jpeg'
+        photoBase64: p.photoBase64||'', photoName: p.photoName||'', mimeType: p.mimeType||''
       }))
     };
     const res = await apiPost(payload);
