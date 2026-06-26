@@ -4086,7 +4086,7 @@ function pgBuildUploadBodyHTML(existingFiles, isDitolak) {
       ⚠️ <strong>Mode perbaikan dokumen</strong> — dokumen yang sudah pernah diupload <u>tetap tersimpan</u>. Pilih yang perlu diganti.
     </div>` : ''}
     <p style="font-size:12px;color:var(--gray-600);margin-bottom:14px">
-      Format <strong>PDF</strong> untuk semua dokumen, kecuali Scan KTP boleh <strong>PDF/JPG/PNG/dll</strong>. Maks. <strong>2 MB</strong> per file.
+      Format <strong>PDF</strong> untuk semua dokumen, kecuali Scan KTP boleh <strong>PDF/JPG/PNG/dll</strong>. Maks. <strong>10 MB</strong> per file.
     </p>
     <div id="pgudGrid">
       ${pgUploadDokList.map(dok => {
@@ -4256,7 +4256,7 @@ function pgBukaUploadModal(id){
     </div>` : ''}
     <p style="font-size:12px;color:var(--gray-600);margin-bottom:14px">
       Format <strong>PDF</strong> untuk semua dokumen, kecuali Scan KTP boleh <strong>PDF/JPG/PNG/dll</strong>.
-      Maks. <strong>2 MB</strong> per file. Dokumen ditampilkan sesuai role di daftar pengguna "MENJADI".
+      Maks. <strong>10 MB</strong> per file. Dokumen ditampilkan sesuai role di daftar pengguna "MENJADI".
     </p>
     <div id="pgudGrid">
       ${pgUploadDokList.map(dok => {
@@ -4322,8 +4322,8 @@ function pgudSelectFile(key, input, allowImage) {
       errEl.style.display='block'; input.value=''; return;
     }
   }
-  if (file.size > 2 * 1024 * 1024) {
-    errEl.textContent='Ukuran file '+(file.size/1024/1024).toFixed(2)+' MB melebihi batas 2 MB. Kompres dulu.';
+  if (file.size > 10 * 1024 * 1024) {
+    errEl.textContent='Ukuran file '+(file.size/1024/1024).toFixed(2)+' MB melebihi batas 10 MB. Kompres dulu.';
     errEl.style.display='block'; input.value=''; return;
   }
   pgUploadFiles[key] = file;
@@ -5714,7 +5714,7 @@ function bukaModalUploadDokumen(info) {
     ${needsReupload ? `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#9a3412;line-height:1.6">
       ⚠️ <strong>Mode perbaikan dokumen</strong> — dokumen yang sudah pernah diupload <u>tetap tersimpan</u> dan masih bisa di-download (📥). Pilih hanya dokumen yang perlu diganti dengan tombol <strong>🔄 Ganti</strong>, atau hapus saja yang salah dengan <strong>🗑️ Hapus</strong>. Yang tidak Anda sentuh akan tetap dipertahankan.
     </div>` : ''}
-    <p style="font-size:12px;color:var(--gray-600);margin-bottom:14px">Format <strong>PDF</strong> untuk dokumen, <strong>PDF/JPG/JPEG/PNG</strong> untuk Scan KTP. Maks. <strong>2 MB</strong> per file.</p>
+    <p style="font-size:12px;color:var(--gray-600);margin-bottom:14px">Format <strong>PDF</strong> untuk dokumen, <strong>PDF/JPG/JPEG/PNG</strong> untuk Scan KTP. Maks. <strong>10 MB</strong> per file.</p>
     <div id="udDokGrid">
       ${dokumen.map(dok => {
         const existing = filesExist[dok.key];
@@ -5783,8 +5783,8 @@ function udSelectFile(key, input, allowImage) {
       errEl.style.display='block'; input.value=''; return;
     }
   }
-  if (file.size > 2 * 1024 * 1024) {
-    errEl.textContent=`Ukuran file ${(file.size/1024/1024).toFixed(1)} MB melebihi batas maksimal 2 MB. Kompres file terlebih dahulu.`;
+  if (file.size > 10 * 1024 * 1024) {
+    errEl.textContent=`Ukuran file ${(file.size/1024/1024).toFixed(1)} MB melebihi batas maksimal 10 MB. Kompres file terlebih dahulu.`;
     errEl.style.display='block'; input.value=''; return;
   }
 
@@ -5908,17 +5908,9 @@ async function udUploadFile(key) {
 
 async function udSelesai() {
   // Cek kelengkapan — hanya warn, TIDAK blokir (satker boleh upload parsial dan lanjut besok)
-  if (udDokList.length) {
-    const wajibBelum = udDokList.filter(d => d.required && !udDonemap[d.key]);
-    if (wajibBelum.length) {
-      showToast(
-        '💾 Disimpan. Masih ada ' + wajibBelum.length + ' dokumen wajib belum diupload: ' +
-        wajibBelum.map(d => d.label).join(', ') + '. Bisa dilengkapi kapan saja.',
-        false, true
-      );
-      // Lanjutkan tutup modal (tidak return/blokir)
-    }
-  }
+  const wajibBelum = udDokList.length
+    ? udDokList.filter(d => d.required && !udDonemap[d.key])
+    : [];
 
   // Jika ini mode perbaikan (upload ulang setelah ditolak), reset status ke Menunggu
   if (udNeedsReupload && udRefKode) {
@@ -5944,7 +5936,16 @@ async function udSelesai() {
   udDonemap        = {};
   udNeedsReupload  = false;
   _cacheInvalidate('dashboard'); // data upload berubah, cache dashboard harus fresh
-  showToast('✅ Dokumen berhasil disimpan! Status diperbarui ke Menunggu.', false, true);
+  // Satu toast yang jelas — kalau lengkap: sukses; kalau parsial: info apa yang masih kurang
+  if (wajibBelum.length) {
+    showToast(
+      '💾 Disimpan. Masih ada ' + wajibBelum.length + ' dokumen wajib belum diupload: ' +
+      wajibBelum.map(d => d.label).join(', ') + '. Bisa dilengkapi kapan saja.',
+      false, true
+    );
+  } else {
+    showToast('✅ Semua dokumen lengkap dan berhasil disimpan!', false, true);
+  }
   initUserRiwayat();
 }
 
@@ -5958,10 +5959,14 @@ async function satkerDownloadDokumen(fileUrl, labelDokumen) {
     const res = await apiPost({ action:'getDriveFile', fileUrl });
     if (!res.success) { showToast(res.message || 'Gagal mengunduh dokumen', true); return; }
     const bytes = Uint8Array.from(atob(res.fileBase64), c => c.charCodeAt(0));
-    const blob  = new Blob([bytes], { type: res.mimeType || 'application/pdf' });
+    const mime  = res.mimeType || 'application/pdf';
+    const blob  = new Blob([bytes], { type: mime });
     const url   = URL.createObjectURL(blob);
     const a     = document.createElement('a');
-    a.href = url; a.download = labelDokumen + '.pdf'; a.click();
+    // Tentukan ekstensi dari mimeType agar file tidak selalu tersimpan sebagai .pdf
+    const _extMap = {'image/jpeg':'.jpg','image/png':'.png','image/gif':'.gif','image/webp':'.webp','image/heic':'.heic','video/mp4':'.mp4','video/quicktime':'.mov','video/x-msvideo':'.avi','video/webm':'.webm','application/pdf':'.pdf','application/msword':'.doc','application/vnd.openxmlformats-officedocument.wordprocessingml.document':'.docx'};
+    const _dlExt = _extMap[mime] || (res.fileName ? res.fileName.slice(res.fileName.lastIndexOf('.')) : '.pdf');
+    a.href = url; a.download = labelDokumen + _dlExt; a.click();
     URL.revokeObjectURL(url);
     showToast('✅ '+labelDokumen+' berhasil diunduh', false, true);
   } catch(e) { showToast('❌ Gagal mengunduh dokumen', true); }
