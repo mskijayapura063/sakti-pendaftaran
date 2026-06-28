@@ -1299,16 +1299,7 @@ async function hapusEmailSakti(id){
   }catch(e){showToast('Gagal terhubung ke server',true);}
 }
 
-async function repairEmailData(){
-  if(!confirm('Perbaiki data lama yang formatnya tidak valid? Ini akan memperbaiki kolom tanggal dan status di spreadsheet.')) return;
-  try{
-    showToast('🔧 Memperbaiki data...', false);
-    const res=await apiPost({action:'repairEmailSaktiData'});
-    if(!res.success){showToast(res.message||'Gagal',true);return;}
-    showToast('✅ '+res.message, false, true);
-    loadEmailDaftar();
-  }catch(e){showToast('Gagal terhubung ke server',true);}
-}
+// (Fungsi repairEmailData dihapus — tidak ada handler backend 'repairEmailSaktiData' dan tidak ada tombol pemanggil.)
 
 async function adminDownloadDriveFile(fileUrl, fileName){
   if(!fileUrl){showToast('URL file tidak tersedia',true);return;}
@@ -3406,7 +3397,7 @@ async function doSaveEditDaftar(){
       i++;
     }
 
-    const res = await apiPost({action:'editDaftar', refKode:refKode, namaKpa:namaKpa, nip:nip, noHp:noHp, users:users});
+    const res = await apiPost({action:'updatePendaftaran', refKode:refKode, namaKpa:namaKpa, nip:nip, noHp:noHp, usersJson:JSON.stringify(users)});
     if(!res.success){showToast(res.message||'Gagal menyimpan',true);return;}
 
     showToast('Data pendaftaran berhasil diperbarui',false,true);
