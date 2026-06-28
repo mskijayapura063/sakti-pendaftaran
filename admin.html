@@ -1443,47 +1443,61 @@ async function loadSubmissions(){
  * Legacy key aliases (format lama): ktp → ktpKpa, suratPermohonan → skPengguna/formPendaftaran
  * Untuk legacy, cukup salah satu alias ada → dianggap terpenuhi.
  */
-function cekLengkapDaftar(filesObj) {
-  if (!filesObj || typeof filesObj !== 'object') return false;
-  // Kecualikan foto OTP dari pengecekan kelengkapan dokumen
-  const keys = Object.keys(filesObj).filter(k => !k.startsWith('otpFoto_'));
-
-  // Cek apakah ada key dengan nama persis, atau prefixed dengan '_' diikuti angka
-  // Contoh: punya('formOTP') → true untuk 'formOTP', 'formOTP_0', 'formOTP_1'
-  // Hindari false positive: 'formOTPFoto' tidak akan cocok karena harus diikuti '_' atau persis sama
-  const punya = k => keys.some(key => key === k || key.startsWith(k + '_'));
-
-  // Legacy key aliases: satker lama mungkin upload dengan key nama lama
-  // ktp      → alias lama untuk ktpKpa
-  // suratPermohonan → alias lama untuk skPengguna (di versi awal)
-  const punyaKtp     = punya('ktpKpa') || punya('ktp');
-  const punyaSk      = punya('skPengguna') || punya('suratPermohonan');
-  const punyaForm    = punya('formPendaftaran');
-  const punyaSkPejab = punya('skPejabat') || punya('skPejabatPerbendaharaan');
-  const punyaOTP     = punya('formOTP');
-  const punyaSpesim  = punya('spesimen');
-
-  return punyaForm && punyaSk && punyaKtp && punyaSkPejab && punyaOTP && punyaSpesim;
-}
+// Peran yang menentukan dokumen wajib — HARUS identik dengan satker.html (bukaModalUploadDokumen).
+const ADM_PERAN_BUTUH_SK   = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM','SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENERIMAAN'];
+const ADM_PERAN_BUTUH_OTP  = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+const ADM_PERAN_BUTUH_SPEC = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM','SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU','SATKER_BENDAHARA_PENERIMAAN'];
+const ADM_PERAN_BNT = ['SATKER_BENDAHARA_PENGELUARAN','SATKER_BENDAHARA_PENGELUARAN_PEMBANTU','SATKER_BENDAHARA_PENERIMAAN'];
+const ADM_PERAN_PNT = ['SATKER_PPK','SATKER_PPK_DFDD'];
 
 /**
- * Kembalikan array nama dokumen yang BELUM diupload dari filesObj.
- * Dipakai untuk menampilkan detail kekurangan di tabel admin.
+ * Bangun daftar dokumen WAJIB untuk pendaftaran berdasarkan peran tiap user.
+ * Role-aware — mengikuti aturan yang sama persis dengan form upload satker,
+ * sehingga admin TIDAK salah lapor "dokumen kurang" untuk role yang memang tidak butuh dokumen tsb.
  */
-function dokKurangDaftar(filesObj) {
-  if (!filesObj || typeof filesObj !== 'object') {
-    return ['Form Pendaftaran','SK Pengguna','KTP KPA','SK Pejabat','Form OTP','Spesimen TTD'];
-  }
-  const keys = Object.keys(filesObj).filter(k => !k.startsWith('otpFoto_'));
-  const punya = k => keys.some(key => key === k || key.startsWith(k + '_'));
-  const kurang = [];
-  if (!punya('formPendaftaran'))                               kurang.push('Form Pendaftaran');
-  if (!punya('skPengguna') && !punya('suratPermohonan'))       kurang.push('SK Pengguna');
-  if (!punya('ktpKpa') && !punya('ktp'))                       kurang.push('KTP KPA');
-  if (!punya('skPejabat') && !punya('skPejabatPerbendaharaan')) kurang.push('SK Pejabat');
-  if (!punya('formOTP'))                                       kurang.push('Form OTP');
-  if (!punya('spesimen'))                                      kurang.push('Spesimen TTD');
-  return kurang;
+function admDokWajibDaftar(users){
+  users = Array.isArray(users) ? users : [];
+  const semuaPeran = users.flatMap(u => (u.peranList || (u.peran ? [u.peran] : [])));
+  const ada = list => semuaPeran.some(p => list.includes(p));
+  const butuhSK = ada(ADM_PERAN_BUTUH_SK), butuhOTP = ada(ADM_PERAN_BUTUH_OTP), butuhSpec = ada(ADM_PERAN_BUTUH_SPEC);
+  const wajib = [];
+  if (butuhOTP) users.forEach((u,idx)=>{
+    const otp = (u.peranList||[]).filter(p=>ADM_PERAN_BUTUH_OTP.includes(p));
+    if (otp.length) wajib.push({key:'formOTP_'+idx, label:'Form Aktivasi OTP — '+(u.nama||('Pengguna #'+(idx+1)))});
+  });
+  if (butuhSK) wajib.push({key:'skPejabat', label:'SK Pejabat Pengelola Keuangan'});
+  wajib.push({key:'skPengguna', label:'SK Pengguna SAKTI'});
+  if (butuhSpec) wajib.push({key:'spesimen', label:'Spesimen Tanda Tangan'});
+  users.forEach((u,idx)=> wajib.push({key:'ktp_user_'+idx, label:'FC KTP — '+(u.nama||('Pengguna #'+(idx+1)))}));
+  wajib.push({key:'formPendaftaran', label:'Formulir Permohonan Pendaftaran User SAKTI'});
+  users.forEach((u,idx)=>{
+    const peran = u.peranList||[]; const isKPA = peran.includes('SATKER_KPA');
+    if (peran.some(p=>ADM_PERAN_BNT.includes(p))) wajib.push({key:'sertBNT_'+idx, label:'Sertifikat BNT — '+(u.nama||('Pengguna #'+(idx+1)))});
+    if (!isKPA && peran.some(p=>ADM_PERAN_PNT.includes(p))) wajib.push({key:'sertPNT_'+idx, label:'Sertifikat PNT — '+(u.nama||('Pengguna #'+(idx+1)))});
+    if (!isKPA && peran.includes('SATKER_PPSPM')) wajib.push({key:'sertSNT_'+idx, label:'Sertifikat SNT — '+(u.nama||('Pengguna #'+(idx+1)))});
+  });
+  return wajib;
+}
+
+// Apakah satu key dokumen sudah ada di filesObj (cocok exact / key+'_suffix'), termasuk alias legacy.
+function admPunyaDok(keys, k){
+  return keys.some(key =>
+    key === k || key.startsWith(k + '_')
+    || (k === 'skPengguna' && (key === 'suratPermohonan' || key.startsWith('suratPermohonan_')))
+    || (k.startsWith('ktp_user_') && (key === 'ktpKpa' || key.startsWith('ktp_')))
+  );
+}
+
+/** Role-aware: true jika semua dokumen wajib (sesuai peran) sudah diupload. */
+function cekLengkapDaftar(filesObj, users) {
+  return dokKurangDaftar(filesObj, users).length === 0;
+}
+
+/** Role-aware: kembalikan label dokumen wajib yang BELUM diupload. */
+function dokKurangDaftar(filesObj, users) {
+  const fi = (filesObj && typeof filesObj === 'object') ? filesObj : {};
+  const keys = Object.keys(fi).filter(k => !k.startsWith('otpFoto_'));
+  return admDokWajibDaftar(users).filter(d => !admPunyaDok(keys, d.key)).map(d => d.label);
 }
 
 /**
@@ -1560,8 +1574,11 @@ function renderSubTable(list){
         ${s.revisiKe>0?`<br/><span style="font-size:10px;color:var(--orange)">Revisi ke-${s.revisiKe}</span>`:''}
         ${belumUpload?`<br/><span style="font-size:10px;color:var(--red);font-weight:600">⚠️ Belum upload</span>`:''}
         ${dokBelumLengkap?(()=>{
-          const filesObj = (typeof s.filesJson==='object'&&s.filesJson) ? s.filesJson : null;
-          const kurang = dokKurangDaftar(filesObj);
+          // Pakai dokKurang dari backend (role-aware). Fallback ke dokKurangDaftar (lama) hanya jika tidak tersedia.
+          const kurang = Array.isArray(s.dokKurang)
+            ? s.dokKurang
+            : dokKurangDaftar((typeof s.filesJson==='object'&&s.filesJson) ? s.filesJson : null, s.usersJson || s.users);
+          if (!kurang.length) return '';
           return `<br/><span style="font-size:10px;color:#D97706;font-weight:600">⚠️ Dokumen kurang:</span>`
             + kurang.map(d=>`<br/><span style="font-size:10px;color:#92400E;padding-left:4px">• ${esc(d)}</span>`).join('');
         })():''}
@@ -1598,8 +1615,11 @@ async function lihatDetail(refKode){
     const body=document.getElementById('detailBody');
     // Kumpulkan daftar dokumen yang diupload
     const filesObj = s.files || s.filesJson || {};
-    // Override sudahUploadLengkap: cek dari key yang ada, tidak peduli isi file
-    s.sudahUploadLengkap = cekLengkapDaftar(filesObj);
+    // Hitung status upload dari filesObj (getDetail tidak mengirim flag ini).
+    // Tanpa ini, tombol Proses di detail selalu terkunci walau dokumen sudah ada.
+    s.sudahUpload = Object.keys(filesObj).filter(k => !k.startsWith('otpFoto_')).length > 0;
+    // Override sudahUploadLengkap: cek dokumen wajib sesuai peran (role-aware)
+    s.sudahUploadLengkap = cekLengkapDaftar(filesObj, s.users || s.usersJson);
     const LABEL_MAP = {
       formPendaftaran:'Form Pendaftaran User SAKTI',
       skPengguna:     'SK Pengguna SAKTI',
