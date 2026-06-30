@@ -1766,8 +1766,10 @@ async function doUploadPdfRiwayat() {
     const result = await apiPost({
       action: 'uploadEmailPdf',
       id: ebCurrentId,
-      pdfBase64:   b64,
-      pdfFileName: ebPdfFile.name,
+      base64:   b64,
+      fileName: ebPdfFile.name,
+      mimeType: ebPdfFile.type || 'application/pdf',
+      fileKey:  'dokumen',
     });
     if (!result.success) {
       showToast(result.message||'Gagal upload PDF', true);
@@ -1834,8 +1836,10 @@ async function ebDoUploadPdf(id) {
     const result = await apiPost({
       action: 'uploadEmailPdf',
       id,
-      pdfBase64:   b64,
-      pdfFileName: ebPdfFile.name,
+      base64:   b64,
+      fileName: ebPdfFile.name,
+      mimeType: ebPdfFile.type || 'application/pdf',
+      fileKey:  'dokumen',
     });
     if (!result.success) {
       showToast(result.message||'Gagal upload PDF', true);
