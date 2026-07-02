@@ -414,6 +414,20 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
   </div>
 </div>
 
+<!-- ══ MODAL PREVIEW DOKUMEN (view dulu, baru download) ══ -->
+<div class="modal-overlay" id="modalPreviewDoc" style="z-index:900">
+  <div class="modal-box" style="max-width:900px;width:100%;display:flex;flex-direction:column;max-height:92vh">
+    <div class="modal-title" id="previewDocTitle" style="display:flex;align-items:center;gap:8px">👁️ Pratinjau Dokumen</div>
+    <div id="previewDocBody" style="flex:1;min-height:340px;overflow:auto;background:#f8fafc;border:1px solid var(--gray-200);border-radius:8px;margin:8px 0;display:flex;align-items:center;justify-content:center">
+      <div style="color:var(--gray-400);font-size:13px">⏳ Memuat pratinjau...</div>
+    </div>
+    <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="adminClosePreview()">Tutup</button>
+      <button class="btn btn-primary" id="btnPreviewDownload" onclick="adminDoDownloadPreview()" disabled>⬇️ Download</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL TOLAK USER SAKTI ══ -->
 <div class="modal-overlay" id="modalTolak">
   <div class="modal-box narrow">
@@ -1319,6 +1333,67 @@ async function adminDownloadDriveFile(fileUrl, fileName){
   }catch(e){showToast('❌ Gagal download file',true);}
 }
 
+// ── PREVIEW DOKUMEN: tampilkan (view) dulu, lalu bisa lanjut Download ──
+let _previewState = { blobUrl:null, dlName:null, mime:null };
+
+function adminClosePreview(){
+  closeModal('modalPreviewDoc');
+  // Bersihkan blob URL agar tidak bocor memori
+  if(_previewState.blobUrl){ try{ URL.revokeObjectURL(_previewState.blobUrl); }catch(e){} }
+  _previewState = { blobUrl:null, dlName:null, mime:null };
+  const body=document.getElementById('previewDocBody');
+  if(body) body.innerHTML='<div style="color:var(--gray-400);font-size:13px">⏳ Memuat pratinjau...</div>';
+  const btn=document.getElementById('btnPreviewDownload');
+  if(btn) btn.disabled=true;
+}
+
+async function adminViewDriveFile(fileUrl, fileName){
+  if(!fileUrl){showToast('URL file tidak tersedia',true);return;}
+  // Reset state lama & buka modal dengan status memuat
+  if(_previewState.blobUrl){ try{ URL.revokeObjectURL(_previewState.blobUrl); }catch(e){} }
+  _previewState = { blobUrl:null, dlName:null, mime:null };
+  const titleEl=document.getElementById('previewDocTitle');
+  const bodyEl =document.getElementById('previewDocBody');
+  const btnDl  =document.getElementById('btnPreviewDownload');
+  if(titleEl) titleEl.innerHTML='👁️ '+esc(fileName||'Dokumen');
+  if(bodyEl)  bodyEl.innerHTML='<div style="color:var(--gray-400);font-size:13px">⏳ Memuat pratinjau...</div>';
+  if(btnDl)   btnDl.disabled=true;
+  openModal('modalPreviewDoc');
+  try{
+    const res=await apiPost({action:'getDriveFile',fileUrl});
+    if(!res.success){ if(bodyEl) bodyEl.innerHTML='<div style="color:var(--red);font-size:13px;padding:20px">❌ '+esc(res.message||'Gagal memuat dokumen')+'</div>'; return; }
+    const mime=res.mimeType||'application/octet-stream';
+    const bytes=Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
+    const blob=new Blob([bytes],{type:mime});
+    const blobUrl=URL.createObjectURL(blob);
+    const dlName=(fileName||res.fileName||'dokumen')+(mime==='application/pdf'&&!/\.pdf$/i.test(fileName||'')?'.pdf':'');
+    _previewState={ blobUrl, dlName, mime };
+
+    if(mime==='application/pdf'){
+      bodyEl.innerHTML='<iframe src="'+blobUrl+'" style="width:100%;height:70vh;border:0;border-radius:6px"></iframe>';
+    } else if(mime.indexOf('image/')===0){
+      bodyEl.innerHTML='<img src="'+blobUrl+'" alt="'+esc(fileName||'')+'" style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:6px"/>';
+    } else {
+      bodyEl.innerHTML='<div style="text-align:center;padding:30px;color:var(--gray-600);font-size:13px">'
+        +'<div style="font-size:44px;margin-bottom:10px">📄</div>'
+        +'Pratinjau tidak tersedia untuk tipe file ini.<br/>Silakan klik <strong>Download</strong> untuk membuka.'
+        +'</div>';
+    }
+    if(btnDl) btnDl.disabled=false;
+  }catch(e){
+    if(bodyEl) bodyEl.innerHTML='<div style="color:var(--red);font-size:13px;padding:20px">❌ Gagal memuat dokumen</div>';
+  }
+}
+
+function adminDoDownloadPreview(){
+  if(!_previewState.blobUrl){ showToast('Dokumen belum siap',true); return; }
+  const a=document.createElement('a');
+  a.href=_previewState.blobUrl;
+  a.download=_previewState.dlName||'dokumen';
+  a.click();
+  showToast('✅ '+(_previewState.dlName||'dokumen')+' berhasil didownload',false,true);
+}
+
 async function adminDownloadPendaftaranExcel(s){
   if(!s){showToast('Data tidak tersedia',true);return;}
   showToast('⏳ Menyiapkan Excel...');
@@ -1743,10 +1818,10 @@ async function lihatDetail(refKode){
             const peranStr = u ? (u.peranList||[]).filter(p=>OTP_LBL[p]).map(p=>OTP_LBL[p]).join('/') : '';
             label = 'Spesimen TTD — ' + nama + (peranStr ? ' (' + peranStr + ')' : '');
           }
-          return `<button onclick="adminDownloadDriveFile('${esc(f.url||'')}','${esc(label)}')"
+          return `<button onclick="adminViewDriveFile('${esc(f.url||'')}','${esc(label)}')"
             style="display:inline-flex;align-items:center;gap:6px;background:var(--blue-pale);border:1px solid var(--blue-pale2);color:var(--blue);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;font-family:'Inter',sans-serif"
             onmouseover="this.style.background='var(--blue-pale2)'" onmouseout="this.style.background='var(--blue-pale)'">
-            📥 ${esc(label)}
+            👁️ ${esc(label)}
           </button>`;
         }).join('')}
       </div>` : `
