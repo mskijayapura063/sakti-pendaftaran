@@ -3100,20 +3100,32 @@ async function ubDoDownloadExcel() {
   // Simpan data ke server
   try {
     showToast('⏳ Menyimpan data ke server...');
-    const submitPayload = {
+    const usersJsonStr = JSON.stringify(ubUsers.map(u=>({
+      nama:u.nama, nipnrp:u.nipnrp, nik:u.nik,
+      email:u.email, hp:u.hp, sk:u.sk,
+      tglsk:u.tglsk, peranList:u.peranList
+    })));
+    // Coba simpan sebagai pendaftaran baru. Jika refKode SUDAH ADA (mis. satker unduh Excel,
+    // lalu balik mengedit data, lalu unduh ulang), submitDaftar akan menolak "sudah digunakan".
+    // Dalam kasus itu, PERBARUI record yang ada (updatePendaftaran) supaya edit TIDAK hilang.
+    let res2 = await apiPost({
       action:'submitDaftar',
       refKode, namaSatker, kodeSatker,
       namaKPA, nip: nipKPA,
       noHp, email:'', alamat: kotaTTD, levelSatker,
       tglSurat, fname,
       userCount: ubUsers.length,
-      usersJson: JSON.stringify(ubUsers.map(u=>({
-        nama:u.nama, nipnrp:u.nipnrp, nik:u.nik,
-        email:u.email, hp:u.hp, sk:u.sk,
-        tglsk:u.tglsk, peranList:u.peranList
-      })))
-    };
-    const res2 = await apiPost(submitPayload);
+      usersJson: usersJsonStr
+    });
+    if (!res2.success && /digunakan|sudah ada|sudah digunakan/i.test(res2.message||'')) {
+      res2 = await apiPost({
+        action:'updatePendaftaran',
+        refKode, namaSatker, kodeSatker,
+        namaKpa: namaKPA, nip: nipKPA,
+        noHp, levelSatker,
+        usersJson: usersJsonStr
+      });
+    }
     if (!res2.success) throw new Error(res2.message||'Gagal simpan');
     _cacheInvalidate('dashboard');
     // Refresh window._ubCurrentData
@@ -4428,8 +4440,10 @@ async function pgUploadSelesai() {
   } else {
     showToast('✅ Semua dokumen lengkap dan berhasil disimpan!', false, true);
   }
-  // Refresh riwayat: selalu refresh agar status "Upload Dokumen" tampil done
-  initUserGanti();
+  // Pindah ke tab Riwayat agar halaman benar-benar berganti (tidak diam di tahap upload).
+  _cacheInvalidate('riwayatPendaftaran');
+  switchTab('user-riwayat');
+  initUserRiwayat();
 }
 
 function pgUploadTutup() {
@@ -5909,6 +5923,9 @@ async function udSelesai() {
   } else {
     showToast('✅ Semua dokumen lengkap dan berhasil disimpan!', false, true);
   }
+  // Pindah ke tab Riwayat agar halaman benar-benar berganti (bukan diam di tahap upload).
+  _cacheInvalidate('riwayatPendaftaran');
+  switchTab('user-riwayat');
   initUserRiwayat();
 }
 
