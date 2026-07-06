@@ -2002,7 +2002,7 @@ function lihatDetailEmail(id) {
     <table class="tbl">
       <thead><tr><th>No</th><th>Nama Pegawai</th><th>NIP/NRP</th><th>NIK</th><th>Status</th></tr></thead>
       <tbody>
-        ${(e.pegawai||[]).map((p,i)=>`<tr>
+        ${(Array.isArray(e.pegawai)?e.pegawai:[]).map((p,i)=>`<tr>
           <td style="text-align:center">${i+1}</td>
           <td>${esc(p.nama||'')}</td>
           <td style="font-family:monospace">${esc(p.nipnrp||'')}</td>
@@ -2026,7 +2026,7 @@ function ajukanUlangEmail(id) {
     emailKpa: e.emailKpa||'',
     keterangan: e.keterangan||''
   };
-  emailRows = (e.pegawai||[]).map(p => ({
+  emailRows = (Array.isArray(e.pegawai)?e.pegawai:[]).map(p => ({
     nama: p.nama||'', nipnrp: p.nipnrp||'',
     nik: p.nik||'', status: String(p.status||'3')
   }));
@@ -2099,7 +2099,7 @@ function ubCheckPeranConflict(newKode,currentList){
     if(mc){const cp=currentList.find(k=>ubGetModul(k).includes(mc));return{conflict:true,block:true,warn:`Modul "${mc}" sudah dipakai oleh "${ubGetLabel(cp)}".`};}
   }
   if((isKPA(newKode)&&hasPPK)||(isPPK(newKode)&&hasKPA))
-    return{conflict:false,block:false,warn:'Plt. KPA tidak diperkenankan merangkap PPK. Pastikan yang bersangkutan adalah KPA Definitif.'};
+    return{conflict:true,block:true,warn:'Sesuai aturan, KPA tidak boleh merangkap PPK. Pilih salah satu saja.'};
   return{conflict:false,block:false,warn:null};
 }
 function ubGetDisabledPeran(currentList){
@@ -3516,6 +3516,9 @@ function pgNextFromStep2() {
     if (!(u.nik||'').trim())           errors.push(`${label}: NIK wajib diisi`);
     if (!(u.hp||'').trim())            errors.push(`${label}: No. HP wajib diisi`);
     if (!u.peranList||!u.peranList.length) errors.push(`${label}: Pilih minimal 1 peran`);
+    // Aturan: KPA tidak boleh merangkap PPK (termasuk PPK DFDD).
+    if ((u.peranList||[]).includes('SATKER_KPA') && (u.peranList||[]).some(k=>k==='SATKER_PPK'||k==='SATKER_PPK_DFDD'))
+      errors.push(`${label}: KPA tidak boleh merangkap PPK. Pilih salah satu saja.`);
     if (!(u.email||'').trim())         errors.push(`${label}: Email kedinasan wajib diisi`);
     if (!(u.sk||'').trim())            errors.push(`${label}: Nomor SK wajib diisi`);
     if (!(u.tglsk||'').trim())         errors.push(`${label}: Tanggal SK wajib diisi`);
@@ -4001,6 +4004,9 @@ function pgValidate(){
     if (!(u.nik||'').trim())           errors.push(`${label}: NIK wajib diisi`);
     if (!(u.hp||'').trim())            errors.push(`${label}: No. HP wajib diisi`);
     if (!u.peranList||!u.peranList.length) errors.push(`${label}: Pilih minimal 1 peran`);
+    // Aturan: KPA tidak boleh merangkap PPK (termasuk PPK DFDD).
+    if ((u.peranList||[]).includes('SATKER_KPA') && (u.peranList||[]).some(k=>k==='SATKER_PPK'||k==='SATKER_PPK_DFDD'))
+      errors.push(`${label}: KPA tidak boleh merangkap PPK. Pilih salah satu saja.`);
     if (!(u.email||'').trim())         errors.push(`${label}: Email kedinasan wajib diisi`);
     if (!(u.sk||'').trim())            errors.push(`${label}: Nomor SK wajib diisi`);
     if (!(u.tglsk||'').trim())         errors.push(`${label}: Tanggal SK wajib diisi`);

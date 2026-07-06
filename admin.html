@@ -1215,10 +1215,10 @@ function lihatDetailEmail(id){
         <thead><tr><th>Nama</th><th>NIP/NRP</th><th>Email SAKTI</th></tr></thead>
         <tbody>${e.emailHasil.map(h=>`<tr><td>${esc(h.nama||'—')}</td><td style="font-family:monospace">${esc(h.nipnrp||'—')}</td><td><a href="mailto:${esc(h.email)}">${esc(h.email||'—')}</a></td></tr>`).join('')}</tbody>
       </table>`:''}
-    <div class="card-title" style="margin-bottom:10px">Data Pegawai (${(e.pegawai||[]).length} orang)</div>
+    <div class="card-title" style="margin-bottom:10px">Data Pegawai (${(Array.isArray(e.pegawai)?e.pegawai:[]).length} orang)</div>
     <table class="tbl">
       <thead><tr><th>No</th><th>Nama</th><th>NIP/NRP</th><th>NIK</th><th>Status</th></tr></thead>
-      <tbody>${(e.pegawai||[]).map((p,i)=>`<tr>
+      <tbody>${(Array.isArray(e.pegawai)?e.pegawai:[]).map((p,i)=>`<tr>
         <td style="text-align:center">${i+1}</td>
         <td>${esc(p.nama||'')}</td>
         <td style="font-family:monospace">${esc(p.nipnrp||'')}</td>
@@ -1243,7 +1243,7 @@ function bukaModalProsesEmail(id){
   const e=cachedEmailDaftar.find(x=>x.id===id);
   if(!e) return;
   activeProsesEmailId=id;
-  emailHasilTemp=(e.pegawai||[]).map(p=>({nama:p.nama||'',nipnrp:p.nipnrp||'',email:''}));
+  emailHasilTemp=(Array.isArray(e.pegawai)?e.pegawai:[]).map(p=>({nama:p.nama||'',nipnrp:p.nipnrp||'',email:''}));
   const body=document.getElementById('prosesEmailBody');
   body.innerHTML=`<p style="font-size:13px;color:var(--gray-700);margin-bottom:12px">
     Satker: <strong>${esc(e.namaSatker)}</strong> · ${e.jumlahPegawai} pegawai<br/>
