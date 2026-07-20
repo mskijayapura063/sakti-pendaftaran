@@ -2539,9 +2539,18 @@ async function initUserBaru() {
   try {
     const res = _cacheGet('dashboard') || await apiPost({ action:'getSatkerDashboard' });
     _cacheSet('dashboard', res);
-    const d = (res.success && (res.latest || (res.list && res.list[0]))) || null;
+    // Ambil SEMUA record satker, lalu cari yang MASIH TERBUKA (satker masih perlu aksi):
+    // hanya status 'Menunggu' (belum diproses) atau 'Ditolak' (perlu revisi), dan belum ditandai terdaftar.
+    // Begitu admin klik Proses (Diproses/Terdaftar/Selesai/Aktif), pengajuan dianggap TERTUTUP,
+    // sehingga satker mendapat FORM BARU KOSONG untuk mengajukan user lain.
+    const _allDaftar = (res.success && (Array.isArray(res.pendaftaran) ? res.pendaftaran
+                        : (Array.isArray(res.list) ? res.list : []))) || [];
+    const _OPEN_DAFTAR = ['menunggu','ditolak',''];
+    const d = _allDaftar.find(r => r && r.refKode
+                && _OPEN_DAFTAR.includes(String(r.status||'').toLowerCase())
+                && r.sudahTerdaftar !== true) || null;
     if (d && d.refKode) {
-      ubLocked = ['submitted','diproses','terdaftar'].includes((d.status||'').toLowerCase());
+      ubLocked = false; // record terbuka (Menunggu/Ditolak) selalu bisa diedit satker
       window._ubCurrentData = d;
       // Load users ke state
       try {
@@ -2553,16 +2562,11 @@ async function initUserBaru() {
         });
       } catch(e) {}
       ubReindexUsers();
-      // Kalau locked → langsung step 4 (upload), kalau ada refKode → mulai step 1
-      if (ubLocked) {
-        ubRefKodeStep3 = d.refKode || '';
-        ubExcelDownloaded = true;  // sudah pernah download
-        ubGoToStep(4);
-      } else {
-        body.innerHTML = ubRenderStep1(d, kode);
-        setTimeout(()=>ubInitFlatpickrSurat(), 80);
-      }
+      body.innerHTML = ubRenderStep1(d, kode);
+      setTimeout(()=>ubInitFlatpickrSurat(), 80);
     } else {
+      // Tidak ada pengajuan terbuka -> form BARU kosong. Pengajuan lama (sudah diproses/selesai)
+      // tetap tersimpan & bisa dilihat di menu Riwayat.
       ubLocked = false;
       window._ubCurrentData = null;
       body.innerHTML = ubRenderStep1(null, kode);
@@ -3191,37 +3195,30 @@ async function initUserGanti() {
     window._pgRiwayatCache = {};
     (list||[]).forEach(item => { if(item.id) window._pgRiwayatCache[item.id] = item; });
 
+    // Hanya muat pengajuan yang MASIH TERBUKA (Menunggu / Ditolak). Begitu admin klik Proses
+    // (Diproses/Terdaftar/Selesai), pengajuan dianggap TERTUTUP -> satker dapat FORM BARU KOSONG.
+    const _OPEN_PG = ['menunggu','ditolak',''];
     let target = null;
     if (window._pgPerbaikiTargetId) {
+      // Alur "Perbaiki" eksplisit: muat record tsb apa pun statusnya.
       target = list.find(x => x.id === window._pgPerbaikiTargetId) || null;
       window._pgPerbaikiTargetId = null;
     }
-    if (!target) target = list[0];
+    if (!target) {
+      target = list.find(r => r && r.id && _OPEN_PG.includes(String(r.status||'').toLowerCase())) || null;
+    }
 
-    const stat = (target?.status || '').toLowerCase();
-    const aktif = !!(target && stat && stat !== 'ditolak');
-    const ditolak = stat === 'ditolak';
-
-    if (aktif) {
+    if (target) {
       pgCurrentId = target.id;
-      pgLocked    = ['diproses','terdaftar','selesai'].includes(stat);
+      pgLocked    = false; // Menunggu/Ditolak selalu bisa diedit satker
       window._pgCurrentData = target;
       body.innerHTML = pgRenderStep1(target, kode);
       // Pre-load users ke state (tidak dirender sampai step 2)
       (target.semula||[]).forEach(u => pgAddUser('semula',u));
       (target.menjadi||[]).forEach(u => pgAddUser('menjadi',u));
       pgReindexAll();
-      // Kalau locked, langsung tampilkan step 4 (riwayat saja)
-      if (pgLocked) { pgGoToStep(4); }
-    } else if (ditolak) {
-      pgCurrentId = target.id;
-      pgLocked    = false;
-      window._pgCurrentData = target;
-      body.innerHTML = pgRenderStep1(target, kode);
-      (target.semula||[]).forEach(u => pgAddUser('semula',u));
-      (target.menjadi||[]).forEach(u => pgAddUser('menjadi',u));
-      pgReindexAll();
     } else {
+      // Tidak ada pengajuan pergantian terbuka -> form BARU kosong.
       pgLocked = false;
       window._pgCurrentData = null;
       body.innerHTML = pgRenderStep1(null, kode);
