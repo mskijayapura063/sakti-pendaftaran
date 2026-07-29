@@ -2647,8 +2647,12 @@ async function doAktivasiOTP(){
   const btn = document.getElementById('btnDoAktivasiOTP');
   btn.disabled=true; btn.textContent='⏳ Memproses...';
   try{
-    // Tandai terdaftar dulu (jika belum) — Apps Script akan handle idempoten
-    const resTandai = await apiPost({action:'tandaiTerdaftar', refKode:_otpRefKode});
+    // Tandai terdaftar dulu (jika belum) — HANYA untuk Pendaftaran.
+    // Pergantian (id berawalan PRB-/PG-) tidak ada di sheet Pendaftaran, jadi jangan panggil tandaiTerdaftar.
+    const _isPgOtp = /^(PRB-|PG-)/.test(String(_otpRefKode||''));
+    if (!_isPgOtp) {
+      await apiPost({action:'tandaiTerdaftar', refKode:_otpRefKode});
+    }
     // Lanjut aktivasi OTP
     const payload = {
       action: 'aktivasiOTP',
