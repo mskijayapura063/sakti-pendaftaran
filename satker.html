@@ -1165,7 +1165,7 @@ async function initDashboard() {
   window._dashboardRes = null;
   try {
     const res = _cacheGet('dashboard') || await apiPost({ action:'getSatkerDashboard' });
-    _cacheSet('dashboard', res);
+    if (res && res.success) _cacheSet('dashboard', res);
     window._dashboardRes = res;
     if (res.success && res.data) {
       const d = res.data;
@@ -1224,7 +1224,7 @@ async function initDashboard() {
     // 3. Riwayat Pergantian User — pakai cache jika tersedia
     try {
       const resGanti = _cacheGet('riwayatPerubahan') || await apiPost({ action:'getRiwayatPerubahan' });
-      _cacheSet('riwayatPerubahan', resGanti);
+      if (resGanti && resGanti.success) _cacheSet('riwayatPerubahan', resGanti);
       const gantiList = resGanti.list || [];
       gantiList.slice(0,2).forEach(g => {
         items.push({ tgl: g.createdAt||g.tglSurat||'', label: `🔄 Pergantian User SAKTI — ${g.namaSatker||''}`, status: g.status });
@@ -2538,7 +2538,7 @@ async function initUserBaru() {
 
   try {
     const res = _cacheGet('dashboard') || await apiPost({ action:'getSatkerDashboard' });
-    _cacheSet('dashboard', res);
+    if (res && res.success) _cacheSet('dashboard', res);
     // Ambil SEMUA record satker, lalu cari yang MASIH TERBUKA (satker masih perlu aksi):
     // hanya status 'Menunggu' (belum diproses) atau 'Ditolak' (perlu revisi), dan belum ditandai terdaftar.
     // Begitu admin klik Proses (Diproses/Terdaftar/Selesai/Aktif), pengajuan dianggap TERTUTUP,
@@ -2977,7 +2977,7 @@ async function ubHandleFileUpload(event, docKey, docLabel, inputEl) {
         if (!d) return;
         const res2 = await apiPost({ action:'getSatkerDashboard' });
         if (res2 && res2.success) {
-          _cacheSet('dashboard', res2);
+          if (res2 && res2.success) _cacheSet('dashboard', res2);
           window._ubCurrentData = res2.latest || (res2.list&&res2.list[0]) || d;
         }
         const uploadBody = document.getElementById('ubUploadBody');
@@ -3142,7 +3142,7 @@ async function ubDoDownloadExcel() {
     try {
       const res3 = await apiPost({ action:'getSatkerDashboard' });
       if (res3&&res3.success) {
-        _cacheSet('dashboard', res3);
+        if (res3 && res3.success) _cacheSet('dashboard', res3);
         window._ubCurrentData = res3.latest || (res3.list&&res3.list[0]) || window._ubCurrentData;
       }
     } catch(e2){}
@@ -3200,7 +3200,7 @@ async function initUserGanti() {
   const kode = currentUser?.username||'';
   try {
     const res = _cacheGet('riwayatPerubahan') || await apiPost({ action:'getRiwayatPerubahan' });
-    _cacheSet('riwayatPerubahan', res);
+    if (res && res.success) _cacheSet('riwayatPerubahan', res);
     const list = res.list || [];
     // Simpan cache per-id untuk pgBukaUploadInline
     window._pgRiwayatCache = {};
@@ -4555,8 +4555,8 @@ async function initUserRiwayat() {
   try {
     // Fetch pendaftaran baru + riwayat pergantian — pakai cache jika tersedia
     const [res, resGanti] = await Promise.all([
-      (_cacheGet('dashboard') ? Promise.resolve(_cacheGet('dashboard')) : apiPost({ action:'getSatkerDashboard' }).then(r => { _cacheSet('dashboard', r); return r; })),
-      (_cacheGet('riwayatPerubahan') ? Promise.resolve(_cacheGet('riwayatPerubahan')) : apiPost({ action:'getRiwayatPerubahan' }).then(r => { _cacheSet('riwayatPerubahan', r); return r; }).catch(() => ({ success:false, list:[] }))),
+      (_cacheGet('dashboard') ? Promise.resolve(_cacheGet('dashboard')) : apiPost({ action:'getSatkerDashboard' }).then(r => { if (r && r.success) _cacheSet('dashboard', r); return r; })),
+      (_cacheGet('riwayatPerubahan') ? Promise.resolve(_cacheGet('riwayatPerubahan')) : apiPost({ action:'getRiwayatPerubahan' }).then(r => { if (r && r.success) _cacheSet('riwayatPerubahan', r); return r; }).catch(() => ({ success:false, list:[] }))),
     ]);
 
     // --- Kumpulkan semua record dari SEMUA kemungkinan field response ---
