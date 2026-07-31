@@ -3147,8 +3147,13 @@ async function ubDoDownloadExcel() {
       }
     } catch(e2){}
   } catch(e) {
-    showToast('⚠️ Excel terunduh, tapi gagal simpan ke server: '+e.message, true);
-    // Tetap unlock tombol — Excel sudah ada
+    // PENTING: kalau data GAGAL tersimpan, JANGAN biarkan lanjut upload.
+    // Dulu tetap di-unlock -> satker upload dokumen padahal barisnya tidak ada di server,
+    // akibatnya pengajuan tidak muncul di riwayat satker maupun KPPN.
+    showToast('❌ Data GAGAL tersimpan ke server: ' + e.message +
+              '. Perbaiki dulu, lalu klik Unduh Excel lagi. Jangan lanjut upload.', true);
+    if (btn) { btn.disabled = false; btn.textContent = '⬇️ Unduh Excel'; }
+    return;
   }
   // Unlock tombol "Lanjut Upload"
   ubExcelDownloaded = true;
