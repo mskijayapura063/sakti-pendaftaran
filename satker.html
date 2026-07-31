@@ -2881,6 +2881,12 @@ function ubRenderStep3(d) {
       <button class="btn btn-success" id="btnUbDownloadExcel" onclick="ubDoDownloadExcel()" style="padding:11px 24px;font-size:14px">
         ⬇️ ${isDitolak?'Unduh Ulang Excel':'Unduh Excel'}
       </button>
+      ${ubPunyaPeranOTP()?`<button class="btn btn-outline" id="btnUbFormOTP"
+        onclick="unduhFormOTP('${esc(ubRefKodeStep3||refKode||'')}', this)"
+        style="padding:11px 20px;font-size:14px;border-color:#7C3AED;color:#7C3AED"
+        title="Form Pengaktifan OTP untuk KPA/PPK/PPSPM - cetak, tandatangani, lalu upload">
+        ⬇️ Unduh Form OTP
+      </button>`:''}
       <button class="btn btn-primary" id="btnUbLanjutUpload" onclick="ubGoToStep(4)"
         style="padding:11px 28px;font-size:14px;opacity:${ubExcelDownloaded?'1':'0.4'};cursor:${ubExcelDownloaded?'pointer':'not-allowed'}"
         ${ubExcelDownloaded?'':'disabled'}>
@@ -3419,6 +3425,12 @@ function pgRenderStep3() {
       <button class="btn btn-success" onclick="pgDoDownloadExcel()" id="btnPgDownloadExcel" style="padding:11px 24px;font-size:14px">
         ⬇️ Unduh Excel Perubahan
       </button>
+      ${pgPunyaPeranOTP()?`<button class="btn btn-outline" id="btnPgFormOTP"
+        onclick="unduhFormOTP(pgCurrentId||'', this)"
+        style="padding:11px 20px;font-size:14px;border-color:#7C3AED;color:#7C3AED"
+        title="Form Pengaktifan OTP untuk KPA/PPK/PPSPM - cetak, tandatangani, lalu upload">
+        ⬇️ Unduh Form OTP
+      </button>`:''}
       <span id="pgExcelDoneFlag" style="display:none;color:var(--green);font-weight:700;font-size:13px">✅ Excel berhasil diunduh</span>
     </div>
   </div>
@@ -3534,6 +3546,41 @@ function pgNextFromStep2() {
   }
   if (panel) panel.style.display='none';
   pgGoToStep(3);
+}
+
+// Apakah ada pengguna berperan OTP? (menentukan tombol Form OTP muncul/tidak)
+const PERAN_OTP_FORM = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+function adaPeranOTP_(list) {
+  return (list || []).some(u => (u.peranList || []).some(k => PERAN_OTP_FORM.includes(k)));
+}
+function ubPunyaPeranOTP() { return adaPeranOTP_(typeof ubUsers !== 'undefined' ? ubUsers : []); }
+function pgPunyaPeranOTP() { return adaPeranOTP_(typeof pgMenjadiUsers !== 'undefined' ? pgMenjadiUsers : []); }
+
+// ── UNDUH FORM PENGAKTIFAN OTP (.docx) ──────────────────────────────
+// Dipakai di menu Pendaftaran & Pergantian. id = refKode (pendaftaran) atau PRB-xxx (pergantian).
+async function unduhFormOTP(id, btnEl) {
+  if (!id) { showToast('Data belum tersimpan. Unduh Excel dulu.', true); return; }
+  const btn = btnEl || null;
+  const oldTxt = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Menyiapkan...'; }
+  try {
+    const res = await apiPost({ action:'generateFormOTP', id });
+    if (!res || !res.success) {
+      showToast((res && res.message) || 'Gagal membuat Form OTP', true);
+      return;
+    }
+    const bytes = Uint8Array.from(atob(res.fileBase64), c => c.charCodeAt(0));
+    const blob  = new Blob([bytes], { type: res.mimeType || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    const url   = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = res.fileName || 'Form_Pengaktifan_OTP.docx'; a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ Form OTP diunduh (' + (res.jumlahPejabat || 0) + ' pejabat). Cetak, tandatangani, lalu upload kembali.', false, true);
+  } catch (e) {
+    showToast('❌ Gagal mengunduh Form OTP', true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = oldTxt || '⬇️ Unduh Form OTP'; }
+  }
 }
 
 async function pgDoDownloadExcel() {
@@ -4252,6 +4299,11 @@ function pgBukaUploadModal(id){
               <div style="font-size:11px;color:var(--gray-500);margin-top:1px">${esc(dok.desc)}</div>
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+              ${dok.key.indexOf('formOTP')===0 ? `<button onclick="unduhFormOTP('${esc(pgUploadId||'')}', this)"
+                title="Unduh template Form Pengaktifan OTP (sudah terisi data). Cetak, tandatangani, lalu upload di sini."
+                style="display:inline-flex;align-items:center;gap:4px;background:#F5F3FF;border:1px solid #C4B5FD;color:#6D28D9;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">
+                ⬇️ Unduh Template
+              </button>` : ''}
               ${sudahAda ? `
                 <span id="pgud_status_${dok.key}" style="font-size:11px;color:${isDitolak?'#92400e':'var(--green)'};font-weight:600">${isDitolak?'⚠️ Perlu dicek':'✅ Terupload'}</span>
                 <button onclick="satkerDownloadDokumen('${esc(existing.url||'')}','${esc(dok.label)}')"
@@ -5711,6 +5763,11 @@ function bukaModalUploadDokumen(info) {
               <div style="font-size:11px;color:var(--gray-500);margin-top:1px">${esc(dok.desc)}</div>
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+              ${dok.key.indexOf('formOTP')===0 ? `<button onclick="unduhFormOTP('${esc(udRefKode||'')}', this)"
+                title="Unduh template Form Pengaktifan OTP (sudah terisi data). Cetak, tandatangani, lalu upload di sini."
+                style="display:inline-flex;align-items:center;gap:4px;background:#F5F3FF;border:1px solid #C4B5FD;color:#6D28D9;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">
+                ⬇️ Unduh Template
+              </button>` : ''}
               ${sudahAda ? `
                 <span id="ud_status_${dok.key}" style="font-size:11px;color:${needsReupload?'#92400e':'var(--green)'};font-weight:600">${needsReupload?'⚠️ Perlu dicek':'✅ Terupload'}</span>
                 <button onclick="satkerDownloadDokumen('${esc(existing.url||'')}','${esc(dok.label)}')"
