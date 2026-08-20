@@ -2122,8 +2122,18 @@ function ubAddUser(data={}){
   return id;
 }
 function ubRemoveUser(id){
+  if(ubLocked)return;
+  if(ubUsers.length<=1){alert('Minimal harus ada 1 pengguna.');return;}
   const idx=ubUsers.findIndex(u=>u.id===id);
-  if(idx!==-1)ubUsers.splice(idx,1);
+  if(idx===-1)return;
+  // Baris kosong (salah klik "Tambah") langsung dihapus tanpa konfirmasi.
+  // Baris yang sudah ada isinya tetap dikonfirmasi supaya tidak terhapus tidak sengaja.
+  const u=ubUsers[idx];
+  const adaIsi=!!((u.nama||'').trim()||(u.nipnrp||'').trim()||(u.nik||'').trim()||
+                  (u.email||'').trim()||(u.hp||'').trim()||(u.sk||'').trim()||
+                  (u.tglsk||'').trim()||(u.peranList&&u.peranList.length));
+  if(adaIsi && !confirm('Hapus data pengguna '+((u.nama||'').trim()||'ini')+'?'))return;
+  ubUsers.splice(idx,1);
   document.getElementById(`ubuc-${id}`)?.remove();
   ubReindexUsers();
   ubRefreshAllCardActions();
@@ -2150,7 +2160,8 @@ function ubRenderUserCard(id){
   const filled=ubIsUserFilled(u);
   const editLabel=filled?'✏️ Edit':'📝 Isi Data';
   const editClass=filled?'btn btn-outline btn-sm':'btn btn-primary btn-sm';
-  const showHapus=!ubLocked && ubUsers.length>1 && filled;
+  // Tombol Hapus TIDAK lagi menunggu data terisi: begitu ada >1 pengguna, langsung bisa dihapus
+  const showHapus=!ubLocked && ubUsers.length>1;
   const div=document.createElement('div');
   div.className='user-card';div.id=`ubuc-${id}`;
   div.innerHTML=`
@@ -2171,7 +2182,7 @@ function ubRefreshAllCardActions(){
     const filled=ubIsUserFilled(u);
     const editLabel=filled?'✏️ Edit':'📝 Isi Data';
     const editClass=filled?'btn btn-outline btn-sm':'btn btn-primary btn-sm';
-    const showHapus=!ubLocked && ubUsers.length>1 && filled;
+    const showHapus=!ubLocked && ubUsers.length>1;
     actEl.innerHTML=!ubLocked?`<button class="${editClass}" onclick="ubOpenEditModal(${u.id})">${editLabel}</button>
       ${showHapus?`<button class="btn btn-danger btn-sm" onclick="ubRemoveUser(${u.id})">✕ Hapus</button>`:''}`:``;
   });
@@ -3780,6 +3791,16 @@ function pgAddUser(tipe, data={}) {
   return id;
 }
 function pgRemoveUser(id, tipe) {
+  if(pgLocked)return;
+  const arr = tipe==='semula'?pgSemulaUsers:pgMenjadiUsers;
+  if(arr.length<=1){alert('Minimal harus ada 1 pengguna.');return;}
+  const u = arr.find(x=>x.id===id);
+  if(!u)return;
+  // Baris kosong (salah klik "Tambah") langsung dihapus tanpa konfirmasi.
+  const adaIsi=!!((u.nama||'').trim()||(u.nipnrp||'').trim()||(u.nik||'').trim()||
+                  (u.email||'').trim()||(u.hp||'').trim()||(u.sk||'').trim()||
+                  (u.tglsk||'').trim()||(u.peranList&&u.peranList.length));
+  if(adaIsi && !confirm('Hapus data pengguna '+((u.nama||'').trim()||'ini')+'?'))return;
   if(tipe==='semula') pgSemulaUsers=pgSemulaUsers.filter(u=>u.id!==id);
   else                pgMenjadiUsers=pgMenjadiUsers.filter(u=>u.id!==id);
   document.getElementById(`pguc-${tipe}-${id}`)?.remove();
@@ -3802,7 +3823,8 @@ function pgRenderUserCard(id, tipe){
   const editLabel=filled?'✏️ Edit':'📝 Isi Data';
   const editClass=filled?'btn btn-outline btn-sm':'btn btn-primary btn-sm';
   const arr = tipe==='semula'?pgSemulaUsers:pgMenjadiUsers;
-  const showHapus=!pgLocked&&arr.length>1&&filled;
+  // Tombol Hapus TIDAK lagi menunggu data terisi: begitu ada >1 pengguna, langsung bisa dihapus
+  const showHapus=!pgLocked&&arr.length>1;
   const div=document.createElement('div');
   div.className='user-card'; div.id=`pguc-${tipe}-${id}`;
   div.innerHTML=`
@@ -3825,7 +3847,7 @@ function pgRefreshAllCardActions(){
     const editLabel=filled?'✏️ Edit':'📝 Isi Data';
     const editClass=filled?'btn btn-outline btn-sm':'btn btn-primary btn-sm';
     const arr=u.tipe==='semula'?pgSemulaUsers:pgMenjadiUsers;
-    const showHapus=!pgLocked&&arr.length>1&&filled;
+    const showHapus=!pgLocked&&arr.length>1;
     actEl.innerHTML=!pgLocked?`<button class="${editClass}" onclick="pgOpenEditModal(${u.id},'${u.tipe}')">${editLabel}</button>
       ${showHapus?`<button class="btn btn-danger btn-sm" onclick="pgRemoveUser(${u.id},'${u.tipe}')">✕ Hapus</button>`:''}`:``;
   });
