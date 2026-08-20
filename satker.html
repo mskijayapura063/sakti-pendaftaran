@@ -2114,6 +2114,10 @@ let ubUsers=[];   // mutable — reassign-able utk reuse di Pergantian
 let ubLocked=false;
 let ubLastRefKode='';
 let ubFpSurat=null;
+// MODE PENGAJUAN — mencegah pengajuan baru menimpa pengajuan lama yang ditolak.
+//   'baru'     : refKode SELALU digenerate baru; dilarang memakai refKode record lain.
+//   'perbaiki' : refKode DIKUNCI ke record yang dipilih satker lewat tombol "Perbaiki".
+let ubMode='baru';
 
 function ubAddUser(data={}){
   const id=++ubUserIdSeq;
@@ -2397,7 +2401,10 @@ async function ubDoGenerateExcel(){
   // Reuse refKode yang sudah berhasil di-submit sebelumnya (dalam sesi ini),
   // atau ambil dari data existing di sheet (jika satker sudah pernah daftar sebelumnya).
   // Ini mencegah error "Kode referensi sudah digunakan" saat klik unduh berulang kali.
-  const existingRefFromSheet = document.getElementById('ub_existingRefKode')?.value || '';
+  // ANTI-TIMPA: refKode record lama HANYA boleh dipakai dalam mode 'perbaiki'.
+  // Dalam mode 'baru' selalu generate refKode sendiri supaya tidak menimpa pengajuan lain.
+  const existingRefFromSheet = (ubMode === 'perbaiki')
+      ? (document.getElementById('ub_existingRefKode')?.value || '') : '';
   const refKode = ubLastRefKode || existingRefFromSheet || ubGenRefKode(kodeSatker);
   ubLastRefKode=refKode;
   showToast('⏳ Membuat Excel, mohon tunggu...');
@@ -2545,24 +2552,37 @@ async function initUserBaru() {
   ubUsers.length=0; ubUserIdSeq=0; ubLocked=false; ubLastRefKode='';
   ubStep=1; ubExcelDownloaded=false; ubRefKodeStep3=''; ubFnameStep3='';
   window._ubCurrentData=null; window._ubStep1Data=null;
+  ubMode='baru';
   const kode = currentUser?.username||'';
 
   try {
     const res = _cacheGet('dashboard') || await apiPost({ action:'getSatkerDashboard' });
     if (res && res.success) _cacheSet('dashboard', res);
-    // Ambil SEMUA record satker, lalu cari yang MASIH TERBUKA (satker masih perlu aksi):
+    // Ambil SEMUA record satker, lalu kumpulkan yang MASIH TERBUKA (satker masih perlu aksi):
     // hanya status 'Menunggu' (belum diproses) atau 'Ditolak' (perlu revisi), dan belum ditandai terdaftar.
-    // Begitu admin klik Proses (Diproses/Terdaftar/Selesai/Aktif), pengajuan dianggap TERTUTUP,
-    // sehingga satker mendapat FORM BARU KOSONG untuk mengajukan user lain.
+    // Begitu admin klik Proses (Diproses/Terdaftar/Selesai/Aktif), pengajuan dianggap TERTUTUP.
     const _allDaftar = (res.success && (Array.isArray(res.pendaftaran) ? res.pendaftaran
                         : (Array.isArray(res.list) ? res.list : []))) || [];
     const _OPEN_DAFTAR = ['menunggu','ditolak',''];
-    const d = _allDaftar.find(r => r && r.refKode
+    const openList = _allDaftar.filter(r => r && r.refKode
                 && _OPEN_DAFTAR.includes(String(r.status||'').toLowerCase())
-                && r.sudahTerdaftar !== true) || null;
+                && r.sudahTerdaftar !== true);
+    window._ubOpenList = openList;
+
+    // (1) Satker menekan tombol "Perbaiki" pada salah satu pengajuan -> MODE PERBAIKI.
+    let d = null;
+    if (window._ubPerbaikiTargetRef) {
+      const wanted = String(window._ubPerbaikiTargetRef);
+      d = openList.find(x => String(x.refKode||'') === wanted)
+       || _allDaftar.find(x => String(x.refKode||'') === wanted) || null;
+      window._ubPerbaikiTargetRef = null;
+    }
+
     if (d && d.refKode) {
+      ubMode = 'perbaiki';
       ubLocked = false; // record terbuka (Menunggu/Ditolak) selalu bisa diedit satker
       window._ubCurrentData = d;
+      ubLastRefKode = String(d.refKode||''); // KUNCI refKode ke record yang sedang diperbaiki
       // Load users ke state
       try {
         const existUsers = Array.isArray(d.usersJson) ? d.usersJson
@@ -2573,19 +2593,112 @@ async function initUserBaru() {
         });
       } catch(e) {}
       ubReindexUsers();
-      body.innerHTML = ubRenderStep1(d, kode);
+      body.innerHTML = ubTombolKembaliPilihan_() + ubRenderStep1(d, kode);
       setTimeout(()=>ubInitFlatpickrSurat(), 80);
-    } else {
-      // Tidak ada pengajuan terbuka -> form BARU kosong. Pengajuan lama (sudah diproses/selesai)
-      // tetap tersimpan & bisa dilihat di menu Riwayat.
+      return;
+    }
+
+    // (2) Satker menekan "Buat Pengajuan Baru", ATAU tidak ada pengajuan terbuka sama sekali
+    //     -> form BARU kosong. refKode akan digenerate baru, tidak menyentuh record mana pun.
+    if (window._ubPaksaBaru || openList.length === 0) {
+      window._ubPaksaBaru = false;
+      ubMode = 'baru';
       ubLocked = false;
       window._ubCurrentData = null;
-      body.innerHTML = ubRenderStep1(null, kode);
+      body.innerHTML = ubTombolKembaliPilihan_() + ubRenderStep1(null, kode);
       setTimeout(()=>ubInitFlatpickrSurat(), 80);
+      return;
     }
+
+    // (3) Ada pengajuan terbuka -> tampilkan HALAMAN PILIHAN lebih dulu.
+    //     Ini mencegah satker tidak sengaja menimpa pengajuan yang ditolak/menunggu
+    //     ketika sebetulnya mereka ingin mendaftarkan orang lain.
+    body.innerHTML = ubRenderPilihan(openList, kode);
   } catch(e) {
     body.innerHTML = `<div class="info-box red">❌ Gagal memuat data. <button class="btn btn-secondary btn-sm" onclick="initUserBaru()">Coba Lagi</button></div>`;
   }
+}
+
+// ─── HALAMAN PILIHAN PENDAFTARAN ────────────────────────────────────────────
+// Ditampilkan saat satker masih punya pengajuan terbuka. Memaksa satker memilih
+// secara sadar: MEMPERBAIKI pengajuan yang ada, atau MEMBUAT pengajuan baru.
+function ubRingkasNama_(d) {
+  let arr = [];
+  try {
+    arr = Array.isArray(d.usersJson) ? d.usersJson
+        : JSON.parse(typeof d.usersJson === 'string' ? d.usersJson : '[]');
+  } catch(e) { arr = []; }
+  if (!Array.isArray(arr)) arr = [];
+  const nama = arr.map(u => (u && (u.nama||'')).trim()).filter(Boolean);
+  if (!nama.length) return '';
+  if (nama.length <= 2) return nama.join(', ');
+  return nama.slice(0,2).join(', ') + ' +' + (nama.length-2) + ' lainnya';
+}
+function ubRenderPilihan(list, kode) {
+  const kartu = (list||[]).map(d => {
+    const ref     = String(d.refKode||'');
+    const status  = String(d.status||'Menunggu');
+    const ditolak = status.toLowerCase() === 'ditolak';
+    const catatan = String(d.catatanAdmin || d.alasanTolak || d.catatan || '').trim();
+    const nama    = ubRingkasNama_(d);
+    const jml     = Number(d.userCount||0) || (nama ? nama.split(',').length : 0);
+    const warna   = ditolak ? 'var(--red)' : '#D97706';
+    const bgBadge = ditolak ? '#FEE2E2' : '#FEF3C7';
+    const fgBadge = ditolak ? '#991B1B' : '#92400E';
+    return `
+      <div style="border:1px solid ${warna};border-radius:10px;padding:14px;margin-bottom:12px;background:#fff">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+          <strong style="font-size:13px">Ref ${esc(ref)}</strong>
+          <span style="background:${bgBadge};color:${fgBadge};font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px">${ditolak?'❌ ':'⏳ '}${esc(status)}</span>
+        </div>
+        <div style="font-size:12px;color:var(--gray-700);margin-bottom:${catatan?'4px':'10px'}">
+          ${jml?`${jml} pengguna`:'Belum ada pengguna'}${nama?` &middot; ${esc(nama)}`:''}
+        </div>
+        ${catatan?`<div style="font-size:12px;color:var(--red);margin-bottom:10px">Alasan ditolak: <em>${esc(catatan)}</em></div>`:''}
+        <button class="btn btn-outline btn-sm" onclick="ubPilihPerbaiki('${esc(ref)}')">
+          ${ditolak?'🔧 Perbaiki pengajuan ini':'👁️ Lihat / ubah pengajuan ini'}
+        </button>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="info-box orange" style="margin-bottom:16px">
+      <strong>⚠️ Anda masih punya ${list.length} pengajuan yang belum selesai.</strong><br/>
+      Pilih dulu: perbaiki pengajuan di bawah, <u>atau</u> buat pengajuan baru untuk pegawai lain.
+      Keduanya tersimpan terpisah &mdash; pengajuan baru <strong>tidak akan menimpa</strong> yang lama.
+    </div>
+    ${kartu}
+    <div style="border-top:1px dashed var(--gray-300);margin:18px 0 14px"></div>
+    <button class="btn btn-primary" onclick="ubBuatBaru()" style="width:100%;padding:12px;font-size:14px">
+      ➕ Buat Pengajuan Baru untuk Pegawai Lain
+    </button>
+    <p style="font-size:11px;color:var(--gray-500);text-align:center;margin-top:8px">
+      Pengajuan baru mendapat nomor referensi sendiri.
+    </p>`;
+}
+// Tombol kembali hanya muncul kalau memang ada halaman pilihan untuk dituju.
+function ubTombolKembaliPilihan_() {
+  const n = (window._ubOpenList || []).length;
+  if (!n) return '';
+  return `<button class="btn btn-secondary btn-sm" onclick="ubKembaliPilihan()" style="margin-bottom:12px">
+            &larr; Kembali ke daftar pengajuan
+          </button>`;
+}
+function ubKembaliPilihan() {
+  if (ubUsers.length && !confirm('Kembali ke daftar pengajuan? Data yang belum diunduh/disimpan akan hilang.')) return;
+  window._ubPerbaikiTargetRef = null;
+  window._ubPaksaBaru = false;
+  initUserBaru();
+}
+function ubPilihPerbaiki(ref) {
+  window._ubPerbaikiTargetRef = ref;
+  window._ubPaksaBaru = false;
+  initUserBaru();
+}
+function ubBuatBaru() {
+  window._ubPerbaikiTargetRef = null;
+  window._ubPaksaBaru = true;
+  initUserBaru();
 }
 
 function ubBuildFormHTML(d, kode) {
@@ -3088,9 +3201,16 @@ async function ubDoDownloadExcel() {
   const tglSurat   = s1.tglSurat   || (window._ubCurrentData?.tglSurat||'');
   const levelSatker= s1.levelSatker|| 'Satker';
   const tglStr     = tglSurat ? ubFormatTglIndo(tglSurat) : '______';
-  const existingRef = s1.existingRefKode || (window._ubCurrentData?.refKode) || '';
+  // ANTI-TIMPA: lihat catatan di ubDoGenerateExcel.
+  const existingRef = (ubMode === 'perbaiki')
+      ? (s1.existingRefKode || (window._ubCurrentData?.refKode) || '') : '';
+  const refSebelumnya = ubLastRefKode;
   const refKode = ubLastRefKode || existingRef || ubGenRefKode(kodeSatker);
   ubLastRefKode = refKode;
+  // updatePendaftaran (menimpa baris yang sudah ada) hanya boleh dipakai bila:
+  //  - satker memang sedang MEMPERBAIKI record tsb, atau
+  //  - refKode ini memang milik sesi ini (satker unduh Excel dua kali).
+  const bolehTimpa = (ubMode === 'perbaiki') || (refSebelumnya === refKode);
   ubRefKodeStep3 = refKode;
   showToast('⏳ Membuat Excel, mohon tunggu...');
   let fname;
@@ -3138,7 +3258,12 @@ async function ubDoDownloadExcel() {
       userCount: ubUsers.length,
       usersJson: usersJsonStr
     });
-    if (!res2.success && /digunakan|sudah ada|sudah digunakan/i.test(res2.message||'')) {
+    if (!res2.success && !bolehTimpa && /digunakan|sudah ada|sudah digunakan/i.test(res2.message||'')) {
+      throw new Error('Kode referensi ' + refKode + ' sudah dipakai pengajuan lain. ' +
+        'Untuk keamanan, data pengajuan lain TIDAK ditimpa. Silakan tutup halaman ini, ' +
+        'buka menu Pendaftaran User SAKTI lagi, lalu pilih "Buat Pengajuan Baru".');
+    }
+    if (!res2.success && bolehTimpa && /digunakan|sudah ada|sudah digunakan/i.test(res2.message||'')) {
       res2 = await apiPost({
         action:'updatePendaftaran',
         refKode, namaSatker, kodeSatker,
@@ -3196,6 +3321,9 @@ function ubReRenderUsers() {
 // PERUBAHAN USER SAKTI — state
 // ════════════════════════════════════════════════════════
 let pgSemulaUsers=[], pgMenjadiUsers=[], pgUserIdSeq=0, pgCurrentId=null, pgLocked=false;
+// MODE PENGAJUAN PERGANTIAN — lihat catatan ubMode. 'baru' => pgCurrentId WAJIB kosong
+// supaya server membuat record baru, bukan menimpa pengajuan yang sudah ada.
+let pgMode='baru';
 
 function renderUserGanti() {
   return `<div class="page-title"><strong style="font-size:22px">🔄 PERUBAHAN USER SAKTI</strong></div>
@@ -3208,6 +3336,7 @@ async function initUserGanti() {
   if (!body) return;
   pgSemulaUsers=[]; pgMenjadiUsers=[]; pgUserIdSeq=0; pgCurrentId=null; pgLocked=false;
   pgStep=1; pgExcelDownloaded=false; window._pgCurrentData=null; window._pgStep1Data=null;
+  pgMode='baru';
   const kode = currentUser?.username||'';
   try {
     const res = _cacheGet('riwayatPerubahan') || await apiPost({ action:'getRiwayatPerubahan' });
@@ -3220,30 +3349,39 @@ async function initUserGanti() {
     // Hanya muat pengajuan yang MASIH TERBUKA (Menunggu / Ditolak). Begitu admin klik Proses
     // (Diproses/Terdaftar/Selesai), pengajuan dianggap TERTUTUP -> satker dapat FORM BARU KOSONG.
     const _OPEN_PG = ['menunggu','ditolak',''];
+    const openList = (list||[]).filter(r => r && r.id && _OPEN_PG.includes(String(r.status||'').toLowerCase()));
+    window._pgOpenList = openList;
+
+    // (1) Satker menekan tombol "Perbaiki" -> MODE PERBAIKI, id dikunci ke record itu.
     let target = null;
     if (window._pgPerbaikiTargetId) {
-      // Alur "Perbaiki" eksplisit: muat record tsb apa pun statusnya.
       target = list.find(x => x.id === window._pgPerbaikiTargetId) || null;
       window._pgPerbaikiTargetId = null;
     }
-    if (!target) {
-      target = list.find(r => r && r.id && _OPEN_PG.includes(String(r.status||'').toLowerCase())) || null;
-    }
 
     if (target) {
+      pgMode      = 'perbaiki';
       pgCurrentId = target.id;
       pgLocked    = false; // Menunggu/Ditolak selalu bisa diedit satker
       window._pgCurrentData = target;
-      body.innerHTML = pgRenderStep1(target, kode);
+      body.innerHTML = pgTombolKembaliPilihan_() + pgRenderStep1(target, kode);
       // Pre-load users ke state (tidak dirender sampai step 2)
       (target.semula||[]).forEach(u => pgAddUser('semula',u));
       (target.menjadi||[]).forEach(u => pgAddUser('menjadi',u));
       pgReindexAll();
-    } else {
-      // Tidak ada pengajuan pergantian terbuka -> form BARU kosong.
+    } else if (window._pgPaksaBaru || openList.length === 0) {
+      // (2) Satker memilih "Buat Pengajuan Baru", atau memang tidak ada pengajuan terbuka
+      //     -> form BARU kosong, pgCurrentId tetap null supaya server membuat record baru.
+      window._pgPaksaBaru = false;
+      pgMode = 'baru';
+      pgCurrentId = null;
       pgLocked = false;
       window._pgCurrentData = null;
-      body.innerHTML = pgRenderStep1(null, kode);
+      body.innerHTML = pgTombolKembaliPilihan_() + pgRenderStep1(null, kode);
+    } else {
+      // (3) Masih ada pengajuan terbuka -> HALAMAN PILIHAN dulu, jangan langsung ke form.
+      body.innerHTML = pgRenderPilihan(openList, kode);
+      return;
     }
     setTimeout(()=>{ pgInitFlatpickr(); }, 80);
   } catch(e) {
@@ -3254,7 +3392,88 @@ async function initUserGanti() {
 // Dipanggil dari kartu Pergantian Ditolak di Riwayat — pindah ke tab User Ganti & prefill record
 function pgPerbaikiData(id) {
   window._pgPerbaikiTargetId = id;
+  window._pgPaksaBaru = false;
   switchTab('user-ganti');
+}
+
+// ─── HALAMAN PILIHAN PERGANTIAN ─────────────────────────────────────────────
+function pgRingkasNama_(g) {
+  const arr = []
+    .concat(Array.isArray(g.menjadi) ? g.menjadi : [])
+    .concat(Array.isArray(g.semula)  ? g.semula  : []);
+  const nama = arr.map(u => (u && (u.nama||'')).toString().trim()).filter(Boolean);
+  const uniq = [];
+  nama.forEach(n => { if (uniq.indexOf(n) === -1) uniq.push(n); });
+  if (!uniq.length) return '';
+  if (uniq.length <= 2) return uniq.join(', ');
+  return uniq.slice(0,2).join(', ') + ' +' + (uniq.length-2) + ' lainnya';
+}
+function pgRenderPilihan(list, kode) {
+  const kartu = (list||[]).map(g => {
+    const id      = String(g.id||'');
+    const status  = String(g.status||'Menunggu');
+    const ditolak = status.toLowerCase() === 'ditolak';
+    const catatan = String(g.catatanAdmin || g.alasanTolak || g.catatan || '').trim();
+    const nama    = pgRingkasNama_(g);
+    const jmlS    = Array.isArray(g.semula)  ? g.semula.length  : 0;
+    const jmlM    = Array.isArray(g.menjadi) ? g.menjadi.length : 0;
+    const warna   = ditolak ? 'var(--red)' : '#D97706';
+    const bgBadge = ditolak ? '#FEE2E2' : '#FEF3C7';
+    const fgBadge = ditolak ? '#991B1B' : '#92400E';
+    return `
+      <div style="border:1px solid ${warna};border-radius:10px;padding:14px;margin-bottom:12px;background:#fff">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+          <strong style="font-size:13px">${esc(id)}</strong>
+          <span style="background:${bgBadge};color:${fgBadge};font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px">${ditolak?'❌ ':'⏳ '}${esc(status)}</span>
+        </div>
+        <div style="font-size:12px;color:var(--gray-700);margin-bottom:${catatan?'4px':'10px'}">
+          ${jmlS} semula &rarr; ${jmlM} menjadi${nama?` &middot; ${esc(nama)}`:''}
+        </div>
+        ${catatan?`<div style="font-size:12px;color:var(--red);margin-bottom:10px">Alasan ditolak: <em>${esc(catatan)}</em></div>`:''}
+        <button class="btn btn-outline btn-sm" onclick="pgPilihPerbaiki('${esc(id)}')">
+          ${ditolak?'🔧 Perbaiki pengajuan ini':'👁️ Lihat / ubah pengajuan ini'}
+        </button>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="info-box orange" style="margin-bottom:16px">
+      <strong>⚠️ Anda masih punya ${list.length} pengajuan pergantian yang belum selesai.</strong><br/>
+      Pilih dulu: perbaiki pengajuan di bawah, <u>atau</u> buat pengajuan baru untuk pegawai lain.
+      Keduanya tersimpan terpisah &mdash; pengajuan baru <strong>tidak akan menimpa</strong> yang lama.
+    </div>
+    ${kartu}
+    <div style="border-top:1px dashed var(--gray-300);margin:18px 0 14px"></div>
+    <button class="btn btn-primary" onclick="pgBuatBaru()" style="width:100%;padding:12px;font-size:14px">
+      ➕ Buat Pengajuan Pergantian Baru untuk Pegawai Lain
+    </button>
+    <p style="font-size:11px;color:var(--gray-500);text-align:center;margin-top:8px">
+      Pengajuan baru mendapat nomor pengajuan sendiri.
+    </p>`;
+}
+function pgTombolKembaliPilihan_() {
+  const n = (window._pgOpenList || []).length;
+  if (!n) return '';
+  return `<button class="btn btn-secondary btn-sm" onclick="pgKembaliPilihan()" style="margin-bottom:12px">
+            &larr; Kembali ke daftar pengajuan
+          </button>`;
+}
+function pgKembaliPilihan() {
+  const adaIsi = pgSemulaUsers.length || pgMenjadiUsers.length;
+  if (adaIsi && !confirm('Kembali ke daftar pengajuan? Data yang belum diunduh/disimpan akan hilang.')) return;
+  window._pgPerbaikiTargetId = null;
+  window._pgPaksaBaru = false;
+  initUserGanti();
+}
+function pgPilihPerbaiki(id) {
+  window._pgPerbaikiTargetId = id;
+  window._pgPaksaBaru = false;
+  initUserGanti();
+}
+function pgBuatBaru() {
+  window._pgPerbaikiTargetId = null;
+  window._pgPaksaBaru = true;
+  initUserGanti();
 }
 
 // ── Step state untuk Pergantian ──
