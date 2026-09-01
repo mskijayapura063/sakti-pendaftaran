@@ -11,7 +11,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'"/>
 <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/></noscript>
 <!-- xlsx: defer — hanya dipakai saat user klik export -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <style>
 :root{
   --blue:#0D47A1;--blue-mid:#1565C0;--blue-light:#1976D2;--blue-pale:#E3F2FD;--blue-pale2:#BBDEFB;
@@ -734,19 +733,16 @@ async function apiPost(payload) {
   const body = JSON.stringify(payload);
   let text;
   try {
-    const r1 = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      redirect: 'manual',
-      body: body,
-    });
-    if (r1.type === 'opaqueredirect' || r1.status === 0) {
-      const r2 = await fetch(APPS_SCRIPT_URL, { method:'POST', redirect:'follow', body });
-      text = await r2.text();
-    } else {
-      const echoUrl = r1.headers.get('location');
-      if (!echoUrl) { text = await r1.text(); }
-      else { const r2 = await fetch(echoUrl); text = await r2.text(); }
-    }
+    // Apps Script membalas 302 ke script.googleusercontent.com; browser mengikuti
+    // redirect itu sendiri dan mengembalikan body JSON-nya. CUKUP SATU fetch.
+    // Versi lama menembak dua kali (redirect:'manual' lalu redirect:'follow'); pada
+    // permintaan lintas-origin respons pertama SELALU 'opaqueredirect', sehingga
+    // Apps Script dieksekusi DUA KALI untuk setiap panggilan -> lambat 2x lipat dan
+    // aksi tulis (mis. buat pengajuan) bisa menghasilkan record ganda.
+    // CATATAN: jangan pasang header Content-Type, supaya tetap "simple request"
+    // dan browser tidak mengirim preflight OPTIONS (1 round-trip tambahan).
+    const r = await fetch(APPS_SCRIPT_URL, { method: 'POST', redirect: 'follow', body: body });
+    text = await r.text();
   } catch(netErr) {
     console.error('[apiPost] Network error:', netErr);
     return { success:false, message:'Tidak bisa terhubung ke server Apps Script. Cek koneksi internet & URL deploy.' };
