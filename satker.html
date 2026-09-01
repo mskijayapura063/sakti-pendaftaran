@@ -3006,7 +3006,7 @@ function ubRenderStep3(d) {
         ⬇️ ${isDitolak?'Unduh Ulang Excel':'Unduh Excel'}
       </button>
       ${ubPunyaPeranOTP()?`<button class="btn btn-outline" id="btnUbFormOTP"
-        onclick="unduhFormOTP('${esc(ubRefKodeStep3||refKode||'')}', this)"
+        onclick="unduhFormOTPDaftar(this)"
         style="padding:11px 20px;font-size:14px;border-color:#7C3AED;color:#7C3AED"
         title="Form Pengaktifan OTP untuk KPA/PPK/PPSPM - cetak, tandatangani, lalu upload">
         ⬇️ Unduh Form OTP
@@ -3661,7 +3661,7 @@ function pgRenderStep3() {
         ⬇️ Unduh Excel Perubahan
       </button>
       ${pgPunyaPeranOTP()?`<button class="btn btn-outline" id="btnPgFormOTP"
-        onclick="unduhFormOTP(pgCurrentId||'', this)"
+        onclick="unduhFormOTPGanti(this)"
         style="padding:11px 20px;font-size:14px;border-color:#7C3AED;color:#7C3AED"
         title="Form Pengaktifan OTP untuk KPA/PPK/PPSPM - cetak, tandatangani, lalu upload">
         ⬇️ Unduh Form OTP
@@ -3793,13 +3793,13 @@ function pgPunyaPeranOTP() { return adaPeranOTP_(typeof pgMenjadiUsers !== 'unde
 
 // ── UNDUH FORM PENGAKTIFAN OTP (.docx) ──────────────────────────────
 // Dipakai di menu Pendaftaran & Pergantian. id = refKode (pendaftaran) atau PRB-xxx (pergantian).
-async function unduhFormOTP(id, btnEl) {
-  if (!id) { showToast('Data belum tersimpan. Unduh Excel dulu.', true); return; }
+// Kirim payload apa pun (id record ATAU data form langsung) ke action generateFormOTP.
+async function _unduhFormOTPKirim(payload, btnEl) {
   const btn = btnEl || null;
   const oldTxt = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Menyiapkan...'; }
   try {
-    const res = await apiPost({ action:'generateFormOTP', id });
+    const res = await apiPost(Object.assign({ action:'generateFormOTP' }, payload));
     if (!res || !res.success) {
       showToast((res && res.message) || 'Gagal membuat Form OTP', true);
       return;
@@ -3816,6 +3816,61 @@ async function unduhFormOTP(id, btnEl) {
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = oldTxt || '⬇️ Unduh Form OTP'; }
   }
+}
+
+// Dipakai dari modal upload dokumen, di mana record-nya SUDAH pasti tersimpan.
+async function unduhFormOTP(id, btnEl) {
+  if (!id) { showToast('Data belum tersimpan. Unduh Excel dulu.', true); return; }
+  return _unduhFormOTPKirim({ id: id }, btnEl);
+}
+
+// Ringkas daftar pengguna menjadi payload Form OTP (hanya yang sudah punya peran).
+function _otpUsersPayload(arr) {
+  return (arr || [])
+    .filter(u => u && (u.peranList || []).length && (u.nama || '').trim())
+    .map(u => ({
+      nama:   u.nama   || '', nipnrp: u.nipnrp || '', nik: u.nik || '',
+      email:  u.email  || '', hp:     u.hp     || '', peranList: u.peranList || []
+    }));
+}
+
+// PENDAFTARAN - step 3. Kirim isian form langsung supaya Form OTP bisa diunduh
+// TANPA harus menunggu "Unduh Excel" lebih dulu.
+function unduhFormOTPDaftar(btnEl) {
+  const s1 = window._ubStep1Data || {};
+  const users = _otpUsersPayload(ubUsers);
+  if (!users.length) { showToast('Lengkapi data pengguna (Nama & Peran) lebih dulu.', true); return; }
+  const tglSurat = s1.tglSurat || (window._ubCurrentData?.tglSurat || '');
+  return _unduhFormOTPKirim({
+    id:         ubRefKodeStep3 || (window._ubCurrentData?.refKode) || '',
+    users:      JSON.stringify(users),
+    kodeSatker: currentUser?.username || '',
+    namaSatker: s1.namaSatker || (document.getElementById('ub_namaSatker')?.value||'').trim() || (window._ubCurrentData?.namaSatker||''),
+    namaKpa:    s1.namaKPA    || (document.getElementById('ub_namaKPA')?.value||'').trim()    || (window._ubCurrentData?.namaKpa||''),
+    nip:        s1.nipKPA     || (document.getElementById('ub_nipKPA')?.value||'').trim()     || (window._ubCurrentData?.nip||''),
+    kota:       s1.kotaTTD    || 'Jayapura',
+    tglStr:     tglSurat ? ubFormatTglIndo(tglSurat) : ''
+  }, btnEl);
+}
+
+// PERGANTIAN - step 3. Pejabat OTP diambil dari daftar MENJADI.
+// Dulu tombol ini mengirim pgCurrentId yang masih null sebelum Unduh Excel,
+// sehingga Form OTP tidak pernah bisa diunduh dari layar ini.
+function unduhFormOTPGanti(btnEl) {
+  const s1 = window._pgStep1Data || {};
+  const users = _otpUsersPayload(pgMenjadiUsers);
+  if (!users.length) { showToast('Lengkapi data pengguna MENJADI (Nama & Peran) lebih dulu.', true); return; }
+  const tglSurat = s1.tglSurat || (window._pgCurrentData?.tglSurat || '');
+  return _unduhFormOTPKirim({
+    id:         pgCurrentId || '',
+    users:      JSON.stringify(users),
+    kodeSatker: currentUser?.username || '',
+    namaSatker: s1.namaSatker || (window._pgCurrentData?.namaSatker || ''),
+    namaKpa:    s1.namaKpa    || (window._pgCurrentData?.namaKpa    || ''),
+    nip:        s1.nip        || (window._pgCurrentData?.nip        || ''),
+    kota:       s1.kota       || 'Jayapura',
+    tglStr:     tglSurat ? ubFormatTglIndo(tglSurat) : ''
+  }, btnEl);
 }
 
 async function pgDoDownloadExcel() {
