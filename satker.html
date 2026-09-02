@@ -514,7 +514,7 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
     <p style="font-size:12px;color:var(--gray-600)">Data palsu dapat mengakibatkan penolakan pendaftaran dan/atau tindakan administratif.</p>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modalPernyataanUB')">Tidak Setuju</button>
-      <button class="btn btn-success" onclick="ubDoGenerateExcel()">✅ Setuju &amp; Unduh Excel</button>
+      <button class="btn btn-success" onclick="ubDoGenerateExcel()">✅ Setuju &amp; Unduh Form Excel Pendaftaran User</button>
     </div>
   </div>
 </div>
@@ -2460,7 +2460,7 @@ async function ubDoGenerateExcel(){
     if (errPanel && errList) {
       errList.innerHTML = `<li>⚠️ Excel berhasil diunduh (<strong>${esc(fname)}</strong>), TAPI data GAGAL tersimpan ke server.</li>
         <li>Pesan error: <strong>${esc(submitMsg||'Tidak ada pesan dari server')}</strong></li>
-        <li>Coba klik tombol <strong>"Unduh Excel & Dapatkan Kode Referensi"</strong> sekali lagi, atau hubungi admin KPPN.</li>
+        <li>Coba klik tombol <strong>"Unduh Form Excel Pendaftaran User"</strong> sekali lagi, atau hubungi admin KPPN.</li>
         <li style="font-size:10px;color:var(--gray-500)">Debug: ${esc(submitDebug)}</li>`;
       errPanel.style.display='block';
       errPanel.scrollIntoView({behavior:'smooth',block:'center'});
@@ -2708,7 +2708,7 @@ function ubBuildFormHTML(d, kode) {
     <ul style="padding-left:16px;margin-top:6px;line-height:1.9">
       <li>Isi data satker, data KPA, dan tambahkan daftar pengguna beserta perannya.</li>
       <li>Centang peran setiap pengguna. Peran yang bertentangan dinonaktifkan otomatis.</li>
-      <li>Klik <strong>"Unduh Excel & Dapatkan Kode Referensi"</strong> → simpan kode referensi yang muncul.</li>
+      <li>Klik <strong>"Unduh Form Excel Pendaftaran User"</strong> → simpan kode referensi yang muncul.</li>
       <li>Cetak Excel, minta tanda tangan KPA, lalu upload ke KPPN Jayapura.</li>
     </ul>
   </div>
@@ -2777,13 +2777,13 @@ function ubBuildFormHTML(d, kode) {
   <!-- Unduh Excel -->
   ${!isLocked?`
   <div class="card" style="margin-bottom:16px">
-    <div class="card-title">📥 Unduh Excel & Kirim Pendaftaran</div>
+    <div class="card-title">📥 Unduh Form Excel Pendaftaran User & Kirim Pendaftaran</div>
     <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">
       Setelah semua data terisi, klik tombol di bawah. File Excel akan terunduh dan Anda akan mendapat
       <strong>kode referensi unik</strong> yang diperlukan untuk penyelesaian pendaftaran.
     </p>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-success" onclick="ubTrySubmit()">⬇️ Unduh Excel &amp; Dapatkan Kode Referensi</button>
+      <button class="btn btn-success" onclick="ubTrySubmit()">⬇️ Unduh Form Excel Pendaftaran User</button>
       <button class="btn btn-secondary" onclick="ubResetForm()">↺ Reset Form</button>
     </div>
   </div>
@@ -2856,7 +2856,7 @@ function ubGoToStep(n) {
         <button class="btn btn-primary" style="padding:11px 28px" onclick="ubBukaModalUpload()">📤 Upload Dokumen</button>
       </div>
       <div style="display:flex;justify-content:flex-start;margin-top:16px">
-        <button class="btn btn-outline" onclick="ubGoToStep(3)">← Kembali ke Unduh Excel</button>
+        <button class="btn btn-outline" onclick="ubGoToStep(3)">← Kembali ke Unduh Form Excel</button>
       </div>`;
     // Langsung buka modal tanpa perlu klik
     setTimeout(()=>ubBukaModalUpload(), 100);
@@ -2960,7 +2960,7 @@ function ubRenderStep2() {
   </div>
   <div style="display:flex;justify-content:space-between;margin-top:8px">
     <button class="btn btn-outline" onclick="ubGoToStep(1)">← Kembali</button>
-    ${!ubLocked?`<button class="btn btn-primary" onclick="ubNextFromStep2()" style="padding:11px 28px;font-size:14px">Selanjutnya → Unduh Excel</button>`
+    ${!ubLocked?`<button class="btn btn-primary" onclick="ubNextFromStep2()" style="padding:11px 28px;font-size:14px">Selanjutnya → Unduh Form Excel Pendaftaran User</button>`
     :`<button class="btn btn-outline" onclick="ubGoToStep(3)">Selanjutnya →</button>`}
   </div>`;
 }
@@ -2979,7 +2979,7 @@ function ubRenderStep3(d) {
     <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:16px;margin-bottom:16px">
       <div style="font-size:12px;font-weight:700;color:var(--gray-500);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Instruksi</div>
       <ol style="padding-left:18px;margin:0;font-size:13px;line-height:2;color:var(--gray-700)">
-        <li>Klik <strong>"Unduh Excel"</strong> di bawah ini</li>
+        <li>Klik <strong>"Unduh Form Excel Pendaftaran User"</strong> di bawah ini</li>
         <li>Cetak file Excel yang diunduh</li>
         <li>Minta tanda tangan KPA pada formulir cetak</li>
         <li>Klik <strong>"Lanjut Upload Dokumen"</strong> untuk mengunggah berkas yang diperlukan</li>
@@ -2992,7 +2992,7 @@ function ubRenderStep3(d) {
     </div>`:''}
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <button class="btn btn-success" id="btnUbDownloadExcel" onclick="ubDoDownloadExcel()" style="padding:11px 24px;font-size:14px">
-        ⬇️ ${isDitolak?'Unduh Ulang Excel':'Unduh Excel'}
+        ⬇️ ${isDitolak?'Unduh Ulang Unduh Form Excel Pendaftaran User':'Unduh Form Excel Pendaftaran User'}
       </button>
       ${ubPunyaPeranOTP()?`<button class="btn btn-outline" id="btnUbFormOTP"
         onclick="unduhFormOTPDaftar(this)"
@@ -3006,7 +3006,7 @@ function ubRenderStep3(d) {
         Lanjut Upload Dokumen →
       </button>
     </div>
-    ${!ubExcelDownloaded?`<p id="ubStep3Hint" style="font-size:12px;color:var(--gray-500);margin-top:8px">⚠️ Unduh Excel terlebih dahulu untuk melanjutkan</p>`:''}
+    ${!ubExcelDownloaded?`<p id="ubStep3Hint" style="font-size:12px;color:var(--gray-500);margin-top:8px">⚠️ Unduh Form Excel terlebih dahulu untuk melanjutkan</p>`:''}
   </div>
   <div style="display:flex;justify-content:flex-start;margin-top:4px">
     <button class="btn btn-outline" onclick="ubGoToStep(2)">← Kembali ke Data Pegawai</button>
@@ -3026,7 +3026,7 @@ function ubRenderStep4(d) {
     ${ubBuildUploadBodyHTML(d?.uploadedFiles, (d?.status||'').toLowerCase()==='ditolak')}
   </div>
   <div style="display:flex;justify-content:flex-start;margin-top:16px">
-    <button class="btn btn-outline" onclick="ubGoToStep(3)">← Kembali ke Unduh Excel</button>
+    <button class="btn btn-outline" onclick="ubGoToStep(3)">← Kembali ke Unduh Form Excel</button>
   </div>`;
 }
 
@@ -3075,7 +3075,7 @@ async function ubHandleFileUpload(event, docKey, docLabel, inputEl) {
   if (prog) prog.innerHTML = `<div class="info-box blue">⏳ Mengunggah <strong>${esc(docLabel)}</strong>...</div>`;
   try {
     const refKode = ubRefKodeStep3 || window._ubCurrentData?.refKode || '';
-    if (!refKode) { showToast('Kode referensi tidak ditemukan. Unduh Excel dulu.', true); return; }
+    if (!refKode) { showToast('Kode referensi tidak ditemukan. Unduh Form Excel dulu.', true); return; }
     const reader = new FileReader();
     reader.onload = async (e) => {
       const base64 = e.target.result.split(',')[1];
@@ -3224,7 +3224,7 @@ async function ubDoDownloadExcel() {
     const a     = document.createElement('a'); a.href=url; a.download=fname; a.click(); URL.revokeObjectURL(url);
   } catch(e) {
     showToast('❌ Gagal buat Excel: '+e.message, true);
-    if (btn) { btn.disabled=false; btn.textContent='⬇️ Unduh Excel'; }
+    if (btn) { btn.disabled=false; btn.textContent='⬇️ Unduh Form Excel Pendaftaran User'; }
     return;
   }
   // Simpan data ke server
@@ -3276,8 +3276,8 @@ async function ubDoDownloadExcel() {
     // Dulu tetap di-unlock -> satker upload dokumen padahal barisnya tidak ada di server,
     // akibatnya pengajuan tidak muncul di riwayat satker maupun KPPN.
     showToast('❌ Data GAGAL tersimpan ke server: ' + e.message +
-              '. Perbaiki dulu, lalu klik Unduh Excel lagi. Jangan lanjut upload.', true);
-    if (btn) { btn.disabled = false; btn.textContent = '⬇️ Unduh Excel'; }
+              '. Perbaiki dulu, lalu klik Unduh Form Excel lagi. Jangan lanjut upload.', true);
+    if (btn) { btn.disabled = false; btn.textContent = '⬇️ Unduh Form Excel Pendaftaran User'; }
     return;
   }
   // Unlock tombol "Lanjut Upload"
@@ -3286,7 +3286,7 @@ async function ubDoDownloadExcel() {
   if (btnLanjut) { btnLanjut.disabled=false; btnLanjut.style.opacity='1'; btnLanjut.style.cursor='pointer'; }
   const hint = document.getElementById('ubStep3Hint');
   if (hint) hint.remove();
-  if (btn) { btn.disabled=false; btn.textContent='⬇️ Unduh Ulang Excel'; }
+  if (btn) { btn.disabled=false; btn.textContent='⬇️ Unduh Ulang Unduh Form Excel Pendaftaran User'; }
   showToast('✅ Excel berhasil diunduh! Klik "Lanjut Upload Dokumen" untuk melanjutkan.');
 }
 
@@ -3594,7 +3594,7 @@ function pgRenderStep2(d) {
   <div style="display:flex;gap:10px;justify-content:space-between;margin-top:4px">
     <button class="btn btn-secondary" onclick="pgGoToStep(1)">← Kembali</button>
     <button class="btn btn-primary" onclick="pgNextFromStep2()" style="padding:11px 28px;font-size:14px">
-      Selanjutnya &rarr; Unduh Excel
+      Selanjutnya &rarr; Unduh Form Excel Pergantian User
     </button>
   </div>`;
 }
@@ -3647,7 +3647,7 @@ function pgRenderStep3() {
     <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">Klik tombol di bawah untuk mengunduh file Excel. Cetak, minta tanda tangan KPA, lalu lanjut ke langkah upload.</p>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-success" onclick="pgDoDownloadExcel()" id="btnPgDownloadExcel" style="padding:11px 24px;font-size:14px">
-        ⬇️ Unduh Excel Perubahan
+        ⬇️ Unduh Form Excel Pergantian User
       </button>
       ${pgPunyaPeranOTP()?`<button class="btn btn-outline" id="btnPgFormOTP"
         onclick="unduhFormOTPGanti(this)"
@@ -3666,7 +3666,7 @@ function pgRenderStep3() {
       Lanjut Upload Dokumen →
     </button>
   </div>
-  <p id="pgStep3Hint" style="text-align:right;font-size:11px;color:var(--gray-400);margin-top:6px">Unduh Excel terlebih dahulu untuk melanjutkan</p>`;
+  <p id="pgStep3Hint" style="text-align:right;font-size:11px;color:var(--gray-400);margin-top:6px">Unduh Form Excel terlebih dahulu untuk melanjutkan</p>`;
 }
 
 function pgRenderStep4(id) {
@@ -3774,8 +3774,20 @@ function pgNextFromStep2() {
 
 // Apakah ada pengguna berperan OTP? (menentukan tombol Form OTP muncul/tidak)
 const PERAN_OTP_FORM = ['SATKER_KPA','SATKER_PPK','SATKER_PPK_DFDD','SATKER_PPSPM'];
+// Dipakai juga oleh menu Riwayat, yang datanya berasal dari sheet dan bisa berformat lama.
+// Karena itu semua bentuk dijaga: bukan array, peranList berupa string, atau field 'peran'.
 function adaPeranOTP_(list) {
-  return (list || []).some(u => (u.peranList || []).some(k => PERAN_OTP_FORM.includes(k)));
+  if (!Array.isArray(list)) {
+    if (typeof list === 'string') { try { list = JSON.parse(list); } catch(e) { return false; } }
+    if (!Array.isArray(list)) return false;
+  }
+  return list.some(u => {
+    if (!u) return false;
+    let pl = u.peranList;
+    if (typeof pl === 'string') { try { pl = JSON.parse(pl); } catch(e) { pl = [pl]; } }
+    if (!Array.isArray(pl)) pl = u.peran ? [u.peran] : [];
+    return pl.some(k => PERAN_OTP_FORM.includes(String(k || '').trim()));
+  });
 }
 function ubPunyaPeranOTP() { return adaPeranOTP_(typeof ubUsers !== 'undefined' ? ubUsers : []); }
 function pgPunyaPeranOTP() { return adaPeranOTP_(typeof pgMenjadiUsers !== 'undefined' ? pgMenjadiUsers : []); }
@@ -3809,7 +3821,7 @@ async function _unduhFormOTPKirim(payload, btnEl) {
 
 // Dipakai dari modal upload dokumen, di mana record-nya SUDAH pasti tersimpan.
 async function unduhFormOTP(id, btnEl) {
-  if (!id) { showToast('Data belum tersimpan. Unduh Excel dulu.', true); return; }
+  if (!id) { showToast('Data belum tersimpan. Unduh Form Excel dulu.', true); return; }
   return _unduhFormOTPKirim({ id: id }, btnEl);
 }
 
@@ -3880,7 +3892,7 @@ async function pgDoDownloadExcel() {
   const menjadi = pgMenjadiUsers.map(u=>({nama:u.nama,nipnrp:u.nipnrp,nik:u.nik,email:u.email,hp:u.hp,sk:u.sk,tglsk:u.tglsk,peranList:u.peranList,keterangan:u.keterangan}));
   try {
     const res = await apiPost({action:'generatePerubahanExcel',id:pgCurrentId||'',namaSatker,namaKpa,nip,noHp,kota,tglStr,tglSurat,semula,menjadi});
-    if (!res.success) { showToast(res.message||'Gagal generate Excel',true); if(btn){btn.disabled=false;btn.textContent='⬇️ Unduh Excel Perubahan';} return; }
+    if (!res.success) { showToast(res.message||'Gagal generate Excel',true); if(btn){btn.disabled=false;btn.textContent='⬇️ Unduh Form Excel Pergantian User';} return; }
     pgCurrentId = res.id;
     _cacheInvalidate('riwayatPerubahan');
     const bytes = Uint8Array.from(atob(res.fileBase64),c=>c.charCodeAt(0));
@@ -3896,11 +3908,11 @@ async function pgDoDownloadExcel() {
     if (flagEl)  flagEl.style.display='inline';
     if (lanjut)  { lanjut.disabled=false; lanjut.style.opacity='1'; lanjut.style.cursor='pointer'; }
     if (hint)    hint.style.display='none';
-    if (btn)     { btn.disabled=false; btn.textContent='⬇️ Unduh Ulang Excel'; }
+    if (btn)     { btn.disabled=false; btn.textContent='⬇️ Unduh Ulang Unduh Form Excel Pergantian User'; }
     showToast('✅ Excel berhasil diunduh. Silakan cetak dan minta tanda tangan KPA.',false,true);
   } catch(e) {
     showToast('❌ Gagal generate Excel',true);
-    if (btn) { btn.disabled=false; btn.textContent='⬇️ Unduh Excel Perubahan'; }
+    if (btn) { btn.disabled=false; btn.textContent='⬇️ Unduh Form Excel Pergantian User'; }
   }
 }
 
@@ -3953,7 +3965,7 @@ function pgBuildFormHTML(d, kode) {
     <ul style="padding-left:16px;margin-top:6px;line-height:1.9">
       <li>Isi data satker, data KPA, lalu isi tabel <strong>Semula</strong> (data lama) dan <strong>Menjadi</strong> (data baru).</li>
       <li>Pilih <strong>Keterangan</strong> (Permanen/Sementara) di setiap pengguna.</li>
-      <li>Klik <strong>"Unduh Excel"</strong> → cetak → minta tanda tangan KPA → upload ke KPPN.</li>
+      <li>Klik <strong>"Unduh Form Excel Pergantian User"</strong> → cetak → minta tanda tangan KPA → upload ke KPPN.</li>
     </ul>
   </div>
   <div class="error-panel" id="pgErrPanel"><strong>⚠️ Harap perbaiki:</strong><ul id="pgErrList"></ul></div>
@@ -4023,12 +4035,12 @@ function pgBuildFormHTML(d, kode) {
   <!-- Unduh Excel -->
   ${!pgLocked?`
   <div class="card" style="margin-bottom:16px">
-    <div class="card-title">📥 Unduh Excel & Kirim Pengajuan</div>
+    <div class="card-title">📥 Unduh Form Excel Pergantian User & Kirim Pengajuan</div>
     <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">
       Setelah semua data terisi, klik tombol di bawah. File Excel akan terunduh — cetak, minta tanda tangan KPA, lalu upload PDF ke KPPN.
     </p>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-success" onclick="pgTrySubmit()">⬇️ Unduh Excel Perubahan</button>
+      <button class="btn btn-success" onclick="pgTrySubmit()">⬇️ Unduh Form Excel Pergantian User</button>
       <button class="btn btn-secondary" onclick="pgResetForm()">↺ Reset Form</button>
     </div>
   </div>
@@ -5377,9 +5389,14 @@ function rwRenderDetailDaftar(d, rowKey){
       </div>
     </details>` : '';
 
-  // Action footer
+  // Action footer.
+  // Tombol Form OTP hanya muncul kalau ada pengguna berperan KPA / PPK / PPK DFDD / PPSPM.
+  const punyaOtpDaftar = adaPeranOTP_(usersArr);
   const actionFooter = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;margin-top:8px">
+      ${punyaOtpDaftar?`<button class="btn btn-outline btn-sm" onclick="unduhFormOTP('${esc(d.refKode)}', this)"
+        style="font-size:11px;border-color:#7C3AED;color:#7C3AED"
+        title="Form Pengaktifan OTP untuk KPA/PPK/PPSPM - cetak, tandatangani, lalu upload">📄 Unduh Form OTP Pejabat</button>`:''}
       <button class="btn btn-outline btn-sm" onclick="satkerUnduhFormExcel('${esc(d.refKode)}')"
         style="font-size:11px;border-color:var(--green);color:var(--green)">📥 Unduh Form Excel</button>
     </div>`;
@@ -5538,9 +5555,17 @@ function rwRenderDetailGanti(g, rowKey){
       </div>
     </details>` : '';
 
-  // Action footer
+  // Action footer.
+  // Pejabat OTP pada pergantian diambil dari daftar MENJADI (pejabat pengganti).
+  const punyaOtpGanti = adaPeranOTP_(menjadi);
   const actionFooterGanti = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;margin-top:8px">
+      ${punyaOtpGanti?`<button onclick="unduhFormOTP('${esc(g.id)}', this)"
+        style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1.5px solid #7C3AED;color:#7C3AED;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;transition:.15s"
+        title="Form Pengaktifan OTP untuk KPA/PPK/PPSPM - cetak, tandatangani, lalu upload"
+        onmouseover="this.style.background='#F3E8FF'" onmouseout="this.style.background='#fff'">
+        📄 Unduh Form OTP Pejabat
+      </button>`:''}
       <button onclick="satkerUnduhExcelPergantian('${esc(g.id)}')"
         style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1.5px solid #7C3AED;color:#7C3AED;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;transition:.15s"
         onmouseover="this.style.background='#F3E8FF'" onmouseout="this.style.background='#fff'">
