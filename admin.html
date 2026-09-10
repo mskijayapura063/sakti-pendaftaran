@@ -772,6 +772,7 @@ async function apiPost(payload) {
   if (currentUser?.token && !payload.token) payload.token = currentUser.token;
   const body = JSON.stringify(payload);
   let text;
+  let _apiInfo = { status: 0, url: '', redirected: false };
   try {
     // Apps Script membalas 302 ke script.googleusercontent.com; browser mengikuti
     // redirect itu sendiri dan mengembalikan body JSON-nya. CUKUP SATU fetch.
@@ -783,6 +784,7 @@ async function apiPost(payload) {
     // dan browser tidak mengirim preflight OPTIONS (1 round-trip tambahan).
     const r = await fetch(APPS_SCRIPT_URL, { method: 'POST', redirect: 'follow', body: body });
     text = await r.text();
+    _apiInfo = { status: r.status, url: r.url, redirected: r.redirected };
   } catch(netErr) {
     console.error('[apiPost] Network error:', netErr);
     return { success:false, message:'Tidak bisa terhubung ke server Apps Script. Cek koneksi internet & URL deploy.' };
@@ -790,14 +792,18 @@ async function apiPost(payload) {
   try {
     return JSON.parse(text);
   } catch(parseErr) {
-    console.error('[apiPost] Non-JSON response:', text?.slice(0,500));
-    let hint = '';
-    if (text?.includes('Sorry, unable to open') || text?.includes('Google Drive')) {
-      hint = ' (Deployment Apps Script belum di-set "Anyone".)';
-    } else if (text?.includes('<html') || text?.includes('<HTML')) {
-      hint = ' (Server mengembalikan HTML. URL Apps Script mungkin salah.)';
-    }
-    return { success:false, message:'Server tidak merespons JSON valid.'+hint };
+    // JANGAN menebak penyebabnya. Tampilkan apa adanya supaya bisa didiagnosis.
+    console.error('[apiPost] Balasan bukan JSON. HTTP', _apiInfo.status, '| URL akhir:', _apiInfo.url);
+    console.error('[apiPost] Isi balasan (2000 huruf pertama):\n', String(text || '').slice(0, 2000));
+    window._apiBalasanTerakhir = { info: _apiInfo, isi: String(text || '') };
+    const polos = String(text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const cuplikan = polos ? polos.slice(0, 160) : '(balasan kosong)';
+    return {
+      success: false,
+      message: 'Server tidak mengembalikan JSON (HTTP ' + _apiInfo.status + '). Balasan server: "' + cuplikan + '"',
+      _diagnosa: _apiInfo,
+      _isiBalasan: String(text || '')
+    };
   }
 }
 
