@@ -129,6 +129,11 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
 .badge-selesai{background:var(--green-pale);color:var(--green);border:1px solid #A5D6A7}
 .badge-ditolak{background:var(--red-pale);color:var(--red);border:1px solid #EF9A9A}
 .badge-draft{background:var(--gray-100);color:var(--gray-600);border:1px solid var(--gray-300)}
+/* Pecahan status "Menunggu" berdasarkan kelengkapan dokumen */
+.badge-belumupload{background:#FEE2E2;color:#B91C1C;border:1px solid #FCA5A5}
+.badge-belumlengkap{background:#FFF3E0;color:#C2410C;border:1px solid #FDBA74}
+.badge-siapproses{background:#E0F2FE;color:#075985;border:1px solid #7DD3FC}
+.badge-revisi{background:#EDE9FE;color:#5B21B6;border:1px solid #C4B5FD}
 
 /* ── TABLE ── */
 .tbl{width:100%;border-collapse:collapse;font-size:13px}
@@ -1153,7 +1158,8 @@ function renderDashboard() {
   <div class="section-title"><span class="st-icon">📊</span> Ringkasan Pengajuan</div>
   <div class="stats-grid" id="statsGrid">
     ${statCard('blue','📝','—','Total Pengajuan')}
-    ${statCard('orange','⏳','—','Menunggu Proses')}
+    ${statCard('red','📤','—','Perlu Dilengkapi')}
+    ${statCard('orange','✅','—','Siap Diproses')}
     ${statCard('teal','🔄','—','Sedang Diproses')}
     ${statCard('green','✅','—','Selesai')}
     ${statCard('red','❌','—','Ditolak')}
@@ -1169,6 +1175,30 @@ function renderDashboard() {
 
 function statCard(cls, icon, num, label) {
   return `<div class="stat-card ${cls}"><div class="stat-icon">${icon}</div><div class="stat-num" id="stat-${label.replace(/\s/g,'-')}">${num}</div><div class="stat-label">${label}</div></div>`;
+}
+
+// Pecah angka "Menunggu" dari server menjadi dua: yang masih perlu dilengkapi
+// satker, dan yang dokumennya sudah lengkap sehingga tinggal diproses KPPN.
+// Kalau daftar rincinya tidak bisa diambil, seluruhnya dianggap perlu dilengkapi
+// supaya satker tidak merasa aman padahal berkasnya kurang.
+async function dashHitungMenunggu_(totalMenunggu) {
+  let perlu = 0, siap = 0;
+  try {
+    const rd = _cacheGet('dashboard') || await apiPost({ action:'getSatkerDashboard' });
+    const rg = _cacheGet('riwayatPerubahan') || await apiPost({ action:'getRiwayatPerubahan' });
+    const daftar = (rd && (Array.isArray(rd.pendaftaran) ? rd.pendaftaran
+                    : (Array.isArray(rd.list) ? rd.list : []))) || [];
+    const ganti  = (rg && Array.isArray(rg.list)) ? rg.list : [];
+    const cek = (arr, isG) => arr.forEach(x => {
+      const s = String((x && x.status) || 'Menunggu').toLowerCase();
+      if (s !== 'menunggu' && s !== 'submitted' && s !== '') return;
+      if (x.sudahTerdaftar === true) return;
+      if (rwDokLengkap_(x, isG)) siap++; else perlu++;
+    });
+    cek(daftar, false); cek(ganti, true);
+    if (perlu + siap === 0 && totalMenunggu) perlu = totalMenunggu;
+  } catch(e) { perlu = totalMenunggu || 0; siap = 0; }
+  return { perluDilengkapi: perlu, siapDiproses: siap };
 }
 
 async function initDashboard() {
@@ -1207,7 +1237,10 @@ async function initDashboard() {
   // Update stat cards
   const upd = (lbl, val) => { const el = document.getElementById('stat-'+lbl); if(el) el.textContent = val; };
   upd('Total-Pengajuan', userStats.total);
-  upd('Menunggu-Proses', userStats.menunggu);
+  // Pecah "Menunggu" jadi yang masih butuh aksi satker vs yang tinggal ditangani KPPN.
+  const pecah = await dashHitungMenunggu_(userStats.menunggu);
+  upd('Perlu-Dilengkapi', pecah.perluDilengkapi);
+  upd('Siap-Diproses',    pecah.siapDiproses);
   upd('Sedang-Diproses', userStats.proses);
   upd('Selesai',         userStats.selesai);
   upd('Ditolak',         userStats.ditolak);
@@ -4793,20 +4826,13 @@ async function pgUploadSelesai() {
   // Cek kelengkapan — hanya warn, TIDAK blokir (satker boleh upload parsial dan lanjut besok)
   const wajibBelum = pgUploadDokList.filter(d => d.required && !pgUploadDoneMap[d.key]);
 
-  // Jika ini mode perbaikan (upload ulang setelah ditolak), reset status ke Menunggu
+  // Status TIDAK diubah di sini. Satker harus menekan "Kirim Ulang ke KPPN"
+  // secara sadar setelah semua perbaikan selesai.
   const cached = (window._pgRiwayatCache || {})[pgUploadId] || {};
   const wasDitolak = (cached.status || '').toLowerCase() === 'ditolak';
   if (wasDitolak && pgUploadId) {
     try {
-      showToast('⏳ Memperbarui status...');
-      const res = await apiPost({
-        action: 'editPerubahan',
-        id: pgUploadId,
-        resetStatus: true,
-      });
-      if (!res.success) {
-        showToast('⚠️ Dokumen terupload, tapi gagal reset status. Hubungi admin.', true);
-      }
+      setTimeout(()=>showToast('Dokumen tersimpan. Tekan "Kirim Ulang ke KPPN" di menu Riwayat agar diproses.', false, true), 600);
     } catch(e) {
       showToast('⚠️ Dokumen terupload, tapi gagal reset status. Hubungi admin.', true);
     }
@@ -5022,8 +5048,15 @@ function rwApplyFilter(){
     if (_rwFilter === 'ganti'  && x._kind !== 'ganti')  return false;
     if (_rwStatus !== 'all') {
       const s = (x.status || 'Menunggu').toLowerCase();
-      if (_rwStatus === 'terdaftar' && !['terdaftar','selesai'].includes(s)) return false;
-      else if (_rwStatus !== 'terdaftar' && s !== _rwStatus) return false;
+      const isG = x._kind === 'ganti';
+      const naik = statusTurunan(s, rwSudahUpload_(x, isG), rwDokLengkap_(x, isG)); // null kalau bukan Menunggu
+      if (['belum-upload','belum-lengkap','siap'].includes(_rwStatus)) {
+        if (naik !== _rwStatus) return false;
+      } else if (_rwStatus === 'menunggu') {
+        if (!naik) return false;                       // 'menunggu' = gabungan ketiganya
+      } else if (_rwStatus === 'terdaftar') {
+        if (!['terdaftar','selesai'].includes(s)) return false;
+      } else if (s !== _rwStatus) return false;
     }
     if (_rwSearch) {
       const ref = (x.refKode || x.id || '').toLowerCase();
@@ -5046,11 +5079,14 @@ function rwApplyFilter(){
   };
 
   const statusOpts = [
-    {v:'all',       l:'Semua status'},
-    {v:'menunggu',  l:'⏳ Menunggu'},
-    {v:'diproses',  l:'🔄 Diproses'},
-    {v:'terdaftar', l:'✅ Terdaftar'},
-    {v:'ditolak',   l:'❌ Ditolak'},
+    {v:'all',           l:'Semua status'},
+    {v:'menunggu',      l:'⏳ Menunggu (semua)'},
+    {v:'belum-upload',  l:'　📤 Belum Upload Dokumen'},
+    {v:'belum-lengkap', l:'　📎 Dokumen Belum Lengkap'},
+    {v:'siap',          l:'　✅ Siap Diproses KPPN'},
+    {v:'diproses',      l:'🔄 Diproses'},
+    {v:'terdaftar',     l:'✅ Terdaftar'},
+    {v:'ditolak',       l:'❌ Ditolak'},
   ];
 
   const toolbar = `
@@ -5126,6 +5162,41 @@ function rwResetFilter(){
   rwApplyFilter();
 }
 
+// Apakah satker sudah mengunggah dokumen apa pun (selain foto OTP)?
+function rwSudahUpload_(x, isGanti) {
+  const files = (x.filesJson && typeof x.filesJson === 'object') ? x.filesJson : {};
+  if (isGanti) return Object.keys(files).filter(k => !k.startsWith('otpFoto_')).length > 0;
+  return !!(x.sudahUpload || x.hasFiles ||
+            Object.keys(files).filter(k => !k.startsWith('otpFoto_')).length > 0);
+}
+
+// Apakah dokumen wajib sudah lengkap? Dipakai untuk memecah status "Menunggu".
+// Mengembalikan true/false (bukan undefined) supaya badge tahu boleh memecah status.
+function rwDokLengkap_(x, isGanti) {
+  try {
+    const files = (x.filesJson && typeof x.filesJson === 'object') ? x.filesJson : {};
+    if (isGanti) {
+      let menjadi = x.menjadi;
+      if (typeof menjadi === 'string') { try { menjadi = JSON.parse(menjadi); } catch(e) { menjadi = []; } }
+      return !!cekLengkapPgFrontend(files, Array.isArray(menjadi) ? menjadi : []).lengkap;
+    }
+    if (x.sudahUploadLengkap === true || x.sudahUploadLengkap === false) return x.sudahUploadLengkap;
+    return !!cekLengkapFrontend(files).lengkap;
+  } catch(e) { return false; }
+}
+
+// Tombol "Kirim Ulang ke KPPN" - hanya untuk pengajuan DITOLAK.
+// Sengaja dikunci sampai dokumen wajib lengkap, supaya satker tidak mengirim
+// perbaikan yang masih kurang berkas dan langsung ditolak lagi.
+function tombolKirimUlang_(jenis, id, dokLengkap) {
+  if (dokLengkap) {
+    return `<button onclick="event.stopPropagation();kirimUlangKePpn('${jenis}','${esc(id)}',this)"
+      style="background:#15803D;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px">📤 Kirim Ulang</button>`;
+  }
+  return `<button disabled title="Lengkapi dokumen wajib dulu sebelum mengirim ulang"
+    style="background:var(--gray-200);color:var(--gray-500);border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:not-allowed;margin-left:4px">🔒 Kirim Ulang</button>`;
+}
+
 // Render satu baris (header ringkas + opsional detail panel di bawahnya saat expanded)
 function rwRenderRow(x) {
   const isGanti = x._kind === 'ganti';
@@ -5140,12 +5211,11 @@ function rwRenderRow(x) {
     : `<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;background:var(--blue);color:#fff;padding:3px 8px;border-radius:10px;letter-spacing:.3px">📝 PENDAFTARAN</span>`;
 
   const isDitolak = sLow === 'ditolak';
-  const sudahUpload = isGanti
-    ? Object.keys((x.filesJson||{})).length > 0
-    : !!(x.sudahUpload || x.hasFiles ||
-        (x.filesJson && typeof x.filesJson === 'object' && Object.keys(x.filesJson).filter(k => !k.startsWith('otpFoto_')).length > 0));
+  const sudahUpload = rwSudahUpload_(x, isGanti);
   const isMenunggu = sLow === 'menunggu';
   const belumUpload = !sudahUpload && !isDitolak && !['terdaftar','selesai','diproses'].includes(sLow);
+  // Kelengkapan dokumen -> dipakai untuk memecah status "Menunggu" saat ditampilkan.
+  const dokLengkap = rwDokLengkap_(x, isGanti);
 
   // Indikator perlu aksi
   const needsAction = isDitolak || belumUpload;
@@ -5169,6 +5239,7 @@ function rwRenderRow(x) {
       aksi += `<button onclick="event.stopPropagation();pgPerbaikiData('${esc(id)}')"
         style="background:${isDitolak?'#b91c1c':'#7C3AED'};color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">✏️ ${isDitolak?'Perbaiki':'Ubah'}</button>`;
     }
+    if (isDitolak) aksi += tombolKirimUlang_('ganti', id, dokLengkap);
     if (belumUpload) {
       aksi += `<button onclick="event.stopPropagation();pgBukaUploadModal('${esc(id)}')"
         style="background:#7C3AED;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">📤 Upload</button>`;
@@ -5178,6 +5249,7 @@ function rwRenderRow(x) {
       aksi = `<button onclick="event.stopPropagation();bukaEditRiwayat('${esc(id)}')"
         style="background:${isDitolak?'#b91c1c':'var(--blue)'};color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">✏️ ${isDitolak?'Perbaiki':'Ubah'}</button>`;
     }
+    if (isDitolak) aksi += tombolKirimUlang_('daftar', id, dokLengkap);
     if (belumUpload) {
       aksi += `<button onclick="event.stopPropagation();bukaUploadDokumenByRef('${esc(id)}')"
         style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">📤 Upload</button>`;
@@ -5197,7 +5269,7 @@ function rwRenderRow(x) {
         <div style="font-size:11px;color:var(--gray-500);margin-top:2px">${esc(x.namaSatker||'—')}</div>
       </td>
       <td style="white-space:nowrap;font-size:12px;color:var(--gray-600)">${tgl}</td>
-      <td>${badgeStatus(status, sudahUpload)} ${indikator}</td>
+      <td>${badgeStatus(status, sudahUpload, dokLengkap, x.catatanAdmin)} ${indikator}</td>
       <td style="text-align:right;padding-right:18px;white-space:nowrap">${aksi}</td>
     </tr>`;
 
@@ -5332,12 +5404,25 @@ function rwRenderDetailDaftar(d, rowKey){
       </div>`;
     }
   } else if (isDitolak) {
+    const _rev = revisiKe_(d.catatanAdmin);
+    const _lgkp = rwDokLengkap_(d, false);
     banner = `<div style="background:#fff1f2;border:1.5px solid #fca5a5;border-radius:8px;padding:12px 14px;margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700;color:#b91c1c;margin-bottom:4px">❌ Ditolak</div>
-      ${d.catatanAdmin?`<div style="font-size:11px;color:#7f1d1d;background:#fee2e2;border-radius:6px;padding:6px 10px;margin-bottom:8px"><strong>Alasan:</strong> ${esc(d.catatanAdmin)}</div>`:''}
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <div style="font-size:12px;font-weight:700;color:#b91c1c;margin-bottom:6px">
+        ❌ Ditolak KPPN &mdash; perlu diperbaiki${_rev?` <span style="font-weight:600;color:#5B21B6">(sudah ${_rev}x dikirim ulang)</span>`:''}
+      </div>
+      ${alasanTolak_(d.catatanAdmin)?`<div style="font-size:11px;color:#7f1d1d;background:#fee2e2;border-radius:6px;padding:6px 10px;margin-bottom:8px"><strong>Alasan penolakan:</strong> ${esc(alasanTolak_(d.catatanAdmin))}</div>`:''}
+      <div style="font-size:11px;color:#7f1d1d;margin-bottom:8px">
+        Langkah: <strong>1)</strong> perbaiki data atau dokumen sesuai catatan di atas &rarr;
+        <strong>2)</strong> tekan <strong>Kirim Ulang ke KPPN</strong>.
+        Selama belum dikirim ulang, pengajuan ini <u>tidak</u> masuk antrean KPPN.
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <button class="btn btn-sm" onclick="bukaEditRiwayat('${esc(d.refKode)}')" style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer">✏️ Perbaiki Data</button>
         <button class="btn btn-sm" onclick="bukaUploadDokumenByRef('${esc(d.refKode)}',true)" style="background:#fff;color:#b91c1c;border:1.5px solid #b91c1c;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">📤 Upload Ulang</button>
+        ${_lgkp
+          ? `<button class="btn btn-sm" onclick="kirimUlangKePpn('daftar','${esc(d.refKode)}',this)" style="background:#15803D;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer">📤 Kirim Ulang ke KPPN</button>`
+          : `<button class="btn btn-sm" disabled title="Lengkapi dokumen wajib dulu" style="background:var(--gray-200);color:var(--gray-500);border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:not-allowed">🔒 Kirim Ulang ke KPPN</button>
+             <span style="font-size:10px;color:var(--gray-500)">Dokumen wajib belum lengkap</span>`}
       </div>
     </div>`;
   }
@@ -5502,12 +5587,25 @@ function rwRenderDetailGanti(g, rowKey){
       </div>`;
     }
   } else if (isDitolak) {
+    const _rev = revisiKe_(g.catatanAdmin);
+    const _lgkp = rwDokLengkap_(g, true);
     banner = `<div style="background:#fff1f2;border:1.5px solid #fca5a5;border-radius:8px;padding:12px 14px;margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700;color:#b91c1c;margin-bottom:4px">❌ Ditolak</div>
-      ${g.catatanAdmin?`<div style="font-size:11px;color:#7f1d1d;background:#fee2e2;border-radius:6px;padding:6px 10px;margin-bottom:8px"><strong>Alasan:</strong> ${esc(g.catatanAdmin)}</div>`:''}
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <div style="font-size:12px;font-weight:700;color:#b91c1c;margin-bottom:6px">
+        ❌ Ditolak KPPN &mdash; perlu diperbaiki${_rev?` <span style="font-weight:600;color:#5B21B6">(sudah ${_rev}x dikirim ulang)</span>`:''}
+      </div>
+      ${alasanTolak_(g.catatanAdmin)?`<div style="font-size:11px;color:#7f1d1d;background:#fee2e2;border-radius:6px;padding:6px 10px;margin-bottom:8px"><strong>Alasan penolakan:</strong> ${esc(alasanTolak_(g.catatanAdmin))}</div>`:''}
+      <div style="font-size:11px;color:#7f1d1d;margin-bottom:8px">
+        Langkah: <strong>1)</strong> perbaiki data atau dokumen sesuai catatan di atas &rarr;
+        <strong>2)</strong> tekan <strong>Kirim Ulang ke KPPN</strong>.
+        Selama belum dikirim ulang, pengajuan ini <u>tidak</u> masuk antrean KPPN.
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <button class="btn btn-sm" onclick="pgPerbaikiData('${esc(g.id)}')" style="background:#b91c1c;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer">✏️ Perbaiki Data</button>
         <button class="btn btn-sm" onclick="pgBukaUploadModal('${esc(g.id)}')" style="background:#fff;color:#b91c1c;border:1.5px solid #b91c1c;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">📤 Upload Ulang</button>
+        ${_lgkp
+          ? `<button class="btn btn-sm" onclick="kirimUlangKePpn('ganti','${esc(g.id)}',this)" style="background:#15803D;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer">📤 Kirim Ulang ke KPPN</button>`
+          : `<button class="btn btn-sm" disabled title="Lengkapi dokumen wajib dulu" style="background:var(--gray-200);color:var(--gray-500);border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:not-allowed">🔒 Kirim Ulang ke KPPN</button>
+             <span style="font-size:10px;color:var(--gray-500)">Dokumen wajib belum lengkap</span>`}
       </div>
     </div>`;
   }
@@ -5743,7 +5841,7 @@ function rwRenderKartuGanti(g, isLatest) {
         <div style="font-family:monospace;font-weight:700;font-size:15px;color:#7C3AED">${esc(g.id||'—')}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        ${badgeStatus(status)}
+        ${badgeStatus(status, rwSudahUpload_(g, true), rwDokLengkap_(g, true), g.catatanAdmin)}
       </div>
     </div>
 
@@ -6306,22 +6404,11 @@ async function udSelesai() {
     ? udDokList.filter(d => d.required && !udDonemap[d.key])
     : [];
 
-  // Jika ini mode perbaikan (upload ulang setelah ditolak), reset status ke Menunggu
-  if (udNeedsReupload && udRefKode) {
-    try {
-      showToast('⏳ Memperbarui status...');
-      const res = await apiPost({
-        action: 'updatePendaftaran',
-        refKode: udRefKode,
-        resetStatus: true,
-      });
-      if (!res.success) {
-        showToast('⚠️ Dokumen terupload, tapi gagal reset status. Hubungi admin.', true);
-      }
-    } catch(e) {
-      showToast('⚠️ Dokumen terupload, tapi gagal reset status. Hubungi admin.', true);
-    }
-  }
+  // CATATAN: dulu di sini status otomatis direset ke "Menunggu" begitu satker
+  // selesai upload. Akibatnya pengajuan bisa masuk antrean KPPN tanpa satker
+  // sadar, dan alasan penolakan ikut terhapus. Sekarang status hanya berubah
+  // lewat tombol "Kirim Ulang ke KPPN" yang ditekan satker secara sadar.
+  const _perluKirimUlang = udNeedsReupload && udRefKode;
 
   closeModal('modalUploadDokumen');
   // Selalu refresh riwayat agar step "Upload Dokumen" langsung tampil done
@@ -6330,6 +6417,9 @@ async function udSelesai() {
   udDonemap        = {};
   udNeedsReupload  = false;
   _cacheInvalidate('dashboard'); // data upload berubah, cache dashboard harus fresh
+  if (_perluKirimUlang) {
+    setTimeout(()=>showToast('Dokumen tersimpan. Jangan lupa tekan "Kirim Ulang ke KPPN" di menu Riwayat agar diproses.', false, true), 600);
+  }
   // Satu toast yang jelas — kalau lengkap: sukses; kalau parsial: info apa yang masih kurang
   if (wajibBelum.length) {
     showToast(
@@ -6739,7 +6829,9 @@ async function doSimpanEditRiwayat() {
       btns.forEach(b => b.textContent = '⏳ Menyimpan perbaikan...');
       const resUpd = await apiPost({
         action: 'updatePendaftaran',
-        refKode: info.refKode, namaKpa, nip, noHp, levelSatker, namaSatker, kodeSatker, resetStatus: true,
+        refKode: info.refKode, namaKpa, nip, noHp, levelSatker, namaSatker, kodeSatker,
+        // resetStatus sengaja TIDAK dikirim: perbaikan data saja belum berarti
+        // pengajuan siap diperiksa. Satker menekan "Kirim Ulang ke KPPN" sendiri.
       });
       if (!resUpd.success) throw new Error(resUpd.message || 'Gagal menyimpan');
 
@@ -6893,7 +6985,7 @@ async function doSimpanPerbaikan() {
       refKode: pdData.refKode,
       namaKpa, nip, noHp, levelSatker,
       namaSatker, kodeSatker,
-      resetStatus: true,
+      // resetStatus sengaja TIDAK dikirim - lihat catatan di doSimpanPerbaikan.
     });
     if (!resUpd.success) throw new Error(resUpd.message || 'Gagal menyimpan perbaikan');
 
@@ -6936,9 +7028,81 @@ function fmtTglWaktu(iso) {
   return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 
-function badgeStatus(s, sudahUpload) {
-  if ((s === 'Ditolak' || s === 'ditolak') && sudahUpload) {
-    return `<span class="badge" style="background:#EDE9FE;color:#5B21B6;border-color:#C4B5FD">Perbaikan</span>`;
+// ── STATUS TURUNAN ──────────────────────────────────────────────────────────
+// Status yang tersimpan di sheet tetap "Menunggu" (supaya alur proses & rollback
+// KPPN tidak berubah), tetapi yang DITAMPILKAN dipecah menurut kelengkapan dokumen
+// supaya jelas mana yang masih ditunggu satker dan mana yang tinggal diproses KPPN.
+//   dokLengkap === true  -> 'siap'          (dokumen lengkap, giliran KPPN)
+//   sudahUpload, blm lgkp-> 'belum-lengkap' (satker masih kurang berkas)
+//   belum upload         -> 'belum-upload'  (satker belum mulai upload)
+const STATUS_TURUNAN_LABEL = {
+  'belum-upload':  {teks:'Belum Upload Dokumen', cls:'badge-belumupload'},
+  'belum-lengkap': {teks:'Dokumen Belum Lengkap', cls:'badge-belumlengkap'},
+  'siap':          {teks:'Siap Diproses',        cls:'badge-siapproses'},
+};
+// ── PENANDA REVISI ──────────────────────────────────────────────────────────
+// Catatan penolakan berawalan "[REVISI n]" menandakan pengajuan ini sudah pernah
+// diperbaiki lalu dikirim ulang sebanyak n kali. Lihat tandaiRevisi_ di backend.
+function revisiKe_(catatan) {
+  const m = String(catatan || '').match(/^\[REVISI (\d+)\]/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+function alasanTolak_(catatan) {
+  return String(catatan || '').replace(/^\[REVISI \d+\]\s*/, '').trim();
+}
+
+// Kirim perbaikan kembali ke KPPN. Hanya untuk pengajuan berstatus Ditolak.
+async function kirimUlangKePpn(jenis, id, btnEl) {
+  if (!id) { showToast('Data tidak ditemukan.', true); return; }
+  if (!confirm('Kirim perbaikan ini ke KPPN untuk diperiksa ulang?\n\nPastikan data dan dokumen sudah dibetulkan sesuai catatan penolakan.')) return;
+  const btn = btnEl || null; const oldTxt = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Mengirim...'; }
+  try {
+    const res = await apiPost(jenis === 'ganti'
+      ? { action:'kirimUlangPerubahan', id: id }
+      : { action:'kirimUlangDaftar', refKode: id });
+    if (!res || !res.success) { showToast((res && res.message) || 'Gagal mengirim ulang', true); return; }
+    _cacheInvalidate('dashboard'); _cacheInvalidate('riwayatPerubahan');
+    showToast('✅ Perbaikan terkirim ke KPPN (revisi ke-' + (res.revisiKe || 1) + '). Status kini Menunggu.', false, true);
+    initUserRiwayat();
+  } catch(e) {
+    showToast('❌ Gagal mengirim ulang', true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = oldTxt || '📤 Kirim Ulang ke KPPN'; }
+  }
+}
+
+function statusTurunan(s, sudahUpload, dokLengkap) {
+  // Pemanggil yang TIDAK tahu kelengkapan dokumen (mis. Email SAKTI) mengirim
+  // dokLengkap = undefined -> jangan dipecah, pakai label lama.
+  if (dokLengkap === undefined) return null;
+  const low = String(s || 'Menunggu').trim().toLowerCase();
+  if (low !== 'menunggu' && low !== 'submitted' && low !== '') return null;
+  if (dokLengkap === true) return 'siap';
+  if (sudahUpload) return 'belum-lengkap';
+  return 'belum-upload';
+}
+function badgeStatus(s, sudahUpload, dokLengkap, catatanAdmin) {
+  const low = String(s || '').trim().toLowerCase();
+  // DITOLAK ditampilkan apa adanya. Dulu di sini status ditolak diubah jadi
+  // "Perbaikan" hanya karena sudahUpload bernilai true - padahal itu berasal dari
+  // dokumen LAMA sebelum ditolak, bukan bukti satker sudah memperbaiki apa pun.
+  if (low === 'ditolak') {
+    return `<span class="badge badge-ditolak">Ditolak &mdash; Perlu Perbaikan</span>`;
+  }
+  const rev = revisiKe_(catatanAdmin);
+  const turun = statusTurunan(s, sudahUpload, dokLengkap);
+  if (turun) {
+    const t = STATUS_TURUNAN_LABEL[turun];
+    if (rev) {
+      return `<span class="badge badge-revisi">Revisi ke-${rev}</span> <span class="badge ${t.cls}">${t.teks}</span>`;
+    }
+    return `<span class="badge ${t.cls}">${t.teks}</span>`;
+  }
+  if (rev && ['diproses','terdaftar','selesai'].includes(low)) {
+    // tetap tunjukkan bahwa ini hasil revisi, supaya jejaknya tidak hilang
+    var lbl = {'diproses':'badge-proses','terdaftar':'badge-selesai','selesai':'badge-selesai'}[low];
+    return `<span class="badge badge-revisi">Revisi ke-${rev}</span> <span class="badge ${lbl}">${esc(s)}</span>`;
   }
   const map = {
     'Menunggu':  'badge-menunggu',
