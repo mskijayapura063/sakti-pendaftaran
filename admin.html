@@ -903,8 +903,37 @@ function initApp(){
   const isAdmin=['Admin','SuperAdmin'].includes(currentUser.role);
   document.querySelectorAll('.admin-only').forEach(el=>el.style.display=isAdmin?'flex':'none');
   showPanel('dashboard');
+  // Siapkan data menu berat di LATAR BELAKANG sambil admin melihat dashboard.
+  // Begitu menu Pendaftaran/Pergantian dibuka, datanya biasanya sudah siap
+  // sehingga tidak lagi menunggu "Memuat..." dari nol.
+  _prefetchAdmin();
   // Auto refresh dashboard tiap 60 detik
   setInterval(()=>{ if(document.getElementById('nav-dashboard')?.classList.contains('active')) loadDashboard(); },60000);
+}
+
+// Ambil daftar pendaftaran & pergantian lebih awal, tanpa memblokir tampilan.
+// Memakai kunci cache yang SAMA dengan loadSubmissions/loadPergantian, jadi
+// keduanya langsung memakai hasil ini tanpa permintaan ulang.
+function _prefetchAdmin(){
+  try {
+    if (!_cacheGet('adminDaftarList')) {
+      apiPost({action:'getDaftarList'}).then(function(r){
+        if (r && r.success) {
+          _cacheSet('adminDaftarList', r.list || []);
+          // Kalau admin sudah terlanjur membuka menunya, segarkan tampilannya.
+          if (document.getElementById('subBody')) { cachedSubmissions = r.list || []; filterSubmissions(); }
+        }
+      }).catch(function(){});
+    }
+    if (!_cacheGet('adminDaftarPerubahan')) {
+      apiPost({action:'getDaftarPerubahan'}).then(function(r){
+        if (r && r.success) {
+          _cacheSet('adminDaftarPerubahan', r.list || []);
+          if (document.getElementById('pgBodyAdmin')) { cachedPergantian = r.list || []; filterPergantian(); }
+        }
+      }).catch(function(){});
+    }
+  } catch(e) {}
 }
 
 // ════════════════════════════════════════════════════════
