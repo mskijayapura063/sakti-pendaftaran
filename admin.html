@@ -1066,7 +1066,7 @@ async function loadDashboard(){
     // User SAKTI stats
     upd('Total-User-SAKTI', d.total||0);
     // "Menunggu" dipecah: yang masih ditunggu satker vs yang tinggal diproses KPPN.
-    admHitungMenunggu_(d.menunggu||0).then(function(p){
+    admHitungMenunggu_(d.menunggu||0, d).then(function(p){
       upd('Menunggu-Satker', p.menungguSatker);
       upd('Siap-Diproses',   p.siapDiproses);
     });
@@ -1661,8 +1661,12 @@ function sortByPriority(list, getStatus, getSudahUpload, getSudahUploadLengkap, 
 // (bola di satker) dan berapa yang sudah lengkap (bola di KPPN).
 // Kalau rinciannya tidak bisa diambil, semua dihitung sebagai menunggu satker
 // supaya KPPN tidak mengira ada antrean siap proses padahal tidak ada.
-async function admHitungMenunggu_(totalMenunggu){
+async function admHitungMenunggu_(totalMenunggu, dariServer){
   let satker=0, siap=0;
+  // Jalur cepat: getDashboard sudah mengirim angkanya, tidak perlu 2 permintaan lagi.
+  if (dariServer && (dariServer.menungguSatker != null || dariServer.siapDiproses != null)) {
+    return { menungguSatker: dariServer.menungguSatker || 0, siapDiproses: dariServer.siapDiproses || 0 };
+  }
   try{
     // Cache menyimpan ARRAY (lihat loadSubmissions / loadPergantian), sedangkan
     // apiPost mengembalikan OBJEK {success,list}. Dua-duanya harus ditangani.

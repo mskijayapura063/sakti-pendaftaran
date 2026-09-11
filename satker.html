@@ -1189,6 +1189,14 @@ function statCard(cls, icon, num, label) {
 // supaya satker tidak merasa aman padahal berkasnya kurang.
 async function dashHitungMenunggu_(totalMenunggu) {
   let perlu = 0, siap = 0;
+  // Jalur cepat: server sudah menghitungnya di getSatkerDashboard, jadi TIDAK
+  // perlu permintaan tambahan. Angka server juga peka peran, lebih akurat.
+  try {
+    const d = (window._dashboardRes && window._dashboardRes.data) || null;
+    if (d && (d.perluDilengkapi != null || d.siapDiproses != null)) {
+      return { perluDilengkapi: d.perluDilengkapi || 0, siapDiproses: d.siapDiproses || 0 };
+    }
+  } catch(e) {}
   try {
     const rd = _cacheGet('dashboard') || await apiPost({ action:'getSatkerDashboard' });
     const rg = _cacheGet('riwayatPerubahan') || await apiPost({ action:'getRiwayatPerubahan' });
@@ -3330,13 +3338,15 @@ async function ubDoDownloadExcel() {
     if (!res2.success) throw new Error(res2.message||'Gagal simpan');
     _cacheInvalidate('dashboard');
     // Refresh window._ubCurrentData
-    try {
-      const res3 = await apiPost({ action:'getSatkerDashboard' });
-      if (res3&&res3.success) {
-        if (res3 && res3.success) _cacheSet('dashboard', res3);
-        window._ubCurrentData = res3.latest || (res3.list&&res3.list[0]) || window._ubCurrentData;
+    // Segarkan data di LATAR BELAKANG. Dulu di-await, sehingga satker harus
+    // menunggu satu permintaan lagi padahal Excel sudah terunduh dan data
+    // sudah tersimpan. Tidak ada yang bergantung pada hasilnya saat ini juga.
+    apiPost({ action:'getSatkerDashboard' }).then(function(res3){
+      if (res3 && res3.success) {
+        _cacheSet('dashboard', res3);
+        window._ubCurrentData = res3.latest || (res3.list && res3.list[0]) || window._ubCurrentData;
       }
-    } catch(e2){}
+    }).catch(function(){});
   } catch(e) {
     // PENTING: kalau data GAGAL tersimpan, JANGAN biarkan lanjut upload.
     // Dulu tetap di-unlock -> satker upload dokumen padahal barisnya tidak ada di server,
