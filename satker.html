@@ -719,39 +719,75 @@ async function _prefetchAll() {
 async function apiPost(payload) {
   if (currentUser?.token && !payload.token) payload.token = currentUser.token;
   const body = JSON.stringify(payload);
-  let text;
-  let _apiInfo = { status: 0, url: '', redirected: false };
+  const aksi = String(payload.action || '');
+
+  // Hanya aksi BACA yang boleh diulang otomatis. Aksi TULIS tidak pernah diulang,
+  // supaya kegagalan jaringan tidak berubah menjadi data ganda.
+  //
+  // Daftar di bawah sudah ditelusuri satu per satu di gs lama.js: semuanya hanya
+  // MEMBACA sheet lalu menyusun berkas (spreadsheet sementara dibuang setelah dipakai).
+  // 'generatePerubahanExcel' SENGAJA TIDAK ikut: fungsi itu menulis/upsert baris ke
+  // sheet Perubahan, jadi kalau diulang bisa memunculkan record ganda.
+  const AKSI_AMAN_DIULANG = [
+    'ping', 'validateToken', 'cekRef',
+    'generateExcel',        // handleGenerateExcel      - baca + rakit xlsx
+    'generateEmailExcel',   // handleGenerateEmailExcel - baca + rakit xlsx
+    'generateFormOTP',      // handleGenerateFormOTP    - baca + rakit docx
+    'unduhSemuaDokumen'     // handleUnduhSemuaDokumen  - baca Drive + rakit zip
+  ];
+  const bolehUlang = /^get/i.test(aksi) || AKSI_AMAN_DIULANG.includes(aksi);
+  const maksPercobaan = bolehUlang ? 3 : 1;
+
+  let gagalTerakhir = null;
+  for (let percobaan = 1; percobaan <= maksPercobaan; percobaan++) {
+    const hasil = await _apiSekali(body);
+    if (hasil.ok) return hasil.data;
+    gagalTerakhir = hasil;
+    if (hasil.putus) break;                     // koneksi putus: percuma diulang cepat
+    if (percobaan < maksPercobaan) {
+      await new Promise(function(r){ setTimeout(r, 700 * percobaan); });
+    }
+  }
+
+  if (gagalTerakhir && gagalTerakhir.putus) {
+    return { success:false, message:'Tidak bisa terhubung ke server. Cek koneksi internet & URL Apps Script.' };
+  }
+  const info = (gagalTerakhir && gagalTerakhir.info) || { status: 0 };
+  const isi  = (gagalTerakhir && gagalTerakhir.text) || '';
+  console.error('[apiPost] Balasan bukan JSON. HTTP', info.status, '| URL akhir:', info.url);
+  console.error('[apiPost] Isi balasan (2000 huruf pertama):\n', String(isi).slice(0, 2000));
+  window._apiBalasanTerakhir = { aksi: aksi, percobaan: maksPercobaan, info: info, isi: String(isi) };
+  const polos = String(isi).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const cuplikan = polos ? polos.slice(0, 160) : '(balasan kosong)';
+  return {
+    success: false,
+    message: 'Server tidak mengembalikan JSON (HTTP ' + info.status + ')'
+             + (maksPercobaan > 1 ? ' setelah ' + maksPercobaan + ' percobaan' : '')
+             + '. Balasan server: "' + cuplikan + '"',
+    _diagnosa: info,
+    _isiBalasan: String(isi)
+  };
+}
+
+// Satu kali tembak ke Apps Script. Mengembalikan {ok:true,data} atau info kegagalan.
+async function _apiSekali(body) {
+  let text, info = { status: 0, url: '', redirected: false };
   try {
     // Apps Script membalas 302 ke script.googleusercontent.com; browser mengikuti
     // redirect itu sendiri dan mengembalikan body JSON-nya. CUKUP SATU fetch.
-    // Versi lama menembak dua kali (redirect:'manual' lalu redirect:'follow'); pada
-    // permintaan lintas-origin respons pertama SELALU 'opaqueredirect', sehingga
-    // Apps Script dieksekusi DUA KALI untuk setiap panggilan -> lambat 2x lipat dan
-    // aksi tulis (mis. buat pengajuan) bisa menghasilkan record ganda.
     // CATATAN: jangan pasang header Content-Type, supaya tetap "simple request"
     // dan browser tidak mengirim preflight OPTIONS (1 round-trip tambahan).
     const r = await fetch(APPS_SCRIPT_URL, { method: 'POST', redirect: 'follow', body: body });
     text = await r.text();
-    _apiInfo = { status: r.status, url: r.url, redirected: r.redirected };
-  } catch(netErr) {
+    info = { status: r.status, url: r.url, redirected: r.redirected };
+  } catch (netErr) {
     console.error('[apiPost] Network error:', netErr);
-    return { success:false, message:'Tidak bisa terhubung ke server. Cek koneksi internet & URL Apps Script.' };
+    return { ok: false, putus: true };
   }
   try {
-    return JSON.parse(text);
-  } catch(parseErr) {
-    // JANGAN menebak penyebabnya. Tampilkan apa adanya supaya bisa didiagnosis.
-    console.error('[apiPost] Balasan bukan JSON. HTTP', _apiInfo.status, '| URL akhir:', _apiInfo.url);
-    console.error('[apiPost] Isi balasan (2000 huruf pertama):\n', String(text || '').slice(0, 2000));
-    window._apiBalasanTerakhir = { info: _apiInfo, isi: String(text || '') };
-    const polos = String(text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    const cuplikan = polos ? polos.slice(0, 160) : '(balasan kosong)';
-    return {
-      success: false,
-      message: 'Server tidak mengembalikan JSON (HTTP ' + _apiInfo.status + '). Balasan server: "' + cuplikan + '"',
-      _diagnosa: _apiInfo,
-      _isiBalasan: String(text || '')
-    };
+    return { ok: true, data: JSON.parse(text) };
+  } catch (e) {
+    return { ok: false, putus: false, info: info, text: text };
   }
 }
 
@@ -2223,6 +2259,10 @@ function ubIsUserFilled(u){
 function ubRenderUserCard(id){
   const u=ubGetUserById(id);
   const wrap=document.getElementById('ubUserList');
+  // Sama seperti pgRenderUserCard: jangan menggambar kalau wadahnya belum ada
+  // (mis. pengguna dimuat dari Riwayat saat layar masih Step 1).
+  // ubReRenderUsers() yang akan menggambar ulang di Step 2.
+  if(!wrap || !u) return;
   document.getElementById(`ubuc-${id}`)?.remove();
   const filled=ubIsUserFilled(u);
   const editLabel=filled?'✏️ Edit':'📝 Isi Data';
@@ -2678,7 +2718,10 @@ async function initUserBaru() {
     //     ketika sebetulnya mereka ingin mendaftarkan orang lain.
     body.innerHTML = ubRenderPilihan(openList, kode);
   } catch(e) {
-    body.innerHTML = `<div class="info-box red">❌ Gagal memuat data. <button class="btn btn-secondary btn-sm" onclick="initUserBaru()">Coba Lagi</button></div>`;
+    console.error('[initUserBaru] gagal:', e);
+    body.innerHTML = `<div class="info-box red">❌ Gagal memuat data.
+      <button class="btn btn-secondary btn-sm" onclick="initUserBaru()">Coba Lagi</button>
+      <div style="font-size:11px;color:var(--gray-600);margin-top:8px">Rincian: ${esc(e && e.message ? e.message : String(e))}</div></div>`;
   }
 }
 
@@ -2697,6 +2740,34 @@ function ubRingkasNama_(d) {
   if (nama.length <= 2) return nama.join(', ');
   return nama.slice(0,2).join(', ') + ' +' + (nama.length-2) + ' lainnya';
 }
+// ── STATUS KARTU DI HALAMAN PILIHAN ─────────────────────────────────────────
+// Status mentah "Menunggu" terlalu kabur: satker mengira berkasnya sudah di tangan
+// KPPN padahal dokumen wajibnya masih kurang. Di sini status dipecah persis seperti
+// badge di Riwayat, dan dokumen yang kurang disebut satu per satu.
+function statusKartuPilihan_(ditolak, sudahUpload, cek) {
+  var kurang = (cek && cek.kurang) || [];
+  if (ditolak) {
+    return { ikon:'&#10060;', teks:'DITOLAK &mdash; PERLU PERBAIKAN',
+             bg:'#FEE2E2', fg:'#991B1B', garis:'var(--red)', kurang:kurang };
+  }
+  if (cek && cek.lengkap) {
+    return { ikon:'&#9989;', teks:'SIAP DIPROSES KPPN',
+             bg:'#E0F2FE', fg:'#075985', garis:'#38BDF8', kurang:[] };
+  }
+  if (sudahUpload) {
+    return { ikon:'&#128206;', teks:'DOKUMEN BELUM LENGKAP',
+             bg:'#FFF3E0', fg:'#C2410C', garis:'#F97316', kurang:kurang };
+  }
+  return { ikon:'&#128196;', teks:'BELUM UPLOAD DOKUMEN',
+           bg:'#FEE2E2', fg:'#B91C1C', garis:'#EF4444', kurang:kurang };
+}
+function kurangHtmlPilihan_(kurang) {
+  if (!kurang || !kurang.length) return '';
+  return `<div style="font-size:12px;color:#C2410C;background:#FFF7ED;border:1px solid #FDBA74;border-radius:8px;padding:8px 10px;margin-bottom:10px">
+      <strong>Dokumen yang masih kurang (${kurang.length}):</strong><br/>${kurang.map(k=>esc(k)).join(' &middot; ')}
+    </div>`;
+}
+
 function ubRenderPilihan(list, kode) {
   const kartu = (list||[]).map(d => {
     const ref     = String(d.refKode||'');
@@ -2705,18 +2776,19 @@ function ubRenderPilihan(list, kode) {
     const catatan = String(d.catatanAdmin || d.alasanTolak || d.catatan || '').trim();
     const nama    = ubRingkasNama_(d);
     const jml     = Number(d.userCount||0) || (nama ? nama.split(',').length : 0);
-    const warna   = ditolak ? 'var(--red)' : '#D97706';
-    const bgBadge = ditolak ? '#FEE2E2' : '#FEF3C7';
-    const fgBadge = ditolak ? '#991B1B' : '#92400E';
+    const cek     = cekLengkapFrontend(d.filesJson);
+    const sUp     = rwSudahUpload_(d, false);
+    const st      = statusKartuPilihan_(ditolak, sUp, cek);
     return `
-      <div style="border:1px solid ${warna};border-radius:10px;padding:14px;margin-bottom:12px;background:#fff">
+      <div style="border:1px solid ${st.garis};border-radius:10px;padding:14px;margin-bottom:12px;background:#fff">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
           <strong style="font-size:13px">Ref ${esc(ref)}</strong>
-          <span style="background:${bgBadge};color:${fgBadge};font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px">${ditolak?'❌ ':'⏳ '}${esc(status)}</span>
+          <span style="background:${st.bg};color:${st.fg};font-size:11px;font-weight:800;letter-spacing:.2px;padding:4px 10px;border-radius:6px">${st.ikon} ${st.teks}</span>
         </div>
-        <div style="font-size:12px;color:var(--gray-700);margin-bottom:${catatan?'4px':'10px'}">
+        <div style="font-size:12px;color:var(--gray-700);margin-bottom:8px">
           ${jml?`${jml} pengguna`:'Belum ada pengguna'}${nama?` &middot; ${esc(nama)}`:''}
         </div>
+        ${kurangHtmlPilihan_(st.kurang)}
         ${catatan?`<div style="font-size:12px;color:var(--red);margin-bottom:10px">Alasan ditolak: <em>${esc(catatan)}</em></div>`:''}
         <button class="btn btn-outline btn-sm" onclick="ubPilihPerbaiki('${esc(ref)}')">
           ${ditolak?'🔧 Perbaiki pengajuan ini':'👁️ Lihat / ubah pengajuan ini'}
@@ -3450,7 +3522,12 @@ async function initUserGanti() {
     }
     setTimeout(()=>{ pgInitFlatpickr(); }, 80);
   } catch(e) {
-    body.innerHTML = `<div class="info-box red">❌ Gagal memuat data. <button class="btn btn-secondary btn-sm" onclick="initUserGanti()">Coba Lagi</button></div>`;
+    // Jangan sembunyikan penyebabnya. Pesan polos "Gagal memuat data" dulu membuat
+    // TypeError di pgRenderUserCard terlihat seperti gangguan jaringan.
+    console.error('[initUserGanti] gagal:', e);
+    body.innerHTML = `<div class="info-box red">❌ Gagal memuat data.
+      <button class="btn btn-secondary btn-sm" onclick="initUserGanti()">Coba Lagi</button>
+      <div style="font-size:11px;color:var(--gray-600);margin-top:8px">Rincian: ${esc(e && e.message ? e.message : String(e))}</div></div>`;
   }
 }
 
@@ -3482,18 +3559,21 @@ function pgRenderPilihan(list, kode) {
     const nama    = pgRingkasNama_(g);
     const jmlS    = Array.isArray(g.semula)  ? g.semula.length  : 0;
     const jmlM    = Array.isArray(g.menjadi) ? g.menjadi.length : 0;
-    const warna   = ditolak ? 'var(--red)' : '#D97706';
-    const bgBadge = ditolak ? '#FEE2E2' : '#FEF3C7';
-    const fgBadge = ditolak ? '#991B1B' : '#92400E';
+    let _mj = g.menjadi;
+    if (typeof _mj === 'string') { try { _mj = JSON.parse(_mj); } catch(e) { _mj = []; } }
+    const cek = cekLengkapPgFrontend(g.filesJson, Array.isArray(_mj) ? _mj : []);
+    const sUp = rwSudahUpload_(g, true);
+    const st  = statusKartuPilihan_(ditolak, sUp, cek);
     return `
-      <div style="border:1px solid ${warna};border-radius:10px;padding:14px;margin-bottom:12px;background:#fff">
+      <div style="border:1px solid ${st.garis};border-radius:10px;padding:14px;margin-bottom:12px;background:#fff">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
           <strong style="font-size:13px">${esc(id)}</strong>
-          <span style="background:${bgBadge};color:${fgBadge};font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px">${ditolak?'❌ ':'⏳ '}${esc(status)}</span>
+          <span style="background:${st.bg};color:${st.fg};font-size:11px;font-weight:800;letter-spacing:.2px;padding:4px 10px;border-radius:6px">${st.ikon} ${st.teks}</span>
         </div>
-        <div style="font-size:12px;color:var(--gray-700);margin-bottom:${catatan?'4px':'10px'}">
+        <div style="font-size:12px;color:var(--gray-700);margin-bottom:8px">
           ${jmlS} semula &rarr; ${jmlM} menjadi${nama?` &middot; ${esc(nama)}`:''}
         </div>
+        ${kurangHtmlPilihan_(st.kurang)}
         ${catatan?`<div style="font-size:12px;color:var(--red);margin-bottom:10px">Alasan ditolak: <em>${esc(catatan)}</em></div>`:''}
         <button class="btn btn-outline btn-sm" onclick="pgPilihPerbaiki('${esc(id)}')">
           ${ditolak?'🔧 Perbaiki pengajuan ini':'👁️ Lihat / ubah pengajuan ini'}
@@ -3781,9 +3861,21 @@ function pgGoToStep(n) {
   }
 }
 
+// Bangun ulang SELURUH kartu pengguna dari state ke dalam wadah Step 2.
+// Dulu fungsi ini cuma memanggil pgRenderUserSummary(u.id) - kurang satu argumen
+// (tipe) sehingga tidak pernah benar, dan tidak pernah membuat kartunya. Akibatnya
+// kartu hanya ada kalau pgAddUser sempat menggambarnya; padahal saat memuat data
+// dari Riwayat, pgAddUser dipanggil ketika layar masih Step 1 (wadah belum ada).
 function pgReRenderUsers() {
-  pgSemulaUsers.forEach(u => pgRenderUserSummary(u.id));
-  pgMenjadiUsers.forEach(u => pgRenderUserSummary(u.id));
+  const wrapS = document.getElementById('pgSemulaList');
+  const wrapM = document.getElementById('pgMenjadiList');
+  if (!wrapS || !wrapM) return;   // belum di Step 2, nanti dipanggil lagi
+  wrapS.innerHTML = '';
+  wrapM.innerHTML = '';
+  pgSemulaUsers.forEach(u => pgRenderUserCard(u.id, 'semula'));
+  pgMenjadiUsers.forEach(u => pgRenderUserCard(u.id, 'menjadi'));
+  pgReindexAll();
+  pgRefreshAllCardActions();
 }
 
 function pgNextFromStep1() {
@@ -4169,6 +4261,11 @@ function pgIsFilledMenjadi(u){ return !!(u&&(u.nama||'').trim()&&(u.nipnrp||'').
 function pgRenderUserCard(id, tipe){
   const u=pgGetUser(id,tipe);
   const wrap=document.getElementById(tipe==='semula'?'pgSemulaList':'pgMenjadiList');
+  // Saat memuat data dari Riwayat, pengguna dimuat ke state ketika layar masih
+  // Step 1 - wadah Step 2 belum ada. Dulu di sini langsung wrap.appendChild(...)
+  // sehingga melempar TypeError dan tertangkap sebagai "Gagal memuat data".
+  // Cukup berhenti; pgReRenderUsers() akan menggambar ulang begitu Step 2 terbuka.
+  if(!wrap || !u) return;
   document.getElementById(`pguc-${tipe}-${id}`)?.remove();
   const filled=tipe==='menjadi'?pgIsFilledMenjadi(u):pgIsFilled(u);
   const editLabel=filled?'✏️ Edit':'📝 Isi Data';

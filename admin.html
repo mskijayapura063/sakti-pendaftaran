@@ -771,39 +771,75 @@ let activeRollbackRef = null; // ref untuk rollback status
 async function apiPost(payload) {
   if (currentUser?.token && !payload.token) payload.token = currentUser.token;
   const body = JSON.stringify(payload);
-  let text;
-  let _apiInfo = { status: 0, url: '', redirected: false };
+  const aksi = String(payload.action || '');
+
+  // Hanya aksi BACA yang boleh diulang otomatis. Aksi TULIS tidak pernah diulang,
+  // supaya kegagalan jaringan tidak berubah menjadi data ganda.
+  //
+  // Daftar di bawah sudah ditelusuri satu per satu di gs lama.js: semuanya hanya
+  // MEMBACA sheet lalu menyusun berkas (spreadsheet sementara dibuang setelah dipakai).
+  // 'generatePerubahanExcel' SENGAJA TIDAK ikut: fungsi itu menulis/upsert baris ke
+  // sheet Perubahan, jadi kalau diulang bisa memunculkan record ganda.
+  const AKSI_AMAN_DIULANG = [
+    'ping', 'validateToken', 'cekRef',
+    'generateExcel',        // handleGenerateExcel      - baca + rakit xlsx
+    'generateEmailExcel',   // handleGenerateEmailExcel - baca + rakit xlsx
+    'generateFormOTP',      // handleGenerateFormOTP    - baca + rakit docx
+    'unduhSemuaDokumen'     // handleUnduhSemuaDokumen  - baca Drive + rakit zip
+  ];
+  const bolehUlang = /^get/i.test(aksi) || AKSI_AMAN_DIULANG.includes(aksi);
+  const maksPercobaan = bolehUlang ? 3 : 1;
+
+  let gagalTerakhir = null;
+  for (let percobaan = 1; percobaan <= maksPercobaan; percobaan++) {
+    const hasil = await _apiSekali(body);
+    if (hasil.ok) return hasil.data;
+    gagalTerakhir = hasil;
+    if (hasil.putus) break;                     // koneksi putus: percuma diulang cepat
+    if (percobaan < maksPercobaan) {
+      await new Promise(function(r){ setTimeout(r, 700 * percobaan); });
+    }
+  }
+
+  if (gagalTerakhir && gagalTerakhir.putus) {
+    return { success:false, message:'Tidak bisa terhubung ke server Apps Script. Cek koneksi internet & URL deploy.' };
+  }
+  const info = (gagalTerakhir && gagalTerakhir.info) || { status: 0 };
+  const isi  = (gagalTerakhir && gagalTerakhir.text) || '';
+  console.error('[apiPost] Balasan bukan JSON. HTTP', info.status, '| URL akhir:', info.url);
+  console.error('[apiPost] Isi balasan (2000 huruf pertama):\n', String(isi).slice(0, 2000));
+  window._apiBalasanTerakhir = { aksi: aksi, percobaan: maksPercobaan, info: info, isi: String(isi) };
+  const polos = String(isi).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const cuplikan = polos ? polos.slice(0, 160) : '(balasan kosong)';
+  return {
+    success: false,
+    message: 'Server tidak mengembalikan JSON (HTTP ' + info.status + ')'
+             + (maksPercobaan > 1 ? ' setelah ' + maksPercobaan + ' percobaan' : '')
+             + '. Balasan server: "' + cuplikan + '"',
+    _diagnosa: info,
+    _isiBalasan: String(isi)
+  };
+}
+
+// Satu kali tembak ke Apps Script. Mengembalikan {ok:true,data} atau info kegagalan.
+async function _apiSekali(body) {
+  let text, info = { status: 0, url: '', redirected: false };
   try {
     // Apps Script membalas 302 ke script.googleusercontent.com; browser mengikuti
     // redirect itu sendiri dan mengembalikan body JSON-nya. CUKUP SATU fetch.
-    // Versi lama menembak dua kali (redirect:'manual' lalu redirect:'follow'); pada
-    // permintaan lintas-origin respons pertama SELALU 'opaqueredirect', sehingga
-    // Apps Script dieksekusi DUA KALI untuk setiap panggilan -> lambat 2x lipat dan
-    // aksi tulis (mis. buat pengajuan) bisa menghasilkan record ganda.
     // CATATAN: jangan pasang header Content-Type, supaya tetap "simple request"
     // dan browser tidak mengirim preflight OPTIONS (1 round-trip tambahan).
     const r = await fetch(APPS_SCRIPT_URL, { method: 'POST', redirect: 'follow', body: body });
     text = await r.text();
-    _apiInfo = { status: r.status, url: r.url, redirected: r.redirected };
-  } catch(netErr) {
+    info = { status: r.status, url: r.url, redirected: r.redirected };
+  } catch (netErr) {
     console.error('[apiPost] Network error:', netErr);
-    return { success:false, message:'Tidak bisa terhubung ke server Apps Script. Cek koneksi internet & URL deploy.' };
+    return { ok: false, putus: true };
   }
   try {
-    return JSON.parse(text);
-  } catch(parseErr) {
-    // JANGAN menebak penyebabnya. Tampilkan apa adanya supaya bisa didiagnosis.
-    console.error('[apiPost] Balasan bukan JSON. HTTP', _apiInfo.status, '| URL akhir:', _apiInfo.url);
-    console.error('[apiPost] Isi balasan (2000 huruf pertama):\n', String(text || '').slice(0, 2000));
-    window._apiBalasanTerakhir = { info: _apiInfo, isi: String(text || '') };
-    const polos = String(text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    const cuplikan = polos ? polos.slice(0, 160) : '(balasan kosong)';
-    return {
-      success: false,
-      message: 'Server tidak mengembalikan JSON (HTTP ' + _apiInfo.status + '). Balasan server: "' + cuplikan + '"',
-      _diagnosa: _apiInfo,
-      _isiBalasan: String(text || '')
-    };
+    return { ok: true, data: JSON.parse(text) };
+  } catch (e) {
+    return { ok: false, putus: false, info: info, text: text };
   }
 }
 
