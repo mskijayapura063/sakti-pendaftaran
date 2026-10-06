@@ -131,6 +131,11 @@ header{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);po
 .badge-draft{background:var(--gray-100);color:var(--gray-600);border:1px solid var(--gray-300)}
 /* Pecahan status "Menunggu" berdasarkan kelengkapan dokumen */
 .badge-belumupload{background:#FEE2E2;color:#B91C1C;border:1px solid #FCA5A5}
+/* Tombol Upload yang filenya sudah dipilih tapi belum ditekan - sengaja mencolok,
+   karena ini kesalahan paling sering: satker pilih file lalu langsung klik Selesai. */
+.btn-upload-menggantung{background:#DC2626!important;color:#fff!important;border-color:#DC2626!important;
+  font-weight:800!important;animation:kedipUpload 1.1s ease-in-out infinite}
+@keyframes kedipUpload{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.55)}50%{box-shadow:0 0 0 7px rgba(220,38,38,0)}}
 .badge-belumlengkap{background:#FFF3E0;color:#C2410C;border:1px solid #FDBA74}
 .badge-siapproses{background:#E0F2FE;color:#075985;border:1px solid #7DD3FC}
 .badge-revisi{background:#EDE9FE;color:#5B21B6;border:1px solid #C4B5FD}
@@ -2630,16 +2635,49 @@ async function ubDoPanggilRekaman(){
 }
 
 // ─── FLATPICKR ───────────────────────────────────────────
+// Pustaka flatpickr dimuat dari CDN dengan atribut defer. Kalau CDN lambat (atau
+// diblokir jaringan kantor), window.flatpickr masih kosong saat init dipanggil,
+// sehingga kalender TIDAK PERNAH muncul dan field tanggal terasa "mati".
+// Helper ini menunggu pustakanya siap, dan kalau sampai batas waktu tetap tidak ada,
+// field diubah jadi <input type="date"> supaya satker tetap punya pemilih tanggal.
+function pasangKalender_(el, dateFormat, simpanKe) {
+  if (!el) return;
+  var sisa = 24;                       // 24 x 250ms = 6 detik
+  (function coba() {
+    if (!document.body.contains(el)) return;   // field sudah hilang dari layar
+    if (window.flatpickr) {
+      try { if (el._flatpickr) el._flatpickr.destroy(); } catch(e) {}
+      var fp = flatpickr(el, {
+        locale: (window.flatpickr.l10ns && window.flatpickr.l10ns.id) ? 'id' : 'default',
+        dateFormat: dateFormat,
+        defaultDate: (el.value || null),
+        allowInput: false,
+        disableMobile: true
+      });
+      if (typeof simpanKe === 'function') simpanKe(fp);
+      return;
+    }
+    if (--sisa > 0) { setTimeout(coba, 250); return; }
+    // Cadangan terakhir: pemilih tanggal bawaan browser.
+    try {
+      el.removeAttribute('readonly');
+      el.type = 'date';
+      el.style.cursor = 'pointer';
+      el.title = 'Kalender bawaan browser (flatpickr gagal dimuat)';
+    } catch(e) {}
+  })();
+}
+
 function ubInitFlatpickrSurat(){
-  if(ubFpSurat)ubFpSurat.destroy();
   const el=document.getElementById('ub_tanggalSurat');
   if(!el)return;
-  ubFpSurat=flatpickr(el,{locale:'id',dateFormat:'d/m/Y',defaultDate:new Date(),allowInput:false,disableMobile:true});
+  // defaultDate HARUS mengikuti isi field. Dulu dipaksa new Date(), sehingga ketika
+  // satker membuka kembali pengajuan lama, tanggal TTD yang sudah dipilih diam-diam
+  // tertimpa tanggal hari ini - lalu ikut tercetak di Excel.
+  pasangKalender_(el, 'd/m/Y', function(fp){ ubFpSurat = fp; });
 }
 function ubInitFlatpickrTglsk(el){
-  if(!el)return;
-  if(el._flatpickr)el._flatpickr.destroy();
-  flatpickr(el,{locale:'id',dateFormat:'d-m-Y',allowInput:false,disableMobile:true});
+  pasangKalender_(el, 'd-m-Y');
 }
 
 // ─── RENDER ──────────────────────────────────────────────
@@ -4483,8 +4521,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 function pgInitFlatpickr(){
   const el=document.getElementById('pg_tglSurat');
   if(!el||pgLocked)return;
-  if(el._flatpickr)el._flatpickr.destroy();
-  flatpickr(el,{locale:'id',dateFormat:'d-m-Y',allowInput:false,disableMobile:true});
+  pasangKalender_(el, 'd-m-Y');
 }
 
 // ── Validasi & Submit ──────────────────────────────────────────────────────
@@ -4842,7 +4879,7 @@ function pgudSelectFile(key, input, allowImage) {
   document.getElementById('pgud_done_'+key).style.display='none';
   const btn = document.getElementById('pgud_btn_'+key);
   btn.disabled=false; btn.textContent='📤 Upload'; btn.style.display='inline-flex';
-  document.getElementById('pgud_row_'+key).style.borderColor='var(--blue-pale2)';
+  tandaiMenggantung_('pgud', key, true);
 }
 
 function pgudClearFile(key) {
@@ -4923,8 +4960,7 @@ async function pgudUploadFile(key) {
     }
     btn.style.display='none';
     document.getElementById('pgud_done_'+key).style.display='block';
-    document.getElementById('pgud_row_'+key).style.borderColor='#A5D6A7';
-    document.getElementById('pgud_row_'+key).style.background='#f0fdf4';
+    tandaiMenggantung_('pgud', key, false);
     pgUploadDoneMap[key]      = true;
     pgUploadNewInSession[key] = true;
     showToast('✅ '+file.name+' berhasil diupload', false, true);
@@ -4936,6 +4972,9 @@ async function pgudUploadFile(key) {
 }
 
 async function pgUploadSelesai() {
+  // TAHAN dulu kalau ada file terpilih yang belum ditekan Upload.
+  if (!bolehSelesaiUpload_(pgUploadFiles, pgUploadDoneMap, pgUploadDokList, 'pgud')) return;
+
   // Cek kelengkapan — hanya warn, TIDAK blokir (satker boleh upload parsial dan lanjut besok)
   const wajibBelum = pgUploadDokList.filter(d => d.required && !pgUploadDoneMap[d.key]);
 
@@ -6408,8 +6447,25 @@ function udSelectFile(key, input, allowImage) {
   document.getElementById('ud_done_'+key).style.display='none';
   document.getElementById('ud_btn_'+key).disabled=false;
   document.getElementById('ud_btn_'+key).textContent='📤 Upload';
-  // Highlight row
-  document.getElementById('ud_row_'+key).style.borderColor='var(--blue-pale2)';
+  // Tandai baris ini sebagai BELUM diupload supaya tidak terlewat.
+  tandaiMenggantung_('ud', key, true);
+}
+
+// Nyalakan/matikan penanda "sudah dipilih, belum diupload" pada satu baris dokumen.
+function tandaiMenggantung_(prefix, key, aktif) {
+  const row = document.getElementById(prefix+'_row_'+key);
+  const btn = document.getElementById(prefix+'_btn_'+key);
+  const err = document.getElementById(prefix+'_err_'+key);
+  if (aktif) {
+    if (row) { row.style.borderColor='#F59E0B'; row.style.background='#FFFBEB'; }
+    if (btn) { btn.classList.add('btn-upload-menggantung'); btn.textContent='📤 Upload sekarang'; }
+    if (err) { err.textContent='Belum terkirim. Tekan tombol Upload di baris ini.';
+               err.style.color='#B45309'; err.style.display='block'; }
+  } else {
+    if (row) { row.style.borderColor='#A5D6A7'; row.style.background='#f0fdf4'; }
+    if (btn) { btn.classList.remove('btn-upload-menggantung'); }
+    if (err) { err.style.display='none'; err.style.color=''; }
+  }
 }
 
 function udClearFile(key) {
@@ -6496,8 +6552,7 @@ async function udUploadFile(key) {
     // Sukses
     btn.style.display='none';
     document.getElementById('ud_done_'+key).style.display='block';
-    document.getElementById('ud_row_'+key).style.borderColor='#A5D6A7';
-    document.getElementById('ud_row_'+key).style.background='#f0fdf4';
+    tandaiMenggantung_('ud', key, false);
     showToast('✅ '+file.name+' berhasil diupload', false, true);
 
     // Mark uploaded
@@ -6511,7 +6566,65 @@ async function udUploadFile(key) {
   }
 }
 
+// ════════════════════════════════════════════════════════
+// PENJAGA "FILE SUDAH DIPILIH TAPI BELUM DIUPLOAD"
+// Satker sering mengira memilih file sudah sama dengan mengunggahnya, lalu langsung
+// menekan Selesai - berkasnya tidak pernah sampai ke KPPN. Fungsi-fungsi di bawah
+// menandai baris yang menggantung dan menahan tombol Selesai sampai Upload ditekan.
+// ════════════════════════════════════════════════════════
+function fileMenggantung_(filesObj, doneMap, dokList, prefix) {
+  var hasil = [];
+  Object.keys(filesObj || {}).forEach(function(key) {
+    if (!filesObj[key]) return;            // tidak ada file terpilih
+    if (doneMap && doneMap[key]) return;   // sudah berhasil diunggah
+    var dok = (dokList || []).find(function(d) { return d.key === key; });
+    hasil.push({ key: key, label: (dok && dok.label) || key, prefix: prefix });
+  });
+  return hasil;
+}
+
+// Beri tanda merah pada baris dokumen yang filenya belum diunggah, lalu gulirkan
+// layar ke baris pertama supaya satker langsung melihat tombol Upload-nya.
+function sorotBelumUpload_(daftar) {
+  if (!daftar.length) return;
+  daftar.forEach(function(d) {
+    var row = document.getElementById(d.prefix + '_row_' + d.key);
+    if (row) {
+      row.style.borderColor = 'var(--red)';
+      row.style.background  = '#FFF5F5';
+    }
+    var btn = document.getElementById(d.prefix + '_btn_' + d.key);
+    if (btn) {
+      btn.classList.add('btn-upload-menggantung');
+      btn.textContent = '📤 Upload sekarang';
+    }
+    var err = document.getElementById(d.prefix + '_err_' + d.key);
+    if (err) {
+      err.textContent = 'File sudah dipilih tapi BELUM diupload. Tekan tombol Upload di baris ini.';
+      err.style.display = 'block';
+    }
+  });
+  var first = document.getElementById(daftar[0].prefix + '_row_' + daftar[0].key);
+  if (first && first.scrollIntoView) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// Kembalikan true kalau boleh lanjut; false kalau masih ada yang menggantung.
+function bolehSelesaiUpload_(filesObj, doneMap, dokList, prefix) {
+  var gantung = fileMenggantung_(filesObj, doneMap, dokList, prefix);
+  if (!gantung.length) return true;
+  sorotBelumUpload_(gantung);
+  alert('Masih ada ' + gantung.length + ' file yang sudah dipilih tetapi BELUM diupload:\n\n' +
+        gantung.map(function(d, i) { return (i + 1) + '. ' + d.label; }).join('\n') +
+        '\n\nMemilih file saja tidak mengirim berkas ke KPPN.\n' +
+        'Tekan tombol "Upload" pada setiap baris di atas, tunggu sampai muncul tanda centang, ' +
+        'baru tekan Selesai.');
+  return false;
+}
+
 async function udSelesai() {
+  // TAHAN dulu kalau ada file terpilih yang belum ditekan Upload.
+  if (!bolehSelesaiUpload_(udFiles, udDonemap, udDokList, 'ud')) return;
+
   // Cek kelengkapan — hanya warn, TIDAK blokir (satker boleh upload parsial dan lanjut besok)
   const wajibBelum = udDokList.length
     ? udDokList.filter(d => d.required && !udDonemap[d.key])
@@ -6603,8 +6716,12 @@ async function satkerUnduhFormExcel(refKode) {
       levelSatker: info.levelSatker || '',
       namaKpa: info.namaKpa || '',
       nip: info.nip || '',
-      kota: 'Jayapura',
-      tglStr: new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),
+      kota: info.kota || 'Jayapura',
+      // Tanggal tanda tangan KPA diambil dari data yang TERSIMPAN, bukan hari ini.
+      // Dulu di sini dipakai new Date(), sehingga Excel yang diunduh ulang dari Riwayat
+      // tanggalnya berbeda dengan dokumen yang sudah dicetak & ditandatangani satker.
+      tglSurat: info.tglSurat || '',
+      tglStr: info.tglSurat ? ubFormatTglIndo(info.tglSurat) : '',
       users,
     });
     if (!res.success) { showToast(res.message || 'Gagal generate Excel', true); return; }
@@ -6749,15 +6866,10 @@ function bukaEditRiwayat(refKode) {
 
   openModal('modalEditRiwayat');
   setTimeout(() => {
-    ubInitFlatpickrSurat(document.getElementById('er_tglSurat'));
-    ubInitFlatpickrSurat = ubInitFlatpickrSurat; // no-op reference keep
-    // Init flatpickr tanggal surat di modal edit
-    if (window.flatpickr) {
-      flatpickr('#er_tglSurat', {
-        locale:'id', dateFormat:'d-m-Y',
-        defaultDate: document.getElementById('er_tglSurat')?.value || null,
-      });
-    }
+    // Catatan: ubInitFlatpickrSurat() selalu menyasar #ub_tanggalSurat dan mengabaikan
+    // argumennya, jadi pemanggilan di sini dulu percuma. Kalender modal edit dipasang
+    // langsung di bawah ini.
+    pasangKalender_(document.getElementById('er_tglSurat'), 'd-m-Y');
   }, 80);
 }
 
@@ -6919,7 +7031,8 @@ async function doSimpanEditRiwayat() {
 
   const isDitolakNow = (info.status || '').toLowerCase() === 'ditolak';
   const kodeSatker = currentUser?.username || '';
-  const tglStr = new Date().toLocaleDateString('id-ID', {day:'2-digit',month:'long',year:'numeric'});
+  // Tanggal TTD KPA mengikuti isian form (er_tglSurat), bukan tanggal hari ini.
+  const tglStr = tglSurat ? ubFormatTglIndo(tglSurat) : '';
 
   try {
     // Jika status Ditolak → pakai updatePendaftaran (reset ke Menunggu) + generate Excel baru
@@ -6928,7 +7041,7 @@ async function doSimpanEditRiwayat() {
       const resXls = await apiPost({
         action: 'generateExcel',
         refKode: info.refKode, kodeSatker, namaSatker, levelSatker,
-        namaKpa, nip, kota, tglStr,
+        namaKpa, nip, kota, tglStr, tglSurat,
         users: usersJson,
       });
       if (!resXls.success) throw new Error(resXls.message || 'Gagal generate Excel');
@@ -7078,13 +7191,15 @@ async function doSimpanPerbaikan() {
   try {
     const kodeSatker = currentUser?.username || '';
     const namaSatker = pdData.namaSatker || currentUser?.namaSatker || '';
-    const tglStr = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+    // Tanggal TTD KPA diambil dari data tersimpan, bukan hari ini.
+    const tglSurat = pdData.tglSurat || '';
+    const tglStr = tglSurat ? ubFormatTglIndo(tglSurat) : '';
 
     showToast('⏳ Membuat form Excel baru...');
     const resXls = await apiPost({
       action:'generateExcel',
       refKode: pdData.refKode, kodeSatker, namaSatker, levelSatker,
-      namaKpa, nip, kota:'Jayapura', tglStr,
+      namaKpa, nip, kota:'Jayapura', tglStr, tglSurat,
       users: (pdData.usersJson||[]).map(u=>({
         nama:u.nama||'',nipnrp:u.nipnrp||'',nik:u.nik||'',
         email:u.email||'',hp:u.hp||'',sk:u.sk||'',

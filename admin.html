@@ -651,6 +651,138 @@ function showToast(msg, isErr=false, isSuccess=false){
   _toastTimer=setTimeout(()=>{ el.className=''; },3800);
 }
 
+
+// ════════════════════════════════════════════════════════
+// PENGURUTAN TABEL (berlaku untuk SEMUA menu admin)
+// Sengaja dibuat sebagai lapisan DOM murni dan dipasang lewat event delegation:
+// tidak satu pun fungsi render diubah, jadi alur data yang sudah ada tidak terganggu.
+// Tabel admin semuanya satu baris per record (tidak ada rowspan / baris detail),
+// sehingga mengurutkan <tr> aman.
+// ════════════════════════════════════════════════════════
+var _sortSedangJalan = false;
+
+// Kolom yang tidak masuk akal diurutkan.
+var _KOLOM_TAK_URUT = ['aksi', 'action', 'tindakan', ''];
+
+function _sortNilaiSel(td) {
+  if (!td) return '';
+  return (td.innerText || td.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+// Bandingkan dua teks sel: tanggal dulu, lalu angka, baru teks.
+function _sortBanding(a, b) {
+  var ta = _sortKeTanggal(a), tb = _sortKeTanggal(b);
+  if (ta !== null && tb !== null) return ta - tb;
+  var na = _sortKeAngka(a), nb = _sortKeAngka(b);
+  if (na !== null && nb !== null) return na - nb;
+  // Sel kosong ("—", "-") selalu didorong ke bawah.
+  var ka = (a === '' || a === '-' || a === '—'), kb = (b === '' || b === '-' || b === '—');
+  if (ka && !kb) return 1;
+  if (!ka && kb) return -1;
+  return a.localeCompare(b, 'id', { numeric: true, sensitivity: 'base' });
+}
+
+function _sortKeTanggal(t) {
+  var m = t.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (m) return new Date(+m[3], +m[2] - 1, +m[1]).getTime();
+  var iso = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3]).getTime();
+  return null;
+}
+
+function _sortKeAngka(t) {
+  if (!/^[\d.,\s]+$/.test(t) || !/\d/.test(t)) return null;
+  var n = parseFloat(t.replace(/\./g, '').replace(/,/g, '.').replace(/\s/g, ''));
+  return isNaN(n) ? null : n;
+}
+
+function _sortTerapkan(table) {
+  var st = table._sortState;
+  if (!st || st.idx == null) return;
+  var tbody = table.tBodies[0];
+  if (!tbody) return;
+  var semua = Array.prototype.slice.call(tbody.rows);
+  // Baris status ("Tidak ada data", "Memuat...") tidak ikut diurutkan.
+  var baris  = semua.filter(function (r) { return !r.classList.contains('tbl-empty'); });
+  var khusus = semua.filter(function (r) { return r.classList.contains('tbl-empty'); });
+  if (baris.length < 2) return;
+
+  var arah = st.asc ? 1 : -1;
+  baris.sort(function (r1, r2) {
+    return arah * _sortBanding(_sortNilaiSel(r1.cells[st.idx]), _sortNilaiSel(r2.cells[st.idx]));
+  });
+
+  _sortSedangJalan = true;
+  baris.forEach(function (r) { tbody.appendChild(r); });
+  khusus.forEach(function (r) { tbody.appendChild(r); });
+  _sortSedangJalan = false;
+
+  // Penanda panah di header.
+  var ths = table.tHead ? table.tHead.rows[0].cells : [];
+  for (var i = 0; i < ths.length; i++) {
+    var dasar = ths[i].getAttribute('data-label-asli');
+    if (dasar === null) { dasar = ths[i].innerHTML; ths[i].setAttribute('data-label-asli', dasar); }
+    ths[i].innerHTML = dasar + (i === st.idx ? (st.asc ? ' <span style="color:var(--blue)">&#9650;</span>'
+                                                        : ' <span style="color:var(--blue)">&#9660;</span>') : '');
+  }
+}
+
+// Pasang pengamat supaya urutan tetap bertahan saat tabel digambar ulang
+// (mis. setelah filter atau refresh data).
+function _sortPasangPengamat(table) {
+  if (table._sortObserver || !window.MutationObserver) return;
+  var tbody = table.tBodies[0];
+  if (!tbody) return;
+  var ob = new MutationObserver(function () {
+    if (_sortSedangJalan) return;
+    clearTimeout(table._sortTimer);
+    table._sortTimer = setTimeout(function () { _sortTerapkan(table); }, 30);
+  });
+  ob.observe(tbody, { childList: true });
+  table._sortObserver = ob;
+}
+
+document.addEventListener('click', function (ev) {
+  var th = ev.target.closest ? ev.target.closest('th') : null;
+  if (!th) return;
+  var table = th.closest('table');
+  if (!table || !table.classList.contains('tbl')) return;
+  if (!table.tHead || th.parentElement !== table.tHead.rows[0]) return;
+
+  var label = (th.getAttribute('data-label-asli') || th.innerText || '').replace(/[▲▼]/g, '').trim().toLowerCase();
+  if (_KOLOM_TAK_URUT.indexOf(label) !== -1) return;
+
+  var idx = Array.prototype.indexOf.call(th.parentElement.cells, th);
+  var st = table._sortState || { idx: null, asc: true };
+  table._sortState = { idx: idx, asc: (st.idx === idx ? !st.asc : true) };
+  _sortTerapkan(table);
+  _sortPasangPengamat(table);
+});
+
+// Beri petunjuk visual bahwa header bisa diklik.
+(function () {
+  var st = document.createElement('style');
+  st.textContent = 'table.tbl thead th{cursor:pointer;user-select:none}' +
+                   'table.tbl thead th:hover{background:var(--blue-pale,#E8F0FE)}';
+  document.head.appendChild(st);
+})();
+
+// "15-09-2026" / ISO  ->  "15 September 2026". Dipakai untuk tanggal TTD KPA di Excel.
+function fmtTglIndo(val){
+  if(!val) return '';
+  const B=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const t = String(val).trim();
+  // Terima dua format pemilih tanggal yang dipakai web: 15/09/2026 dan 15-09-2026,
+  // juga yyyy-mm-dd dari <input type="date"> dan ISO dari backend.
+  const m = t.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if(m) return (+m[1])+' '+B[(+m[2])-1]+' '+m[3];
+  const iso = t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(iso) return (+iso[3])+' '+B[(+iso[2])-1]+' '+iso[1];
+  const d = parseTgl(t);
+  if(!d) return t;
+  return d.getDate()+' '+B[d.getMonth()]+' '+d.getFullYear();
+}
+
 function parseTgl(val){
   if(!val) return null;
   // Handle format dd/MM/yyyy HH:mm dari backend GAS
@@ -1518,8 +1650,12 @@ async function adminDownloadPendaftaranExcel(s){
       levelSatker: s.levelSatker ||'Satker',
       namaKpa:     s.namaKpa     ||'',
       nip:         s.nip         ||'',
-      kota:        'Jayapura',
-      tglStr:      new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),
+      kota:        s.kota || 'Jayapura',
+      // Tanggal tanda tangan KPA mengikuti data TERSIMPAN, bukan tanggal hari ini.
+      // Dulu di sini new Date(), jadi Excel yang diunduh admin tanggalnya tidak sama
+      // dengan dokumen yang sudah dicetak & ditandatangani satker.
+      tglSurat:    s.tglSurat || '',
+      tglStr:      s.tglSurat ? fmtTglIndo(s.tglSurat) : '',
       users:       (s.users||[]).map(u=>({...u, tglsk:(u.tglsk||'').replace(/\//g,'-')})),
     });
     if(!res.success){showToast(res.message||'Gagal generate Excel',true);return;}
