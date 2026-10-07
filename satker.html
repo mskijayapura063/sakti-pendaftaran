@@ -2814,7 +2814,7 @@ function ubRenderPilihan(list, kode) {
     const catatan = String(d.catatanAdmin || d.alasanTolak || d.catatan || '').trim();
     const nama    = ubRingkasNama_(d);
     const jml     = Number(d.userCount||0) || (nama ? nama.split(',').length : 0);
-    const cek     = cekLengkapFrontend(d.filesJson);
+    const cek     = cekLengkapFrontend(d.filesJson, d.usersJson || d.users);
     const sUp     = rwSudahUpload_(d, false);
     const st      = statusKartuPilihan_(ditolak, sUp, cek);
     return `
@@ -5152,6 +5152,7 @@ async function initUserRiwayat() {
           catatanAdmin: d.catatanAdmin || '',
           sudahUpload: d.sudahUpload || d.hasFiles || false,
           sudahUploadLengkap: d.sudahUploadLengkap != null ? d.sudahUploadLengkap : undefined,
+          dokKurang: Array.isArray(d.dokKurang) ? d.dokKurang : undefined,
           butuhAktivasiOTP: d.butuhAktivasiOTP,
           otpSelesai: d.otpSelesai || d.sudahTerdaftar || false,
         };
@@ -5333,7 +5334,7 @@ function rwDokLengkap_(x, isGanti) {
       return !!cekLengkapPgFrontend(files, Array.isArray(menjadi) ? menjadi : []).lengkap;
     }
     if (x.sudahUploadLengkap === true || x.sudahUploadLengkap === false) return x.sudahUploadLengkap;
-    return !!cekLengkapFrontend(files).lengkap;
+    return !!cekLengkapFrontend(files, x.usersJson || x.users).lengkap;
   } catch(e) { return false; }
 }
 
@@ -5450,20 +5451,70 @@ function rwRenderRow(x) {
  * Mirror dari cekLengkapDaftar() di admin.html.
  * Kembalikan { lengkap: bool, kurang: string[] }
  */
-function cekLengkapFrontend(filesJson) {
-  if (!filesJson || typeof filesJson !== 'object') {
-    return { lengkap: false, kurang: ['Form Pendaftaran','SK Pengguna','KTP KPA','SK Pejabat','Form OTP','Spesimen TTD'] };
-  }
-  const keys = Object.keys(filesJson).filter(k => !k.startsWith('otpFoto_'));
+/**
+ * Cek kelengkapan dokumen PENDAFTARAN - PEKA PERAN.
+ *
+ * Versi lama fungsi ini buta peran: siapa pun penggunanya, selalu menuntut
+ * SK Pejabat, Form OTP, dan Spesimen TTD. Akibatnya satker yang hanya mendaftarkan
+ * operator terus dilapori "dokumen belum lengkap" untuk berkas yang memang tidak
+ * pernah diminta - bahkan bertabrakan dengan badge "Siap Diproses" yang memakai
+ * perhitungan peka peran dari server.
+ *
+ * Aturan di bawah HARUS sama dengan bukaModalUploadDokumen() di file ini dan
+ * dokPendaftaranKurang_() di backend.
+ */
+function cekLengkapFrontend(filesJson, users) {
+  const fi   = (filesJson && typeof filesJson === 'object') ? filesJson : {};
+  const keys = Object.keys(fi).filter(k => !k.startsWith('otpFoto_'));
   const punya = k => keys.some(key => key === k || key.startsWith(k + '_'));
-  // Legacy alias: ktp → ktpKpa, suratPermohonan → skPengguna
+
+  let arr = users;
+  if (typeof arr === 'string') { try { arr = JSON.parse(arr); } catch(e) { arr = []; } }
+  if (!Array.isArray(arr)) arr = [];
+
   const kurang = [];
-  if (!punya('formPendaftaran'))                                  kurang.push('Form Pendaftaran');
-  if (!punya('skPengguna') && !punya('suratPermohonan'))         kurang.push('SK Pengguna');
-  if (!punya('ktpKpa') && !punya('ktp'))                         kurang.push('KTP KPA');
-  if (!punya('skPejabat') && !punya('skPejabatPerbendaharaan'))  kurang.push('SK Pejabat');
-  if (!punya('formOTP'))                                          kurang.push('Form OTP');
-  if (!punya('spesimen'))                                         kurang.push('Spesimen TTD');
+  // Dua dokumen ini wajib untuk semua peran.
+  if (!punya('formPendaftaran'))                           kurang.push('Form Pendaftaran');
+  if (!punya('skPengguna') && !punya('suratPermohonan'))   kurang.push('SK Pengguna SAKTI');
+
+  // Tanpa data pengguna kita tidak tahu perannya. Jangan menebak dokumen pejabat -
+  // lebih baik hanya memeriksa yang pasti wajib daripada menuduh kurang.
+  if (!arr.length) return { lengkap: kurang.length === 0, kurang };
+
+  const semuaPeran = [];
+  arr.forEach(u => ((u && u.peranList) || []).forEach(p => semuaPeran.push(p)));
+  const ada = list => semuaPeran.some(p => list.includes(p));
+
+  // KTP per pengguna (data lama memakai key 'ktpKpa' / 'ktp').
+  const adaKtpLama = punya('ktpKpa') || punya('ktp');
+  arr.forEach((u, idx) => {
+    if (punya('ktp_user_' + idx)) return;
+    if (adaKtpLama && idx === 0) return;   // toleransi data lama
+    const nama = ((u && u.nama) || '').trim() || ('Pengguna #' + (idx + 1));
+    kurang.push('FC KTP \u2014 ' + nama);
+  });
+
+  // Form Aktivasi OTP - hanya untuk KPA / PPK / PPK DFDD / PPSPM.
+  if (ada(PERAN_BUTUH_OTP)) {
+    arr.forEach((u, idx) => {
+      const peranOtp = ((u && u.peranList) || []).filter(p => PERAN_BUTUH_OTP.includes(p));
+      if (!peranOtp.length) return;
+      if (punya('formOTP_' + idx) || punya('formOTP')) return;
+      const nama = ((u && u.nama) || '').trim() || ('Pengguna #' + (idx + 1));
+      kurang.push('Form Aktivasi OTP \u2014 ' + nama);
+    });
+  }
+
+  // SK Pejabat - hanya jika ada peran pengelola keuangan.
+  if (ada(PERAN_BUTUH_SK) && !punya('skPejabat') && !punya('skPejabatPerbendaharaan')) {
+    kurang.push('SK Pejabat Pengelola Keuangan');
+  }
+
+  // Spesimen TTD - hanya jika ada pejabat/bendahara.
+  if (ada(PERAN_BUTUH_SPEC) && !punya('spesimen')) {
+    kurang.push('Spesimen Tanda Tangan');
+  }
+
   return { lengkap: kurang.length === 0, kurang };
 }
 
@@ -5498,11 +5549,20 @@ function rwRenderDetailDaftar(d, rowKey){
   // sudahUpload: cek field eksplisit, fallback ke filesJson (untuk kompatibilitas data lama)
   const sudahUpload = !!(d.sudahUpload || d.hasFiles ||
     (d.filesJson && typeof d.filesJson === 'object' && Object.keys(d.filesJson).filter(k => !k.startsWith('otpFoto_')).length > 0));
-  // sudahUploadLengkap: selalu dihitung dari filesJson (sinkron dengan cekLengkapDaftar admin)
-  // TIDAK mengandalkan field dari backend (backend tidak pernah mengirim sudahUploadLengkap)
-  const _cekDaftar = cekLengkapFrontend(d.filesJson);
-  const sudahUploadLengkap = _cekDaftar.lengkap;
-  const _dokKurang = _cekDaftar.kurang; // daftar nama dokumen yang belum diupload
+  // Kelengkapan dokumen: UTAMAKAN jawaban server (dokPendaftaranKurang_) karena itu
+  // peka peran dan sumbernya sama dengan badge status. Dulu bagian ini selalu
+  // menghitung sendiri dengan aturan buta peran, sehingga satker yang hanya punya
+  // operator tetap dimintai SK Pejabat / Form OTP / Spesimen TTD - dan panel ini
+  // bertengkar dengan badge "Siap Diproses" di baris yang sama.
+  let _dokKurang, sudahUploadLengkap;
+  if (Array.isArray(d.dokKurang)) {
+    _dokKurang = d.dokKurang;
+    sudahUploadLengkap = (d.sudahUploadLengkap != null) ? !!d.sudahUploadLengkap : (_dokKurang.length === 0);
+  } else {
+    const _cekDaftar = cekLengkapFrontend(d.filesJson, d.usersJson || d.users);
+    _dokKurang = _cekDaftar.kurang;
+    sudahUploadLengkap = _cekDaftar.lengkap;
+  }
   const belumUpload = !sudahUpload && !isDitolak && !isTerdaftar;
 
   let usersArr = [];
@@ -6704,9 +6764,19 @@ async function satkerUnduhFormExcel(refKode) {
   if (!info) { showToast('Data tidak tersedia', true); return; }
   showToast('⏳ Menyiapkan Form Excel...');
   try {
+    // JANGAN memangkas field. Versi lama hanya mengirim nama/nipnrp/email/peranList,
+    // sehingga kolom NPWP, NIK, No. HP, Nomor SK, dan Tanggal SK di Excel keluar KOSONG
+    // padahal datanya sudah direkam satker.
     const users = (info.usersJson || []).map(u => ({
-      nama: u.nama || '', nipnrp: u.nipnrp || '', email: u.email || '',
-      peranList: u.peranList || [], jabatan: u.jabatan || ''
+      nama:     u.nama     || '',
+      nipnrp:   u.nipnrp   || u.nip || '',
+      nik:      u.nik      || '',
+      email:    u.email    || '',
+      hp:       u.hp       || '',
+      sk:       u.sk       || '',
+      tglsk:    u.tglsk    || '',
+      peranList: u.peranList || [],
+      jabatan:  u.jabatan  || ''
     }));
     const res = await apiPost({
       action: 'generateExcel',
